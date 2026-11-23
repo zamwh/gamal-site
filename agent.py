@@ -551,6 +551,9 @@ class SalesAgent:
                                                       price_cached=cfg["fallback_price_cached"],
                                                       price_out=cfg["fallback_price_out"])
             big = getattr(self, "_big", set())
+            reff = getattr(self, "_reff", {})
+            if m in reff:
+                c2 = dict(c2, reasoning_effort=reff[m])
             if m in big:
                 c2 = dict(c2, max_out_tokens=max(2500, int(c2["max_out_tokens"]) * 4))
             try:
@@ -558,6 +561,20 @@ class SalesAgent:
                     r = self._call(c2, msgs)
                 except urllib.error.HTTPError as e0:
                     b0 = e0.read().decode(errors="ignore")
+                    if e0.code == 400 and "reasoning_effort" in b0 and m not in reff:
+                        # tools need thinking switched off on some models ("none"); older ones want "minimal"
+                        for eff in ("none", "minimal"):
+                            try:
+                                r = self._call(dict(c2, reasoning_effort=eff), msgs)
+                                reff[m] = eff
+                                self._reff = reff
+                                good[want] = m
+                                self._good = good
+                                return r, dict(c2, reasoning_effort=eff)
+                            except urllib.error.HTTPError as e1:
+                                b0 = e1.read().decode(errors="ignore")
+                                e0 = e1
+                        raise urllib.error.HTTPError(e0.url, e0.code, "", e0.hdrs, io.BytesIO(b0.encode()))
                     if e0.code == 400 and "max_tokens" in b0:      # thinking models need more room
                         c2 = dict(c2, max_out_tokens=max(2500, int(c2["max_out_tokens"]) * 4))
                         r = self._call(c2, msgs)
@@ -571,7 +588,7 @@ class SalesAgent:
             except urllib.error.HTTPError as e:
                 body = e.read().decode(errors="ignore")
                 last = urllib.error.HTTPError(e.url, e.code, body[:300], e.hdrs, None)
-                if not self._model_err(e.code, body):
+                if e.code not in (400, 403, 404):      # key / balance problems: no point trying others
                     raise last
         raise last
 
@@ -606,6 +623,8 @@ class SalesAgent:
             return self._call(dict(cfg, model=m, max_out_tokens=60), [{"role": "user", "content": "قل: تم"}])
         except urllib.error.HTTPError as e:
             b = e.read().decode(errors="ignore")
+            if e.code == 400 and "reasoning_effort" in b:
+                return self._call(dict(cfg, model=m, max_out_tokens=200, reasoning_effort="none"), [{"role": "user", "content": "قل: تم"}])
             if e.code == 400 and "max_tokens" in b:
                 return self._call(dict(cfg, model=m, max_out_tokens=2500), [{"role": "user", "content": "قل: تم"}])
             raise urllib.error.HTTPError(e.url, e.code, "", e.hdrs, io.BytesIO(b.encode()))
@@ -614,6 +633,8 @@ class SalesAgent:
         payload = {"model": cfg["model"], "messages": msgs, "tools": TOOLS,
                    "max_completion_tokens": int(cfg["max_out_tokens"])}
         payload.update(cfg.get("extra") or {})
+        if cfg.get("reasoning_effort"):
+            payload["reasoning_effort"] = cfg["reasoning_effort"]
         req = urllib.request.Request("https://api.openai.com/v1/chat/completions",
                                      data=json.dumps(payload).encode(), headers={
                                          "Authorization": "Bearer " + cfg["api_key"],
