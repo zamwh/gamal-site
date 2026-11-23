@@ -1,0 +1,68 @@
+/* Gamal Almshrqi — "Noir Gold" liquid-glass design system */
+@font-face{font-family:Plex;font-weight:400;src:url(../assets/fonts/ibm-plex-sans-arabic-arabic-400-normal.woff2) format("woff2");unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF}
+@font-face{font-family:Plex;font-weight:500;src:url(../assets/fonts/ibm-plex-sans-arabic-arabic-500-normal.woff2) format("woff2");unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF}
+@font-face{font-family:Plex;font-weight:600;src:url(../assets/fonts/ibm-plex-sans-arabic-arabic-600-normal.woff2) format("woff2");unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF}
+@font-face{font-family:Plex;font-weight:700;src:url(../assets/fonts/ibm-plex-sans-arabic-arabic-700-normal.woff2) format("woff2");unicode-range:U+0600-06FF,U+0750-077F,U+08A0-08FF,U+FB50-FDFF,U+FE70-FEFF}
+@font-face{font-family:Plex;font-weight:400;src:url(../assets/fonts/ibm-plex-sans-arabic-latin-400-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2212}
+@font-face{font-family:Plex;font-weight:500;src:url(../assets/fonts/ibm-plex-sans-arabic-latin-500-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2212}
+@font-face{font-family:Plex;font-weight:600;src:url(../assets/fonts/ibm-plex-sans-arabic-latin-600-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2212}
+@font-face{font-family:Plex;font-weight:700;src:url(../assets/fonts/ibm-plex-sans-arabic-latin-700-normal.woff2) format("woff2");unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2212}
+
+:root{
+  --bg:#07070a;--bg-2:#0d0c10;
+  --glass:rgba(255,250,235,.045);--glass-2:rgba(255,250,235,.075);--glass-hi:rgba(255,245,215,.12);
+  --edge:rgba(255,226,160,.13);--edge-2:rgba(255,226,160,.26);
+  --txt:#f7f1e3;--mut:#9c9383;--mut-2:#6f685c;
+  --gold:#e6c46a;--gold-t:#f1d790;--gold-deep:#a97a22;
+  --g-grad:linear-gradient(135deg,#fdeab0 0%,#e9c66b 32%,#c99a33 64%,#94671b 100%);
+  --g-soft:linear-gradient(135deg,rgba(253,234,176,.20),rgba(201,154,51,.10));
+  --ok:#5cc79a;--warn:#f0b955;--bad:#ef7a7a;--info:#8fb6ff;
+  --r:22px;--r-sm:14px;
+  --shadow:0 24px 70px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,240,200,.07);
+  --blur:blur(26px) saturate(150%);
+}
+body.light{
+  --bg:#f5f1e8;--bg-2:#fbf8f1;
+  --glass:rgba(255,255,255,.58);--glass-2:rgba(255,255,255,.78);--glass-hi:rgba(255,255,255,.92);
+  --edge:rgba(150,110,30,.14);--edge-2:rgba(150,110,30,.28);
+  --txt:#1e1a13;--mut:#7a705f;--mut-2:#a29884;
+  --gold:#b88a2a;--gold-t:#8d6414;
+  --shadow:0 20px 50px rgba(110,80,20,.10),inset 0 1px 0 rgba(255,255,255,.9);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:Plex,"Segoe UI",Tahoma,sans-serif;color:var(--txt);background:var(--bg);font-size:14.5px;-webkit-font-smoothing:antialiased;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+/* ambient liquid background */
+.ambient{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none}
+.ambient i{position:absolute;border-radius:50%;filter:blur(90px);opacity:.55;animation:drift 22s ease-in-out infinite alternate}
+.ambient i:nth-child(1){width:620px;height:620px;right:-140px;top:-180px;background:radial-gradient(circle,#c9972f 0%,transparent 70%)}
+.ambient i:nth-child(2){width:520px;height:520px;left:-160px;bottom:-200px;background:radial-gradient(circle,#7a4e12 0%,transparent 70%);animation-delay:-8s}
+.ambient i:nth-child(3){width:420px;height:420px;left:38%;top:30%;background:radial-gradient(circle,rgba(236,196,120,.35) 0%,transparent 70%);animation-delay:-14s;opacity:.35}
+body.light .ambient i:nth-child(1){background:radial-gradient(circle,#f1d48c 0%,transparent 70%)}
+body.light .ambient i:nth-child(2){background:radial-gradient(circle,#f4c9a8 0%,transparent 70%)}
+body.light .ambient i:nth-child(3){background:radial-gradient(circle,#fff0c4 0%,transparent 70%)}
+@keyframes drift{to{transform:translate(-60px,40px) scale(1.12)}}
+/* glass */
+.glass{position:relative;background:var(--glass);border:1px solid var(--edge);border-radius:var(--r);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);box-shadow:var(--shadow)}
+.glass::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;background:linear-gradient(160deg,rgba(255,236,190,.28),transparent 35%,transparent 70%,rgba(255,236,190,.10));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
+.glass.soft{background:var(--glass-2)}
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:42px;padding:0 16px;border-radius:13px;border:1px solid var(--edge);background:var(--glass);cursor:pointer;transition:.18s;white-space:nowrap}
+.btn:hover{border-color:var(--edge-2);background:var(--glass-2)}
+.btn svg{width:18px;height:18px}
+.btn.gold{background:var(--g-grad);color:#241a06;border:0;font-weight:700;box-shadow:0 10px 30px rgba(201,154,51,.35),inset 0 1px 0 rgba(255,255,255,.5)}
+.btn.gold:hover{filter:brightness(1.06)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--bad)}
+kbd{font-family:Plex,monospace;font-size:10.5px;padding:2px 6px;border-radius:6px;border:1px solid var(--edge);color:var(--mut);background:rgba(0,0,0,.18)}
+body.light kbd{background:rgba(255,255,255,.7)}
+.pill{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:99px;font-size:12px;border:1px solid var(--edge);background:var(--glass)}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok)}
+.k-badge{font-size:11px;font-weight:700;padding:2px 7px;border-radius:7px;background:var(--g-soft);color:var(--gold-t);border:1px solid var(--edge-2)}
+.mut{color:var(--mut)}.gold-t{color:var(--gold-t)}
+.num{font-feature-settings:"tnum";letter-spacing:.2px}
+input.field,select.field{height:44px;width:100%;padding:0 14px;border-radius:13px;border:1px solid var(--edge);background:rgba(0,0,0,.22);outline:none;transition:.15s}
+body.light input.field,body.light select.field{background:rgba(255,255,255,.75)}
+input.field:focus{border-color:var(--gold);box-shadow:0 0 0 4px rgba(230,196,106,.12)}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:var(--edge-2);border-radius:9px}

@@ -1,0 +1,43 @@
+نشر الموقع على سيرفرك (Lightsail) — بدون ما نلمس أي شيء شغّال عندك
+==================================================================
+
+الموقع يشتغل بـ Python فقط، وما يحتاج تثبيت مكتبات.
+ويشتغل على منفذ جديد 8095، فما يتعارض مع البوت ولا Sentinel ولا برنامج المستودع.
+
+1) ارفع الملف gamal_v0.2.zip للسيرفر
+   - من صفحة Lightsail افتح "Connect using SSH".
+   - من أيقونة الترس (⚙) اختر Upload file، واختر الملف.
+
+2) انسخ هذا الأمر كامل والصقه في نافذة SSH، ثم اضغط Enter:
+
+sudo apt-get install -y unzip >/dev/null; mkdir -p ~/gamal && cd ~/gamal && unzip -o ~/gamal_v0.2.zip >/dev/null && sudo tee /etc/systemd/system/gamal-site.service >/dev/null <<'EOF'
+[Unit]
+Description=Gamal Almshrqi website
+After=network.target
+[Service]
+WorkingDirectory=/home/ubuntu/gamal
+ExecStart=/usr/bin/python3 /home/ubuntu/gamal/server.py --mode demo --port 8095 --host 127.0.0.1 --data /home/ubuntu/gamal/data
+Restart=always
+User=ubuntu
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl daemon-reload && sudo systemctl enable --now gamal-site && sleep 2 && curl -s -o /dev/null -w "الموقع شغال: %{http_code}\n" http://127.0.0.1:8095/
+
+   لازم يطلع: الموقع شغال: 200
+
+3) رابط https جاهز للإرسال (بدون دومين)، الصق هذا الأمر:
+
+cd ~ && curl -sL -o cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb && sudo dpkg -i cloudflared.deb >/dev/null && (nohup cloudflared tunnel --url http://127.0.0.1:8095 > ~/tunnel.log 2>&1 &) ; sleep 8; grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' ~/tunnel.log | head -1
+
+   يطلع لك رابط ينتهي بـ trycloudflare.com. هذا رابط الموقع اللي ترسله.
+   ملاحظة: هذا الرابط مؤقت ويتغير إذا أعاد السيرفر التشغيل. بعدها نربط دومين ثابت.
+
+4) لوحة الإدارة: نفس الرابط وبآخره /admin
+   الدخول التجريبي: owner وكلمة السر 123456
+   - من "الإعدادات": حط مفتاح OpenAI وفعّل المساعد.
+   - من نفس الصفحة: سعر الذهب اليوم، وروابط التواصل، وحسابات التحويل.
+
+أوامر مفيدة:
+   إعادة تشغيل الموقع:  sudo systemctl restart gamal-site
+   حالة الموقع:          sudo systemctl status gamal-site --no-pager
