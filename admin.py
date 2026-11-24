@@ -132,6 +132,14 @@ def get(app, u, path, q):
             return {"chats": s.q("SELECT session, ts, role, content, skills, tokens_in, tokens_out, cost FROM chat_logs "
                                  "ORDER BY id DESC LIMIT 300"),
                     "handoffs": s.q("SELECT * FROM handoffs ORDER BY id DESC LIMIT 50")}
+    if path == "/api/admin/demand":
+        if u["role"] not in ("owner", "manager"):
+            raise GoldError("غير مصرح")
+        with app.lock:
+            rows = s.q("SELECT * FROM demand_requests ORDER BY id DESC LIMIT 300")
+            agg = s.q("""SELECT category, COUNT(*) n, ROUND(AVG(NULLIF(budget,0))) avg_budget FROM demand_requests
+                         WHERE status='open' GROUP BY category ORDER BY n DESC""")
+            return {"rows": rows, "by_category": agg}
     if path == "/api/admin/settings":
         if u["role"] != "owner":
             raise GoldError("للمالك فقط")
@@ -190,8 +198,13 @@ def post(app, u, path, d):
                 s.set_setting("payments", [{k: str(a.get(k, ""))[:80] for k in ("name", "holder", "account")}
                                            for a in d["payments"]][:8])
             if "policy" in d:
-                s.set_setting("policy", {k: str(d["policy"].get(k, ""))[:800] for k in ("returns", "warranty", "branches_near", "other")})
+                s.set_setting("policy", {k: str(d["policy"].get(k, ""))[:800] for k in ("returns", "warranty", "branches_near", "hours", "custom_orders", "pounds", "other")})
             s.log(u["id"], "settings_change", "settings", None, {"keys": list(d.keys())})
+            s.db.commit()
+            return {"ok": True}
+        if path == "/api/admin/demand_resolve":
+            s.db.execute("UPDATE demand_requests SET status='done', resolved_note=? WHERE id=?",
+                         (str(d.get("note", ""))[:200], int(d.get("id", 0))))
             s.db.commit()
             return {"ok": True}
         if path == "/api/admin/handoff_done":

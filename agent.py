@@ -146,13 +146,20 @@ TOOLS = [
             "exclude_features": {"type": "array", "items": {"type": "string", "enum": ["وحدات متكررة", "تكوين مركزي", "متدرج", "طبقات", "متناظر", "شراشيب", "ورود", "تخريم"]},
                                  "description": "أشياء قال الزبون ما يبغاها (شرط إجباري، مو تفضيل)"},
             "max_weight": {"type": "number", "description": "إذا طلب شي خفيف أو أصغر من قطعة عرضتها"},
-            "cheaper_than": {"type": "number", "description": "سعر قطعة سابقة؛ يرجع فقط الأرخص منها"}}}}},
+            "cheaper_than": {"type": "number", "description": "سعر قطعة سابقة؛ يرجع فقط الأرخص منها"},
+            "cheaper_than_code": {"type": "string", "description": "رمز قطعة عرضتها؛ يرجع فقط الأرخص منها فعلاً"},
+            "lighter_than_code": {"type": "string", "description": "رمز قطعة عرضتها؛ يرجع فقط الأخف منها"},
+            "similar_to_code": {"type": "string", "description": "رمز قطعة أعجبته؛ يرتب حسب الشبه بها"},
+            "required_features": {"type": "array", "items": {"type": "string", "enum": ["وحدات متكررة", "تكوين مركزي", "متدرج", "طبقات", "متناظر", "شراشيب", "ورود", "تخريم"]},
+                                  "description": "ملامح طلبها صراحة (شرط)"}}}}},
     {"type": "function", "function": {
         "name": "note_taste",
         "description": "يسجّل ما فهمته عن ذوق الزبون من كلامه أو ردّة فعله. استدعه بنفس الرد كل ما عبّر عن تفضيل أو أعجبته قطعة أو رفضها أو ذكر ميزانية أو مناسبة. سجّل فقط الواضح.",
         "parameters": {"type": "object", "properties": {
             "likes": {"type": "array", "items": {"type": "string"}, "description": "رموز قطع قال إنها أعجبته"},
             "dislikes": {"type": "array", "items": {"type": "string"}, "description": "رموز قطع رفضها أو قال ما تناسبه"},
+            "reject_reason": {"type": "string", "description": "سبب الرفض بكلامه (ثقيل، غالي، فيه شراشيب...)"},
+            "remove_exclusions": {"type": "array", "items": {"type": "string"}, "description": "ملامح كان مستبعدها وغيّر رأيه وصار يقبلها"},
             "detail": {"type": "string", "enum": ["هادئ", "متوسط", "غني"], "description": "كثافة التفاصيل اللي يميل لها"},
             "presence": {"type": "string", "enum": ["ناعم", "متوسط", "ملفت"], "description": "قوة الحضور اللي يميل لها"},
             "composition": {"type": "array", "items": {"type": "string", "enum": ["وحدات متكررة", "تكوين مركزي", "متدرج", "طبقات", "متناظر", "شراشيب", "ورود", "تخريم"]}},
@@ -175,6 +182,20 @@ TOOLS = [
         "description": "عند إعجاب الزبون بقطعة أو سؤاله عن توفرها أو كيف يشتريها: يعرض له تحت المحادثة أزرار (احجزها بعربون 10% / اشترها بتحويل كامل / كلّم المبيعات على واتساب) لهذه القطعة.",
         "parameters": {"type": "object", "properties": {
             "code": {"type": "string", "description": "رمز القطعة"}}, "required": ["code"]}}},
+    {"type": "function", "function": {
+        "name": "price_breakdown",
+        "description": "حساب ثابت من النظام لقطعة أو أكثر: قيمة الذهب، المصنعية، الإجمالي، السعر للجرام شامل، والتحويل لعملة ثانية بسعر صرف اليوم وتاريخه. استخدمه لأي مقارنة أو سؤال عن سعر أو مصنعية أو عملة، ولا تحسب بنفسك.",
+        "parameters": {"type": "object", "properties": {
+            "codes": {"type": "array", "items": {"type": "string"}}, "currency": {"type": "string", "enum": ["YER", "SAR", "USD"]}},
+            "required": ["codes"]}}},
+    {"type": "function", "function": {
+        "name": "record_request",
+        "description": "يسجل طلب زبون غير متوفر حالياً (نوع، ملامح، ميزانية، استبعادات) ليراه فريق المبيعات. استدعه فقط بعد موافقة الزبون على أن يُبلَّغ. لا تعده بأن القطعة ستتوفر.",
+        "parameters": {"type": "object", "properties": {
+            "category": {"type": "string"}, "description": {"type": "string"}, "budget": {"type": "number"},
+            "excluded": {"type": "array", "items": {"type": "string"}}, "ref_code": {"type": "string"},
+            "contact": {"type": "string", "description": "رقم أو وسيلة تواصل إذا أعطاها الزبون (اختياري)"},
+            "consent": {"type": "boolean", "description": "الزبون وافق أن يُبلَّغ"}}, "required": ["category", "consent"]}}},
     {"type": "function", "function": {
         "name": "handoff_to_owner",
         "description": "يحوّل الزبون لصاحب المحل عندما تظهر نية شراء جدية أو تفاوض أو طلب خاص. يرجع رابط تواصل يظهر للزبون كزر.",
@@ -316,6 +337,13 @@ class SalesAgent:
             store.db.execute("""CREATE TABLE IF NOT EXISTS ai_sessions (
                 session TEXT PRIMARY KEY, facts TEXT, stage TEXT, shown TEXT, msgs INTEGER DEFAULT 0,
                 cost REAL DEFAULT 0, set_offered INTEGER DEFAULT 0, updated TEXT)""")
+            have = {r[1] for r in store.db.execute("PRAGMA table_info(ai_sessions)")}
+            if "state" not in have:
+                store.db.execute("ALTER TABLE ai_sessions ADD COLUMN state TEXT")
+            store.db.execute("""CREATE TABLE IF NOT EXISTS demand_requests (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, session TEXT, visitor TEXT, category TEXT,
+                description TEXT, budget REAL, excluded TEXT, ref_code TEXT, contact TEXT, consent INTEGER,
+                status TEXT DEFAULT 'open', resolved_note TEXT)""")
             store.db.commit()
 
     # ---- settings
@@ -339,9 +367,11 @@ class SalesAgent:
     def _ctx(self, session):
         r = self.store.one("SELECT * FROM ai_sessions WHERE session=?", (session,))
         if not r:
-            return {"facts": {}, "stage": "browse", "shown": [], "msgs": 0, "cost": 0.0, "set_offered": 0}
+            return {"facts": {}, "stage": "browse", "shown": [], "msgs": 0, "cost": 0.0, "set_offered": 0,
+                    "state": __import__("shopstate").new_state()}
         return {"facts": json.loads(r["facts"] or "{}"), "stage": r["stage"], "shown": json.loads(r["shown"] or "[]"),
-                "msgs": r["msgs"], "cost": r["cost"], "set_offered": r["set_offered"]}
+                "msgs": r["msgs"], "cost": r["cost"], "set_offered": r["set_offered"],
+                "state": __import__("shopstate").load(r["state"] if "state" in r.keys() else None)}
 
     def _save_ctx(self, session, c):
         self.store.db.execute("""INSERT INTO ai_sessions (session,facts,stage,shown,msgs,cost,set_offered,updated)
@@ -350,6 +380,8 @@ class SalesAgent:
             updated=excluded.updated""",
                               (session, json.dumps(c["facts"], ensure_ascii=False), c["stage"],
                                json.dumps(c["shown"][-12:]), c["msgs"], c["cost"], c["set_offered"], s_now()))
+        self.store.db.execute("UPDATE ai_sessions SET state=? WHERE session=?",
+                              (json.dumps(c.get("state") or {}, ensure_ascii=False), session))
 
     def _rates(self):
         pr = self.store.current_prices() or {}
@@ -468,73 +500,167 @@ class SalesAgent:
         desc = norm((p["description"] if "description" in p.keys() else "") or "")
         return "عقد" in words and "طقم" in hay and "عقد" in desc     # a set includes a necklace
 
+    def search_products(self, args, state=None, prof=None, facts=None, exclude_shown=True):
+        """Deterministic product retrieval. The model only fills the parameters; this decides what exists.
+        Hard rules: available + online only, explicit exclusions, budget, cheaper/lighter-than, rejected pieces."""
+        from taste import describe, traits_of
+        import shopstate
+        facts = facts or {}
+        prof = prof or self.taste.load(None)
+        st = state or shopstate.new_state()
+        req = st["request"]
+        ref = lambda c: self.store.piece(shopstate.resolve_ref(st, c) or c) if c else None
+        # remember what the customer asked for, so later turns keep the same rules
+        shopstate.update_request(st, category=args.get("kind"), occasion=args.get("occasion"),
+                                 budget=args.get("max_price"), weight_max=args.get("max_weight"),
+                                 excluded=args.get("exclude_features") or [], required=args.get("required_features") or [])
+        kind = args.get("kind") or req.get("category")
+        budget = args.get("max_price") or req.get("budget") or (prof.get("budget") or {}).get("max")
+        occ = args.get("occasion") or req.get("occasion") or facts.get("occasion") or (prof.get("occasion") or {}).get("v")
+        nofeat = set(req.get("excluded") or [])
+        need = set(args.get("required_features") or [])
+        wmax = args.get("max_weight") or req.get("weight_max")
+        cheaper = float(args["cheaper_than"]) if args.get("cheaper_than") else None
+        lighter = None
+        try:
+            if args.get("cheaper_than_code"):
+                cp = ref(args["cheaper_than_code"])
+                cheaper = self.store.piece_price(cp)["total"]
+            if args.get("lighter_than_code"):
+                lighter = ref(args["lighter_than_code"])["weight"]
+        except Exception:
+            pass
+        rejected = set(shopstate.rejected_codes(st)) | set(prof["rejected"])
+        shown = {e["code"] for e in st["shown"]} if exclude_shown else set()
+        reasons_out = {}
+
+        def ok(p):
+            comp = set(traits_of(p).get("composition") or [])
+            if nofeat & comp:
+                return "exclusion"
+            if need and not need <= comp:
+                return "missing_feature"
+            if not self._match_kind(p, kind):
+                return "kind"
+            if cheaper is not None and p["price"] >= cheaper:
+                return "not_cheaper"
+            if lighter is not None and p["weight"] >= lighter:
+                return "not_lighter"
+            if wmax and p["weight"] > float(wmax):
+                return "weight"
+            if p["code"] in rejected:
+                return "rejected"
+            return None
+        avail = self._available()
+        eligible, dropped = [], {}
+        for p in avail:
+            why = ok(p)
+            if why:
+                dropped[why] = dropped.get(why, 0) + 1
+            else:
+                eligible.append(p)
+        within = [p for p in eligible if not budget or p["price"] <= float(budget)]
+        over = sorted([p for p in eligible if budget and p["price"] > float(budget)], key=lambda p: p["price"])[:2]
+        sort = args.get("sort") or "taste"
+        n = max(1, min(5, int(args.get("count") or 2)))
+        pool = [p for p in within if p["code"] not in shown] or ([p for p in within] if sort != "taste" else [])
+        if sort != "taste":
+            key = {"price_asc": lambda p: p["price"], "price_desc": lambda p: -p["price"],
+                   "weight_asc": lambda p: p["weight"], "weight_desc": lambda p: -p["weight"]}[sort]
+            ranked = [(0, p, []) for p in sorted(within, key=key)][:n]   # the true order over all eligible stock
+        else:
+            if args.get("similar_to_code"):
+                try:
+                    sim = ref(args["similar_to_code"])
+                    tmp = dict(prof, dims={})
+                    self.taste.like(tmp, sim, "stated")
+                    prof = tmp
+                except Exception:
+                    pass
+            ranked, _ = self.taste.rank(prof, pool, lambda p: True, None, occ, (), n)
+        items = []
+        for sc, p, why in ranked:
+            it = self._brief(p)
+            it.update(describe(p))
+            if why:
+                it["fits"] = "قريبة من ذوقه: " + "، ".join(why)
+            items.append(it)
+        out = {"items": items, "sorted_by": sort, "eligible_total": len(eligible), "within_budget_total": len(within),
+               "params": {"kind": kind, "budget": budget, "excluded": sorted(nofeat), "required": sorted(need),
+                          "cheaper_than": cheaper, "lighter_than": lighter, "max_weight": wmax, "sort": sort,
+                          "occasion": occ, "dropped": dropped},
+               "profile_known": self.taste.evidence(prof) >= 1.5}
+        if sort != "taste" and items:
+            out["note"] = "الترتيب حقيقي على كل القطع المتاحة المطابقة؛ الأول هو " + {"price_asc": "الأرخص", "price_desc": "الأغلى",
+                          "weight_asc": "الأخف", "weight_desc": "الأثقل"}[sort] + " فعلاً."
+        if not items and over:
+            out["outside_budget"] = [dict(self._brief(p), over_by=round(p["price"] - float(budget))) for p in over]
+            out["note"] = "ما فيه قطعة ضمن الميزانية بهذه الشروط. outside_budget أقرب الأسعار فوقها؛ لا تعرضها على إنها ضمن الميزانية، قل الفرق بصراحة."
+        elif not items and within and shown:
+            out["note"] = "كل المطابق عرضته له قبل. قل له بصراحة إن هذا كل المتوفر بطلبه، ولا تعيد عرضه كأنه جديد."
+        elif not items:
+            out["note"] = "ما فيه قطعة متوفرة بهذه الشروط. قلها بصراحة، واعرض تسجيل طلبه (record_request) بموافقته."
+            if kind and dropped.get("kind"):
+                kinds = {}
+                for p in avail:
+                    kinds[p["type"]] = kinds.get(p["type"], 0) + 1
+                out["other_categories_available"] = kinds
+        return out
+
     def _tool(self, name, args, ctx):
         if name == "search_pieces":
-            from taste import describe, traits_of
-            prof = ctx.get("profile") or self.taste.load(None)
-            kind = args.get("kind")
-            facts = ctx.get("facts") or {}
-            budget = args.get("max_price") or (prof.get("budget") or {}).get("max")
-            occ = args.get("occasion") or facts.get("occasion") or (prof.get("occasion") or {}).get("v")
-            excl = () if args.get("include_shown") else set(ctx.get("shown") or [])
-            nofeat = set(args.get("exclude_features") or [])
-            def hard_ok(p):            # what the customer refused is a rule, not a preference
-                if nofeat & set(traits_of(p).get("composition") or []):
-                    return False
-                if args.get("cheaper_than") and p["price"] >= float(args["cheaper_than"]):
-                    return False
-                if args.get("max_weight") and p["weight"] > float(args["max_weight"]):
-                    return False
-                return True
-            avail = [p for p in self._available() if hard_ok(p)]
-            sort = args.get("sort") or "taste"
-            n = max(1, min(5, int(args.get("count") or 2)))
-            if sort != "taste":
-                key = {"price_asc": lambda p: p["price"], "price_desc": lambda p: -p["price"],
-                       "weight_asc": lambda p: p["weight"], "weight_desc": lambda p: -p["weight"]}[sort]
-                pool = [p for p in avail if self._match_kind(p, kind) and p["code"] not in prof["rejected"]]
-                if budget:
-                    pool = [p for p in pool if p["price"] <= float(budget) * 1.08] or pool
-                chosen, over = [(0, p, []) for p in sorted(pool, key=key)[:n]], False
-            else:
-                chosen, over = self.taste.rank(prof, avail, lambda p: self._match_kind(p, kind), float(budget) if budget else None,
-                                              occ, excl, n)
-            exact = bool(chosen) and all(self._match_kind(r[1], kind) for r in chosen)
-            if not chosen and kind:      # nothing of that kind: say so, and offer the closest real pieces
-                chosen, over = self.taste.rank(prof, avail, lambda p: True, float(budget) if budget else None, occ, excl, 2)
-                exact = False
-            items = []
-            for sc, p, why in chosen:
-                it = self._brief(p)
-                it.update(describe(p))
-                if why:
-                    it["fits"] = "قريبة من ذوقه: " + "، ".join(why)
-                items.append(it)
-            out = {"items": items, "exact_kind": exact, "sorted_by": sort, "in_stock_total": len(avail),
-                   "profile_known": self.taste.evidence(prof) >= 1.5}
-            if sort != "taste" and items:
-                out["note"] = "الترتيب حقيقي من كل المخزون المتاح؛ الأول هو " + {"price_asc": "الأرخص", "price_desc": "الأغلى",
-                              "weight_asc": "الأخف", "weight_desc": "الأثقل"}[sort] + " فعلاً."
-            if over:
-                out["note"] = "ما فيه قطع ضمن الميزانية المذكورة؛ هذه أقرب الأسعار. قلها بصراحة."
-            if not items:
-                out["note"] = "ما فيه قطع متوفرة بهذا الطلب الآن."
+            out = self.search_products(args, ctx.get("state"), ctx.get("profile"), ctx.get("facts") or {},
+                                       exclude_shown=not args.get("include_shown"))
+            ctx.setdefault("reasons", {}).update({i["code"]: i.get("fits", "") for i in out.get("items", [])})
+            ctx.setdefault("searches", []).append(out.get("params"))
             return out
+        if name == "price_breakdown":
+            import shopstate
+            st = ctx.get("state")
+            codes = [shopstate.resolve_ref(st, c) or c for c in (args.get("codes") or [])] if st else (args.get("codes") or [])
+            return shopstate.price_breakdown(self.store, codes, args.get("currency"))
+        if name == "record_request":
+            if not args.get("consent"):
+                return {"ok": False, "note": "ما يتسجل إلا بموافقة الزبون. اسأله أولاً."}
+            self.store.db.execute("""INSERT INTO demand_requests (ts,session,visitor,category,description,budget,excluded,
+                                     ref_code,contact,consent) VALUES (?,?,?,?,?,?,?,?,?,1)""",
+                                  (s_now(), ctx["session"], ctx.get("visitor"), str(args.get("category", ""))[:40],
+                                   str(args.get("description", ""))[:300], float(args.get("budget") or 0) or None,
+                                   json.dumps(args.get("excluded") or (ctx.get("state") or {}).get("request", {}).get("excluded") or [], ensure_ascii=False),
+                                   str(args.get("ref_code", "") or "")[:20], str(args.get("contact", "") or "")[:60]))
+            self.store.db.commit()
+            ctx["recorded_request"] = True
+            return {"ok": True, "note": "تسجل الطلب. قل له إن الفريق يتابع، بدون وعد بالتوفر."}
         if name == "note_taste":
             prof = ctx.get("profile")
             if prof is None:
                 return {"ok": False}
             T = self.taste
+            import shopstate
+            st = ctx.get("state")
+            fix = lambda c: (shopstate.resolve_ref(st, c) if st else None) or str(c).upper().strip("[] ")
             for code in (args.get("likes") or [])[:4]:
                 try:
-                    T.like(prof, self.store.piece(str(code).upper().strip("[] ")))
+                    T.like(prof, self.store.piece(fix(code)))
+                    if st:
+                        shopstate.mark(st, fix(code), liked=True)
                 except Exception:
                     pass
             for code in (args.get("dislikes") or [])[:4]:
                 try:
-                    T.reject(prof, self.store.piece(str(code).upper().strip("[] ")))
+                    T.reject(prof, self.store.piece(fix(code)))
+                    if st:
+                        shopstate.mark(st, fix(code), rejected=True, reject_reason=str(args.get("reject_reason") or "")[:60])
                 except Exception:
                     pass
+            if st:
+                for v in (args.get("avoid") or []):
+                    if v in __import__("taste").DIMS["composition"]:
+                        shopstate.update_request(st, excluded=[v])
+                for v in (args.get("remove_exclusions") or []):
+                    shopstate.drop_exclusion(st, v)
+                if args.get("budget_max"):
+                    shopstate.update_request(st, budget=float(args["budget_max"]))
             for dim in ("detail", "presence", "character"):
                 if args.get(dim):
                     T.state(prof, dim, args[dim], 1.6)
@@ -580,12 +706,19 @@ class SalesAgent:
                     "status": p["status"], "look": __import__("taste").describe(p),
                     "note": "السعر على سعر ذهب اليوم وشامل المصنعية. الاستلام من أي فرع."}
         if name == "offer_purchase":
-            code = str(args.get("code", "")).upper().strip("[] ")
+            import shopstate
+            st = ctx.get("state")
+            code = (shopstate.resolve_ref(st, args.get("code", "")) if st else None) or str(args.get("code", "")).upper().strip("[] ")
             p = self.store.piece(code)
             if not p["show_online"] or p["status"] != "available":
                 return {"error": "القطعة غير متاحة للحجز الآن"}
             ctx["offer"] = code
-            return {"ok": True, "note": "ظهرت للزبون أزرار الحجز بعربون والشراء الكامل والتواصل على واتساب. اكتب سطر قصير واثق يدعوه يختار، بدون تكرار الأزرار بالتفصيل."}
+            if st:
+                if not shopstate.find(st, code):
+                    shopstate.register_shown(st, [self._public(p)])
+                shopstate.mark(st, code, selected=True)
+                shopstate.update_request(st, intent="شراء")
+            return {"ok": True, "code": code, "price_now": self.store.piece_price(p)["total"], "note": "ظهرت للزبون أزرار الحجز بعربون والشراء الكامل والتواصل على واتساب. اكتب سطر قصير واثق يدعوه يختار، بدون تكرار الأزرار بالتفصيل."}
         if name == "handoff_to_owner":
             codes = [c.upper() for c in (args.get("codes") or [])][:5]
             self.store.db.execute("INSERT INTO handoffs (session,ts,reason,summary) VALUES (?,?,?,?)",
@@ -629,6 +762,10 @@ class SalesAgent:
             c = self._ctx(session)
             self.update_facts(c, t)
             prof = self.taste.load(visitor)
+            import shopstate
+            st = c["state"]
+            st["turn"] += 1
+            ref_code = shopstate.resolve_ref(st, message)
             try:
                 self._learn(prof, c, message, t, visitor, session)
             except Exception:
@@ -665,6 +802,10 @@ class SalesAgent:
                 return res
             cards = self.skills.select(stage)
             dynamic = self._dynamic(c, cards, stage, prof, session)
+            if ref_code:
+                e = shopstate.find(st, ref_code)
+                dynamic += (f"\n\n## الزبون يشير في رسالته إلى: [[{ref_code}]] {e['title'] if e else ''} "
+                            "(محسوب من سجل العرض في النظام؛ اعتمد هذا الرمز، ولا تسأله أي قطعة يقصد)")
             hist = self.store.q("""SELECT role, content FROM chat_logs WHERE session=? AND role IN ('user','assistant')
                                    ORDER BY id DESC LIMIT ?""", (session, int(cfg["history_msgs"])))[::-1]
         msgs = [{"role": "system", "content": CORE_PROMPT}, {"role": "system", "content": dynamic}] + \
@@ -675,7 +816,7 @@ class SalesAgent:
             cfg = dict(cfg, model=cfg["model_strong"], price_in=cfg["strong_price_in"],
                        price_cached=cfg["strong_price_cached"], price_out=cfg["strong_price_out"])
         t_in = t_cached = t_out = 0
-        ctx = {"session": session, "profile": prof, "facts": c["facts"], "shown": list(c["shown"])}
+        ctx = {"session": session, "visitor": visitor, "profile": prof, "facts": c["facts"], "shown": list(c["shown"]), "state": st}
         text = ""
         try:
             for rnd in range(5):
@@ -725,6 +866,7 @@ class SalesAgent:
                 except Exception:
                     pass
             c["shown"] += [p["code"] for p in pieces]
+            shopstate.register_shown(st, pieces, ctx.get("reasons"))
             c["cost"] = round(c["cost"] + cost, 6)
             if stage == "taste" and not pieces:
                 c["set_offered"] = 1
@@ -800,26 +942,28 @@ class SalesAgent:
             T.occasion(prof, f["occasion"])
         if f.get("kind"):
             T.state(prof, "kind", f["kind"], 0.8) if f["kind"] in __import__("taste").DIMS["kind"] else None
-        last = prof.get("last_shown") or []
-        if not last:
+        import shopstate
+        st = c.get("state")
+        if not st or not st["shown"]:
             return
-        idx = None
-        for i, w in enumerate(["الاول", "الثاني", "الثالث"]):
-            if w in t:
-                idx = i
-        target = last[idx] if idx is not None and idx < len(last) else (last[0] if len(last) == 1 else None)
+        target = shopstate.resolve_ref(st, message)
+        if not target:
+            lb = shopstate.last_batch(st)
+            target = lb[0]["code"] if len(lb) == 1 else None
         if not target:
             return
-        neg = has(t, ["ما عجبني", "ما عجبتني", "مو حلو", "مو ذوقي", "ما يناسبني", "مو عاجبني", "لا مو", "ما حبيت"])
-        pos = has(t, ["عجبني", "عجبتني", "حلو", "حلوه", "روعه", "جميل", "يجنن", "حبيته", "هذا اللي ابغاه"])
+        neg = has(t, ["ما عجبني", "ما عجبتني", "مو حلو", "مو ذوقي", "ما يناسبني", "مو عاجبني", "لا مو", "ما حبيت", "ما ابغاه", "لا ما"])
+        pos = has(t, ["عجبني", "عجبتني", "حلو", "حلوه", "روعه", "جميل", "يجنن", "حبيته", "هذا اللي ابغاه", "ابغاه", "اخذه"])
         try:
             piece = self.store.piece(target)
         except Exception:
             return
         if neg:
             T.reject(prof, piece)
+            shopstate.mark(st, target, rejected=True)
         elif pos:
             T.like(prof, piece, "inferred")
+            shopstate.mark(st, target, liked=True)
 
     def _dynamic(self, c, cards, stage, prof=None, session=None):
         s = self.store
@@ -881,29 +1025,37 @@ class SalesAgent:
                              f". عدد القطع المتاحة في الموقع الآن: {len(av)}، أخفها {min(p['weight'] for p in av)} جم وأرخصها {min(p['price'] for p in av):,} ريال.")
             pol = dict(DEFAULT_POLICY)
             pol.update({k: v for k, v in (s.setting("policy", {}) or {}).items() if (v or "").strip()})
-            names = {"returns": "الإرجاع والاستبدال", "warranty": "الضمان", "branches_near": "مواقع الفروع والمعالم القريبة", "other": "معلومات أخرى"}
+            names = {"returns": "الإرجاع والاستبدال", "warranty": "الضمان والتصليح", "branches_near": "المعالم القريبة من الفروع",
+                     "hours": "أوقات الدوام", "custom_orders": "التفصيل حسب الطلب", "pounds": "الجنيهات والسبائك",
+                     "other": "معلومات أخرى"}
             have = [f"{names[k]}: {v.strip()}" for k, v in pol.items() if k in names and (v or "").strip()]
-            missing = [names[k] for k in ("returns", "warranty") if not (pol.get(k) or "").strip()]
+            missing = [names[k] for k in ("returns", "warranty", "branches_near", "hours", "custom_orders", "pounds")
+                       if not (pol.get(k) or "").strip()]
             if have:
                 parts.append("## سياسات المحل (مؤكدة، جاوب منها)\n" + "\n".join(have))
             if missing:
-                parts.append("غير مكتوب عندك: " + "، ".join(missing) + ". إذا سُئلت عنها قل بصراحة إن فريق المبيعات يوضحها، ولا تخترع.")
+                parts.append("غير مؤكد عندك: " + "، ".join(missing) + ". إذا سُئلت عنها قل بجملة وحدة إن هذي المعلومة تحتاج تأكيد من المحل، "
+                             "واذكر الفروع بعناوينها إذا يفيد، ولا تخترع أبداً.")
+            parts.append("قاعدة التوفر: البيع والحجز من الموقع للقطع المعروضة برمز فقط. أي شي مو قطعة معروضة برمز (جنيهات، "
+                         "سبائك، خواتم مو موجودة...) ما تقول إنه متوفر ولا تقبل حجزه.")
         except Exception:
             pass
-        shown = list(dict.fromkeys(c["shown"]))[-8:]
-        if shown:
-            rows = []
-            for i, code in enumerate(shown, 1):
-                try:
-                    p = s.piece(code)
-                    pp = s.piece_price(p)
-                    st = "متاحة" if p["status"] in ("available", "reserved") else "بيعت"
-                    rows.append(f"{i}) [[{code}]] {p['title'] or p['type']} — {p['weight']} جم — {pp['total']:,} ريال "
-                                f"(مصنعية {p['making_value']:,.0f}{' للجرام' if p['making_mode'] == 'gram' else ' للقطعة'}) — {st}")
-                except Exception:
-                    pass
-            parts.append("## القطع اللي عرضتها له في هذه المحادثة (بالترتيب؛ ارجع لها برمزها، مثلاً offer_purchase)\n" + "\n".join(rows))
+        st = c.get("state")
+        if st:
+            summ = __import__("shopstate").summary(st)
+            if summ:
+                parts.append("## سجل الجلسة (من النظام، دقيق)\n" + summ)
+            sold = [e["code"] for e in st["shown"] if self._status(e["code"]) not in ("available", "reserved")]
+            if sold:
+                parts.append("قطع من السجل بيعت الآن (لا تعرضها ولا تحجزها): " + "، ".join(sold))
         return "\n\n".join(parts)
+
+    def _status(self, code):
+        try:
+            p = self.store.piece(code)
+            return p["status"] if p["show_online"] else "hidden"
+        except Exception:
+            return "missing"
 
     def _log(self, session, user, assistant, skills, t_in, t_out, cost):
         ts = s_now()

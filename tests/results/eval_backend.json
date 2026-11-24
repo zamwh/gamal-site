@@ -1,0 +1,189 @@
+{
+ "summary": {
+  "cheapest": "2/2",
+  "budget": "5/5",
+  "exclusion": "4/4",
+  "taste": "1/1",
+  "sold": "3/3",
+  "unavailable": "1/1",
+  "memory": "6/6",
+  "journey": "1/1",
+  "arithmetic": "4/4",
+  "demand": "1/1"
+ },
+ "tests": [
+  {
+   "gate": "cheapest",
+   "test": "cheapest complete set is the true minimum",
+   "pass": true,
+   "info": "['D000004']"
+  },
+  {
+   "gate": "cheapest",
+   "test": "lightest set (wedding search) is the true lightest set",
+   "pass": true,
+   "info": "['D000004']"
+  },
+  {
+   "gate": "budget",
+   "test": "gift under 1.5M: every result within budget",
+   "pass": true,
+   "info": "[('D000029', 1405600), ('D000041', 1376400), ('D000035', 1332000)]"
+  },
+  {
+   "gate": "budget",
+   "test": "خاتم within budget: only خاتم, all within",
+   "pass": true,
+   "info": "['D000015', 'D000021', 'D000039']"
+  },
+  {
+   "gate": "budget",
+   "test": "حلق within budget: only حلق, all within",
+   "pass": true,
+   "info": "['D000034', 'D000028', 'D000040']"
+  },
+  {
+   "gate": "exclusion",
+   "test": "without ورود: none returned has it",
+   "pass": true,
+   "info": "['D000013', 'D000043', 'D000019']"
+  },
+  {
+   "gate": "exclusion",
+   "test": "without شراشيب: none returned has it",
+   "pass": true,
+   "info": "['D000043', 'D000002', 'D000019']"
+  },
+  {
+   "gate": "exclusion",
+   "test": "exclusion remembered on a later search without repeating it",
+   "pass": true,
+   "info": "['D000013', 'D000043', 'D000019']"
+  },
+  {
+   "gate": "exclusion",
+   "test": "required visual feature honoured",
+   "pass": true,
+   "info": "['D000005', 'D000025', 'D000004']"
+  },
+  {
+   "gate": "taste",
+   "test": "modern-delicate taste ranks a modern delicate piece first",
+   "pass": true,
+   "info": "[('D000031', 'تفاصيل هادئ، حضور ناعم، وحدات متكررة، عصري'), ('D000025', 'تفاصيل هادئ، حضور ناعم، متدرج، عصري')]"
+  },
+  {
+   "gate": "sold",
+   "test": "no sold piece ever returned",
+   "pass": true,
+   "info": "set()"
+  },
+  {
+   "gate": "sold",
+   "test": "piece sold in the shop disappears from the very next search",
+   "pass": true,
+   "info": "D000021"
+  },
+  {
+   "gate": "sold",
+   "test": "cannot open purchase for a sold piece",
+   "pass": true,
+   "info": "{'error': 'القطعة غير متاحة للحجز الآن'}"
+  },
+  {
+   "gate": "budget",
+   "test": "budget below every set: no item passed off as matching, closest flagged with the gap",
+   "pass": true,
+   "info": "[{'code': 'D000004', 'name': 'طقم سلاسل بالمستطيل', 'kind': 'طقم', 'w': 38.5, 'k': 21, 'price': 2117500, 'style': 'كلاسيكي', 'occasion': 'خطوبة', 'making': '3,000 للجرام', 'desc': 'عقد طويل بتعليقة مستطيلة متدرجة، مع حلق.', 'over_by': 2017500}, {'code': 'D000025', 'name': 'طقم تجريبي 17', 'kind': 'ط"
+  },
+  {
+   "gate": "budget",
+   "test": "contradictory constraints: honest empty result",
+   "pass": true,
+   "info": "ما فيه قطعة ضمن الميزانية بهذه الشروط. outside_budget أقرب الأسعار فوقها؛ لا تعرضها على إنها ضمن الميزانية، قل الفرق بصراحة."
+  },
+  {
+   "gate": "unavailable",
+   "test": "kind not stocked: empty, other categories listed",
+   "pass": true,
+   "info": "ما فيه قطعة متوفرة بهذه الشروط. قلها بصراحة، واعرض تسجيل طلبه (record_request) بموافقته."
+  },
+  {
+   "gate": "memory",
+   "test": "after 20 more pieces, 'ارجع للطقم الأول' finds the first set",
+   "pass": true,
+   "info": "('D000001', 'D000001')"
+  },
+  {
+   "gate": "memory",
+   "test": "'الثاني' = second piece of the last reply",
+   "pass": true,
+   "info": "['D000001', 'D000005']"
+  },
+  {
+   "gate": "memory",
+   "test": "rejected piece never comes back as an alternative",
+   "pass": true,
+   "info": "['D000007', 'D000005', 'D000002']"
+  },
+  {
+   "gate": "memory",
+   "test": "'أرخص من الثاني': strictly cheaper than that piece",
+   "pass": true,
+   "info": "['D000003', 'D000030', 'D000024']"
+  },
+  {
+   "gate": "memory",
+   "test": "budget change replaces the old budget",
+   "pass": true,
+   "info": ""
+  },
+  {
+   "gate": "memory",
+   "test": "customer reverses an exclusion",
+   "pass": true,
+   "info": ""
+  },
+  {
+   "gate": "journey",
+   "test": "purchase on 'الأول' after it was rejected is still the right code and marks it selected",
+   "pass": true,
+   "info": "{'ok': True, 'code': 'D000001', 'price_now': 8173000, 'note': 'ظهرت للزبون أزرار الحجز بعربون والشراء الكامل والتواصل على واتساب. اكتب سطر قصير واثق يدعوه يختار، بدون تكرار الأزرار بالتفصيل.'}"
+  },
+  {
+   "gate": "arithmetic",
+   "test": "price breakdown D000001",
+   "pass": true,
+   "info": "{'code': 'D000001', 'title': 'طقم عروس متكامل بالورد', 'karat': 21, 'weight_g': 148.6, 'gold_price_per_g': 52000.0, 'gold_value': 7727200, 'making_total': 445800, 'making_rule': '3,000 للجرام', 'total_yer': 8173000, 'price_per_g_all_in': 55000, 'available': True, 'total_sar': 58378.57}"
+  },
+  {
+   "gate": "arithmetic",
+   "test": "price breakdown D000013",
+   "pass": true,
+   "info": "{'code': 'D000013', 'title': 'طقم تجريبي 5', 'karat': 21, 'weight_g': 148.3, 'gold_price_per_g': 52000.0, 'gold_value': 7711600, 'making_total': 444900, 'making_rule': '3,000 للجرام', 'total_yer': 8156500, 'price_per_g_all_in': 55000, 'available': True, 'total_sar': 58260.71}"
+  },
+  {
+   "gate": "arithmetic",
+   "test": "price breakdown D000007",
+   "pass": true,
+   "info": "{'code': 'D000007', 'title': 'طقم الوردة الطويل مع الحزام', 'karat': 21, 'weight_g': 120.0, 'gold_price_per_g': 52000.0, 'gold_value': 6240000, 'making_total': 360000, 'making_rule': '3,000 للجرام', 'total_yer': 6600000, 'price_per_g_all_in': 55000, 'available': True, 'total_sar': 47142.86}"
+  },
+  {
+   "gate": "arithmetic",
+   "test": "currency answer carries the rate and its date",
+   "pass": true,
+   "info": "{'currency': 'SAR', 'yer_per_unit': 140.0, 'as_of': '2026-11-24 17:08:12'}"
+  },
+  {
+   "gate": "demand",
+   "test": "request saved only with consent",
+   "pass": true,
+   "info": "1"
+  }
+ ],
+ "catalog": {
+  "demo": 8,
+  "synthetic": 36,
+  "sold_in_test": 5
+ }
+}

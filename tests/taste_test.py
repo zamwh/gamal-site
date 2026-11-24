@@ -99,7 +99,7 @@ check("10 tools: note_taste shapes search_pieces", r["items"] and r["items"][0].
       "ملفت" not in r["items"][0]["look"], [(i["name"], i["look"]) for i in r["items"]])
 check("10b search returns at most what was asked", len(r["items"]) <= 2)
 r = ag._tool("search_pieces", {"kind": "خاتم"}, ctx)
-check("11 kind not in stock -> says so, offers closest real pieces", r["exact_kind"] is False and r["items"], r.get("exact_kind"))
+check("11 kind not in stock -> nothing passed off as a ring, other categories listed", not r["items"] and r.get("other_categories_available"), r.get("other_categories_available"))
 
 # whole chat path with the AI switched off still learns and saves the profile
 out = ag.chat("sessA-1", "ابغى شي هادي بسيط", visitor="v12")

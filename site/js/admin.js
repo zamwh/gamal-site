@@ -21,7 +21,7 @@
       '<button class="btn g full">دخول</button><div class="err" id="le"></div></form></div>';
     $('#lf').onsubmit = function (e) { e.preventDefault(); api('/api/admin/login', { username: $('#lu').value, password: $('#lp').value }).then(boot).catch(function (x) { $('#le').textContent = (x && x.error) || 'تعذر الدخول' }) };
   }
-  var TABS = [['stock', 'المخزون والبيع'], ['overview', 'نظرة عامة'], ['journey', 'رحلة العميل'], ['products', 'تفاعل القطع'], ['ai', 'أداء المساعد والتكلفة'], ['requests', 'الطلبات والتحويلات'], ['chats', 'محادثات المساعد'], ['settings', 'الإعدادات']];
+  var TABS = [['stock', 'المخزون والبيع'], ['overview', 'نظرة عامة'], ['journey', 'رحلة العميل'], ['products', 'تفاعل القطع'], ['ai', 'أداء المساعد والتكلفة'], ['requests', 'الطلبات والتحويلات'], ['chats', 'محادثات المساعد'], ['demand', 'طلبات غير متوفرة'], ['settings', 'الإعدادات']];
   function shell() {
     $('#app').innerHTML = '<div class="lay"><aside><img src="/img/logo_night.png" class="lg-night" alt=""><img src="/img/logo_day.png" class="lg-day" alt="" style="display:none">' +
       TABS.filter(function (t) { return ME.role !== 'accountant' || t[0] === 'requests' }).map(function (t) { return '<button data-t="' + t[0] + '"' + (t[0] === TAB ? ' class="on"' : '') + '>' + t[1] + '</button>' }).join('') +
@@ -65,7 +65,7 @@
 
   function load() {
     var mp = $('#mp'); mp.innerHTML = '<div class="sub">جاري التحميل…</div>';
-    var go = ({ stock: stock, overview: overview, journey: journey, products: products, ai: ai, requests: requests, chats: chats, settings: settings })[TAB];
+    var go = ({ stock: stock, overview: overview, journey: journey, products: products, ai: ai, requests: requests, chats: chats, demand: demand, settings: settings })[TAB];
     go(mp);
   }
   // one stock for the shop and the website: sell a piece from any branch and it leaves the site at once
@@ -149,6 +149,16 @@
       $$('[data-x]').forEach(function (b) { b.onclick = function () { var n = prompt('سبب الإلغاء'); if (n === null) return; api('/api/admin/close', { number: b.dataset.x, status: 'cancelled', note: n }).then(function () { toast('تم الإلغاء'); load() }).catch(function (e) { toast(e.error || 'خطأ') }) } });
     }).catch(err(mp));
   }
+  function demand(mp) {
+    api('/api/admin/demand').then(function (d) {
+      var agg = (d.by_category || []).map(function (r) { return '<div><span>' + esc(r.category || '—') + '</span><b>' + r.n + (r.avg_budget ? ' · متوسط الميزانية ' + fmt(r.avg_budget) : '') + '</b></div>' }).join('') || '<div class="sub">لا توجد طلبات مفتوحة</div>';
+      var rows = (d.rows || []).map(function (r) { var ex = []; try { ex = JSON.parse(r.excluded || '[]') } catch (e) { }
+        return '<tr><td class="n">' + esc(r.ts) + '</td><td>' + esc(r.category) + '</td><td>' + esc(r.description || '') + (ex.length ? '<div class="sub">بدون: ' + esc(ex.join('، ')) + '</div>' : '') + '</td><td class="n">' + (r.budget ? fmt(r.budget) : '—') + '</td><td>' + esc(r.contact || '—') + '</td><td>' + (r.status === 'open' ? '<button class="btn s" data-dr="' + r.id + '">تم</button>' : 'منتهي') + '</td></tr>' }).join('');
+      mp.innerHTML = head('طلبات غير متوفرة') + '<div class="sub" style="margin-bottom:14px">طلبات زبائن ما لقوا المطلوب، تسجلت بموافقتهم من المستشار. الأرقام من السجلات الفعلية فقط.</div><div class="g2"><div class="box"><h3>حسب النوع (المفتوحة)</h3><div class="list2">' + agg + '</div></div></div>' +
+        '<div class="box"><table class="tbl"><tr><th>الوقت</th><th>النوع</th><th>الطلب</th><th>الميزانية</th><th>التواصل</th><th></th></tr>' + (rows || '<tr><td colspan="6" class="sub">لا يوجد</td></tr>') + '</table></div>';
+      $$('[data-dr]').forEach(function (b) { b.onclick = function () { api('/api/admin/demand_resolve', { id: +b.dataset.dr }).then(function () { demand(mp) }) } });
+    });
+  }
   function chats(mp) {
     api('/api/admin/chats').then(function (d) {
       var by = {}; d.chats.slice().reverse().forEach(function (c) { (by[c.session] = by[c.session] || []).push(c) });
@@ -169,7 +179,7 @@
         '<div class="g2"><div class="box"><h3>روابط التواصل</h3>' + f('l_tiktok', 'تيك توك', L.tiktok, 'text') + f('l_instagram', 'إنستغرام', L.instagram, 'text') + f('l_facebook', 'فيسبوك', L.facebook, 'text') + f('l_whatsapp', 'رقم واتساب (مع رمز الدولة)', L.whatsapp, 'text') + '<button class="btn g full" id="svL">حفظ الروابط</button></div>' +
         '<div class="box"><h3>حسابات التحويل</h3><div class="sub">تظهر للعميل فقط بعد موافقته على الشروط</div><div id="accs">' + (d.payments || []).map(acc).join('') + '</div><button class="btn s" id="addAcc">+ حساب</button> <button class="btn g s" id="svPay">حفظ الحسابات</button></div></div>' +
         '<div class="g2"><div class="box"><h3>سياسات المحل للمستشار الذكي</h3><div class="sub">يقرأها المستشار ويجاوب منها الزبون. اتركها فاضية إذا ما عندكم سياسة، وسيقول للزبون إن فريق المبيعات يوضحها.</div>' +
-        ta('returns', 'الإرجاع والاستبدال', (d.policy || {}).returns) + ta('warranty', 'الضمان', (d.policy || {}).warranty) + ta('branches_near', 'معالم قرب كل فرع (مثلاً: فرع جرعان قريب من ...)', (d.policy || {}).branches_near) + ta('other', 'معلومات أخرى يعرفها المستشار', (d.policy || {}).other) +
+        ta('returns', 'الإرجاع والاستبدال', (d.policy || {}).returns) + ta('warranty', 'الضمان', (d.policy || {}).warranty) + ta('branches_near', 'معالم قرب كل فرع (مثلاً: فرع جرعان قريب من ...)', (d.policy || {}).branches_near) + ta('hours', 'أوقات الدوام', (d.policy || {}).hours) + ta('custom_orders', 'التفصيل حسب الطلب (تسوونه أو لا)', (d.policy || {}).custom_orders) + ta('pounds', 'بيع الجنيهات والسبائك (من الفرع فقط؟ متوفرة؟)', (d.policy || {}).pounds) + ta('other', 'معلومات أخرى يعرفها المستشار', (d.policy || {}).other) +
         '<button class="btn g full" id="svPol">حفظ السياسات</button></div></div>';
       $('#svP').onclick = function () { var b = {}; ['k21_sell', 'k21_buy', 'pound_sell', 'pound_buy', 'sar_rate', 'usd_rate'].forEach(function (k) { b[k] = parseFloat($('#f_' + k).value) || null }); api('/api/admin/prices', b).then(function () { toast('تم حفظ الأسعار') }).catch(function (e) { toast(e.error || 'خطأ') }) };
       $('#tsA').onclick = function () {
@@ -181,7 +191,7 @@
       $('#svA').onclick = function () { api('/api/admin/settings', { ai: { api_key: $('#f_api_key').value, model: $('#f_model').value, model_strong: $('#f_model_strong').value, daily_cap_usd: parseFloat($('#f_daily_cap_usd').value), monthly_cap_usd: parseFloat($('#f_monthly_cap_usd').value), enabled: $('#aiOn').checked } }).then(function () { toast('تم الحفظ'); load() }).catch(function (e) { toast(e.error || 'خطأ') }) };
       $('#svL').onclick = function () { api('/api/admin/settings', { links: { tiktok: $('#f_l_tiktok').value, instagram: $('#f_l_instagram').value, facebook: $('#f_l_facebook').value, whatsapp: $('#f_l_whatsapp').value } }).then(function () { toast('تم الحفظ') }) };
       $('#addAcc').onclick = function () { $('#accs').insertAdjacentHTML('beforeend', acc({})) };
-      $('#svPol').onclick = function () { api('/api/admin/settings', { policy: { returns: $('#t_returns').value, warranty: $('#t_warranty').value, branches_near: $('#t_branches_near').value, other: $('#t_other').value } }).then(function () { toast('تم الحفظ') }) };
+      $('#svPol').onclick = function () { api('/api/admin/settings', { policy: { returns: $('#t_returns').value, warranty: $('#t_warranty').value, branches_near: $('#t_branches_near').value, hours: $('#t_hours').value, custom_orders: $('#t_custom_orders').value, pounds: $('#t_pounds').value, other: $('#t_other').value } }).then(function () { toast('تم الحفظ') }) };
       $('#svPay').onclick = function () { var list = $$('#accs .acc2').map(function (r) { return { name: $('[data-n]', r).value, holder: $('[data-h2]', r).value, account: $('[data-a]', r).value } }).filter(function (a) { return a.name && a.account }); api('/api/admin/settings', { payments: list }).then(function () { toast('تم الحفظ') }) };
     }).catch(err(mp));
     function f(k, l, v, t) { return '<label class="fld"><span>' + l + '</span><input class="inp' + (t ? '' : ' num') + '" id="f_' + k + '" type="' + (t || 'number') + '" value="' + esc(v == null ? '' : v) + '"></label>' }
