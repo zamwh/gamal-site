@@ -50,16 +50,22 @@
     var ps = S.pieces.filter(function (p) { return p.photo && p.status === 'available' });
     if (!ps.length) return;
     var byPrice = ps.slice().sort(function (a, b) { return b.price - a.price });
-    var main = ps.find(function (p) { return /وردة|ورد/.test(p.title) && /حزام/.test(p.title) }) || byPrice[0];
+    // the shop decides what leads: featured pieces first (set from the shop program), then the richest pieces
+    var feat = ps.filter(function (p) { return p.featured });
+    var main = feat[0] || ps.find(function (p) { return /وردة|ورد/.test(p.title) && /حزام/.test(p.title) }) || byPrice[0];
     var mi = $('#lxMainImg'); mi.src = main.photo; mi.alt = title(main); $('#lxMain').href = '#p-' + main.code;
-    FEAT = byPrice.filter(function (p) { return p.code !== main.code }).slice(0, 3);
+    FEAT = (feat.length > 1 ? feat : byPrice).filter(function (p) { return p.code !== main.code }).slice(0, 3);
+    if (!FEAT.length) FEAT = byPrice.filter(function (p) { return p.code !== main.code }).slice(0, 3);
     showFeat(fi); bindSwipe();
     var necklace = ps.find(function (p) { return p.kind === 'عقد' && p.code !== main.code }) || ps[0];
-    var newest = ps.slice().reverse().find(function (p) { return p.code !== main.code && p.code !== necklace.code }) || ps[1] || ps[0];
+    var fresh = ps.filter(function (p) { return p.is_new });          // "new arrival" only while the piece is marked new
+    var newest = fresh.slice().reverse().find(function (p) { return p.code !== main.code }) || fresh[0] || null;
+    var pick = newest || ps.slice().reverse().find(function (p) { return p.code !== main.code && p.code !== necklace.code }) || ps[1] || ps[0];
     var setP = ps.find(function (p) { return p.kind === 'طقم' && p.code !== main.code }) || ps[0];
     $('#lxCards').innerHTML =
       card(t('مجموعة مميزة', 'Signature'), null, [t('عقود بتكوين مركزي', 'Centre-piece Necklaces'), t('قطع تبني حضورها من الوسط، بنقش مرتب.', 'Pieces built around a central motif, with orderly engraving.')], '#collections', false, necklace.photo) +
-      card(t('وصل حديثاً', 'New arrival'), newest, ['', (newest.weight + t(' جرام · عيار 21', ' g · 21K'))], '#p-' + newest.code, true, newest.photo) +
+      card(newest ? t('وصل حديثاً', 'New arrival') : t('اختيار اليوم', "Today's pick"), pick, ['', (pick.weight + t(' جرام · عيار 21', ' g · 21K'))],
+           newest && fresh.length > 1 ? '#collection-new' : '#p-' + pick.code, true, pick.photo) +
       card(t('باقة العروس', 'Bridal'), null, [t('تنسيق متكامل ليوم العمر', 'A Complete Wedding Set'), t('عقد وحلق وكف وحزام، متناسقة.', 'Necklace, earrings, hand piece and belt, all matching.')], '#bride', false, setP.photo);
     rise();
   }

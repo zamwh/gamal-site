@@ -152,12 +152,29 @@ html.dark .ln.op{background:rgba(255,255,255,.04)}
   body{background:#fff!important;color:#000;overflow:visible}
   #login,#appv,#toast,.modal-bg,.blob{display:none!important}
   #print{display:block}
-  @page{margin:4mm}
+  @page{margin:8mm}
 }
-.inv{font-family:Tahoma,Arial,sans-serif;color:#000;direction:rtl}
-.inv.t80{width:72mm;font-size:11px}.inv.a5{width:138mm;font-size:12.5px}
-.inv table th,.inv table td{border-bottom:1px dashed #999;padding:4px 3px;font-size:inherit;color:#000}
-.inv .c{text-align:center}.inv h4{margin:4px 0}
+.inv{font-family:'IBM Plex Sans Arabic',Tahoma,Arial,sans-serif;color:#1a1408;direction:rtl;background:#fff;box-sizing:border-box;position:relative}
+.inv.a4{width:190mm;font-size:12.5px;padding:4mm}.inv.a5{width:136mm;font-size:10.5px;padding:2mm}
+.inv .ihd{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;border-bottom:2px solid #b08634;padding-bottom:10px}
+.inv .ilogo img{height:24mm;width:auto;display:block}.inv.a5 .ilogo img{height:17mm}
+.inv .ishop b{font-size:1.35em;display:block;color:#5a3f10}.inv .ishop div{color:#555}
+.inv .ino{text-align:left;direction:rtl}.inv .ity{font-weight:700;color:#8a6420}.inv .inum{font-size:1.5em;font-weight:700;direction:ltr;text-align:left}
+.inv .idemo{margin:8px 0;text-align:center;font-weight:700;border:1px dashed #b33;color:#b33;padding:4px}
+.inv .iparty{display:flex;gap:28px;margin:12px 0;padding:10px 12px;background:#faf6ec;border:1px solid #eadfc4;border-radius:6px}
+.inv .iparty small{display:block;color:#8a7350;font-size:.85em}.inv .iparty b{display:block}.inv .iparty span{display:block;color:#444}
+.inv .itb{width:100%;border-collapse:collapse;margin-top:6px}
+.inv .itb th{background:#2a2216;color:#f3e2b5;font-weight:600;padding:7px 6px;text-align:right;font-size:.92em}
+.inv .itb td{border-bottom:1px solid #e5dccb;padding:7px 6px;color:#1a1408}
+.inv .ifoot{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-top:14px}
+.inv .iqr{text-align:center}.inv .iqr img{width:26mm;display:block}.inv .iqr small{font-size:.75em;color:#666}
+.inv .itot{min-width:62%}.inv .itot>div{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed #ddd}
+.inv .itot .igr{border:0;margin-top:6px;padding:9px 12px;background:#2a2216;color:#f3e2b5;border-radius:6px;font-size:1.2em}
+.inv .iwd{border:0!important;color:#555;font-size:.9em}
+.inv .ipol{margin-top:12px;font-size:.85em;color:#555;border-top:1px solid #eee;padding-top:8px}
+.inv .isig{display:flex;justify-content:space-between;margin-top:22px}.inv .isig div{width:40%}.inv .isig span{display:block;border-bottom:1px solid #999;height:26px}
+.inv .ivoid{position:absolute;top:40%;left:0;right:0;text-align:center;font-size:48px;color:rgba(180,30,30,.35);transform:rotate(-18deg);font-weight:800}
+.invprev{background:#e9e4d8;padding:14px;margin-top:12px;border-radius:12px;overflow:auto;max-height:55vh}.invprev>div{background:#fff;margin:auto;width:max-content;box-shadow:0 4px 18px rgba(0,0,0,.15)}
 .label{width:62mm;height:14mm;display:flex;align-items:center;gap:4px;font-family:Tahoma;font-size:8px;color:#000;border:1px dotted #bbb;padding:1mm;margin-bottom:2mm}
 .label img.qr{height:12mm}.label img.bc{height:6mm;width:24mm}
 input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
@@ -333,7 +350,7 @@ html.dark .pslot{background:rgba(30,24,14,.55)}html.dark .pslot b{color:#ecd29a}
             <h3 style="margin-top:18px">بيانات المحل</h3>
             <label>جوال المحل</label><input id="shPhone"><label>العنوان</label><input id="shAddr">
             <h3 style="margin-top:18px">سياسة الحجز</h3>
-            <div class="grid g3"><div><label>مدة الحجز (ساعة)</label><input id="rH" type="number"></div><div><label>العربون %</label><input id="rD" type="number"></div><div><label>إلغاء مجاني (ساعة)</label><input id="rF" type="number"></div><div><label>خصم عدم الحضور % من العربون</label><input id="rN" type="number"></div><div><label>الحد الأدنى للخصم (ريال)</label><input id="rM" type="number"></div><div><label>أيام رد المبلغ</label><input id="rR" type="number"></div></div>
+            <div class="grid g3"><div><label>مدة "وصل حديثاً" لكل قطعة جديدة (يوم)</label><input id="nwD" type="number" min="0" max="90"></div></div><div class="grid g3"><div><label>مدة الحجز (ساعة)</label><input id="rH" type="number"></div><div><label>العربون %</label><input id="rD" type="number"></div><div><label>إلغاء مجاني (ساعة)</label><input id="rF" type="number"></div><div><label>خصم عدم الحضور % من العربون</label><input id="rN" type="number"></div><div><label>الحد الأدنى للخصم (ريال)</label><input id="rM" type="number"></div><div><label>أيام رد المبلغ</label><input id="rR" type="number"></div></div>
             <h3 style="margin-top:18px">الذهب</h3>
             <div class="grid g2"><div><label>وزن الجنيه (جرام)</label><input id="pw" type="number"></div><div><label>أقل ربح للكسر النظيف (ريال/جرام)</label><input id="mm" type="number"></div></div>
             <div style="height:14px"></div><button class="btn gold" onclick="saveSettings()">حفظ</button>
@@ -475,7 +492,7 @@ let SELLING=false;
 async function checkout(){if(!CART.length||SELLING)return;SELLING=true;$('sellBtn').disabled=true;
   try{const items=CART.map(c=>c.weighed?{weighed:{type:c.wtype,weight:c.weight,karat:21,making_mode:c.mode,making_value:c.mv,note:c.note}}:{code:c.code,making:c.mv<c.std?c.mv:null});
     const inv=await api('create_sale',{items,customer_name:$('cn').value,customer_phone:$('cp').value,pay_method:PAY});
-    CART=[];OPEN=-1;$('cn').value='';$('cp').value='';toast('تمت الفاتورة '+inv.number);printInvoice(inv);loadSale()}
+    CART=[];OPEN=-1;$('cn').value='';$('cp').value='';toast('تمت الفاتورة '+inv.number);printInvoice(inv,true);loadSale()}
   catch(e){}finally{SELLING=false;renderCart()}}
 /* sell by weight */
 function wSetMode(m){WMODE=m;document.querySelectorAll('#wMode span').forEach(s=>s.classList.toggle('on',s.dataset.v===m));wCalc()}
@@ -499,11 +516,11 @@ function addBuyLine(){const d=document.createElement('div');d.className='grid';d
 function buyTotal(){const p=INFO.prices||{};let t=0;document.querySelectorAll('#buyLines>div').forEach(d=>{const k=d.querySelector('.bk').value;const w=+d.querySelector('.bw').value||0;const g=+d.querySelector('.bg').value||p['k'+k+'_buy']||0;t+=w*g});$('btotal').textContent=fmt(Math.round(t))}
 async function doBuy(){const items=[...document.querySelectorAll('#buyLines>div')].map(d=>({type:d.querySelector('.bt').value,karat:+d.querySelector('.bk').value,weight:+d.querySelector('.bw').value,gram_price:+d.querySelector('.bg').value||null,as_scrap:d.querySelector('.bs').value==='1'})).filter(i=>i.weight>0);
   const inv=await api('create_purchase',{items,customer_name:$('bn').value,customer_phone:$('bp').value,customer_id_note:$('bi').value});
-  $('buyLines').innerHTML='';addBuyLine();['bn','bp','bi'].forEach(i=>$(i).value='');buyTotal();toast('تم السند '+inv.number);printInvoice(inv)}
+  $('buyLines').innerHTML='';addBuyLine();['bn','bp','bi'].forEach(i=>$(i).value='');buyTotal();toast('تم السند '+inv.number);printInvoice(inv,true)}
 
 /* pieces */
 async function loadPieces(){const rows=await api('list_pieces',$('pst').value,$('pbr').value,$('ps').value);
-  $('piecesT').innerHTML='<tr><th>الرقم</th><th>النوع</th><th>العيار</th><th>الوزن</th><th>المصنعية</th><th>السعر الآن</th><th>الفرع</th><th>الصور</th><th>الحالة</th><th></th></tr>'+rows.map(p=>`<tr><td>${p.code}</td><td>${esc(p.type)}${p.category==='clean_scrap'?' <span class="pill">كسر نظيف</span>':''}</td><td>${p.karat}</td><td>${p.weight}</td><td>${fmt(p.making_value)}${p.making_mode==='gram'?'/جم':''}</td><td class="gold-t">${fmt(p.price)}</td><td>${esc(p.branch_name)}</td><td>${photoState(p)}</td><td><span class="pill ${p.status}">${ST[p.status]}</span></td><td><button class="btn sm" onclick="printLabel('${p.code}')">ملصق</button> ${['owner','manager'].includes(USER.role)?`<button class="btn sm" onclick="openPhotos('${p.code}')">الصور</button>`:''} ${p.status==='available'||p.status==='inactive'?`<button class="btn sm" onclick="pieceMenu('${p.code}','${p.status}')">⋯</button>`:''}</td></tr>`).join('')}
+  $('piecesT').innerHTML='<tr><th>الرقم</th><th>النوع</th><th>العيار</th><th>الوزن</th><th>المصنعية</th><th>السعر الآن</th><th>الفرع</th><th>الصور</th><th>العرض في الموقع</th><th>الحالة</th><th></th></tr>'+rows.map(p=>`<tr><td>${p.code}</td><td>${esc(p.type)}${p.category==='clean_scrap'?' <span class="pill">كسر نظيف</span>':''}</td><td>${p.karat}</td><td>${p.weight}</td><td>${fmt(p.making_value)}${p.making_mode==='gram'?'/جم':''}</td><td class="gold-t">${fmt(p.price)}</td><td>${esc(p.branch_name)}</td><td>${photoState(p)}</td><td>${showState(p)}</td><td><span class="pill ${p.status}">${ST[p.status]}</span></td><td><button class="btn sm" onclick="printLabel('${p.code}')">ملصق</button> ${['owner','manager'].includes(USER.role)?`<button class="btn sm" onclick="openPhotos('${p.code}')">الصور</button> <button class="btn sm" onclick="openShowcase('${p.code}')">العرض</button>`:''} ${p.status==='available'||p.status==='inactive'?`<button class="btn sm" onclick="pieceMenu('${p.code}','${p.status}')">⋯</button>`:''}</td></tr>`).join('')}
 /* new stock: details + three photos (velvet card shot, real close-up, untouched original) */
 const KIND_LIST=['طقم','عقد','سلسلة','حلق','خاتم','أسورة','كف','حزام','جنيه'];
 const PROLES=[['card','صورة العرض (مخمل)','تظهر في بطاقة الموقع'],['macro','لقطة قريبة (ماكرو)','تظهر داخل التفاصيل'],['orig','الصورة الأصلية','حقيقية بدون تعديل، داخل التفاصيل']];
@@ -539,6 +556,23 @@ async function openPhotos(code){const d=await api('piece_photos',code);PH={};for
   <div class="row" style="margin-top:14px"><button class="btn gold" id="phSave" onclick="savePhotos('${esc(d.code)}')">حفظ الصور</button><button class="btn" onclick="closeModal()">إغلاق</button></div>`)}
 async function savePhotos(code){const b=$('phSave');if(b.disabled)return;b.disabled=true;b.textContent='جاري الرفع...';
   try{const roles=await uploadSlots();await api('set_piece_photos',code,roles);closeModal();toast('تم حفظ الصور');loadPieces()}catch(e){b.disabled=false;b.textContent='حفظ الصور'}}
+/* showcase: "new arrival" for a limited time, "featured" until switched off (or a set end date) */
+const TODAY=()=>new Date().toISOString().slice(0,10);
+const dmy=d=>d?d.slice(8,10)+'/'+d.slice(5,7):'';
+function showState(p){const t=TODAY(),nw=p.new_until&&p.new_until>=t,ft=+p.featured&&(!p.featured_until||p.featured_until>=t);
+  return `<span class="phs">${nw?`<i class="on">جديد حتى ${dmy(p.new_until)}</i>`:''}${ft?`<i class="on">مميزة${p.featured_until?' حتى '+dmy(p.featured_until):''}</i>`:''}${!nw&&!ft?'<i>عادي</i>':''}</span>`}
+async function openShowcase(code){const rows=await api('list_pieces','',null,code);const p=rows.find(x=>x.code===code)||{};const cfg=await api('showcase_settings');
+  const t=TODAY(),nw=p.new_until&&p.new_until>=t,ft=+p.featured&&(!p.featured_until||p.featured_until>=t);
+  const left=nw?Math.max(0,Math.round((new Date(p.new_until)-new Date(t))/864e5)):0;
+  modal(`<h2>العرض في الموقع — ${esc(code)}</h2><p class="mut" style="margin:0 0 10px">${esc(p.title||p.type||'')}</p>
+  <div class="card2" style="padding:14px;border-radius:14px;margin-bottom:12px"><label class="row" style="color:var(--txt);margin:0"><input type="checkbox" id="scN" ${nw?'checked':''} style="width:auto"> <b>وصل حديثاً</b></label>
+  <div class="row" style="margin-top:8px">لمدة <input id="scND" type="number" min="1" max="90" value="${nw?left||1:cfg.new_days}" style="width:80px"> يوم، وبعدها ترجع لقسمها تلقائياً</div>
+  ${nw?`<div class="mut" style="font-size:12.5px;margin-top:6px">حالياً جديدة حتى ${esc(p.new_until)}</div>`:''}</div>
+  <div class="card2" style="padding:14px;border-radius:14px"><label class="row" style="color:var(--txt);margin:0"><input type="checkbox" id="scF" ${ft?'checked':''} style="width:auto"> <b>مميزة</b> <span class="mut">(تتصدر الصفحة الرئيسية وقسم مختارات المحل)</span></label>
+  <div class="row" style="margin-top:8px">لمدة <input id="scFD" type="number" min="0" max="365" value="${ft&&p.featured_until?Math.max(1,Math.round((new Date(p.featured_until)-new Date(t))/864e5)):0}" style="width:80px"> يوم <span class="mut">(0 = لين أوقفها أنا)</span></div></div>
+  <div class="row" style="margin-top:16px"><button class="btn gold" onclick="saveShowcase('${esc(code)}')">حفظ</button><button class="btn" onclick="closeModal()">إلغاء</button></div>`)}
+async function saveShowcase(code){const n=$('scN').checked,f=$('scF').checked;
+  await api('set_showcase',code,{new_days:n?Math.max(1,+$('scND').value||1):0,featured:f,featured_days:+$('scFD').value||0});closeModal();toast('تم تحديث العرض في الموقع');loadPieces()}
 function photoState(p){let r={};try{r=JSON.parse(p.media||'{}')}catch(e){}if(!r.card&&!r.macro&&!r.orig){let ph=[];try{ph=JSON.parse(p.photos||'[]')}catch(e){}r={orig:ph[0]}}
   return `<span class="phs">${[['card','مخمل'],['macro','ماكرو'],['orig','أصلية']].map(([k,t])=>`<i class="${r[k]?'on':''}">${t}</i>`).join('')}</span>`}
 function pieceMenu(code,st){const bo=BR.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
@@ -560,17 +594,42 @@ async function loadRes(){const rows=await api('reservations');const can=['owner'
 async function loadInvoices(){const rows=await api('list_invoices',$('ik').value);
   $('invT').innerHTML='<tr><th>الرقم</th><th>النوع</th><th>الزبون</th><th>المبلغ</th><th>الفرع</th><th>الموظف</th><th>التاريخ</th><th>الحالة</th><th></th></tr>'+rows.map(i=>`<tr><td>${i.number}</td><td>${i.kind==='sale'?'بيع':'شراء'}</td><td>${esc(i.customer_name||'')}</td><td class="gold-t">${fmt(i.total)}</td><td>${esc(i.branch_name)}</td><td>${esc(i.user_name)}</td><td class="mut">${esc(i.created_at)}</td><td><span class="pill ${i.status==='void'?'inactive':'available'}">${ST[i.status]}</span></td><td><button class="btn sm" onclick="api('invoice','${i.number}').then(printInvoice)">طباعة</button> ${i.kind==='sale'&&i.status==='ok'&&['owner','manager'].includes(USER.role)?`<button class="btn sm red" onclick="const r=prompt('سبب الإلغاء');if(r)api('void_invoice','${i.number}',r).then(loadInvoices)">إلغاء</button>`:''}</td></tr>`).join('')}
 
-/* printing */
-let PRINT_SIZE='t80';
-function printInvoice(inv){const sale=inv.kind==='sale';const s=inv.shop;
-  $('print').innerHTML=`<div class="inv ${PRINT_SIZE}"><div class="c"><img src="../assets/logo_light.png" style="width:${PRINT_SIZE==='t80'?'34mm':'40mm'}"><h4>${esc(s.name)}</h4><div>${esc(inv.branch_name)} — ${esc(inv.branch_address||'')}</div><div>${esc(inv.branch_phone||s.phone||'')}</div>${inv.demo?'<h4>*** نسخة تجريبية ***</h4>':''}<h4>${sale?'فاتورة بيع':'سند شراء ذهب'} رقم ${inv.number}</h4></div>
-  <div>التاريخ: ${esc(inv.created_at)}<br>الموظف: ${esc(inv.user_name)}<br>${sale?'الزبون':'البائع'}: ${esc(inv.customer_name||'—')} ${esc(inv.customer_phone||'')}${inv.customer_id_note?'<br>الهوية: '+esc(inv.customer_id_note):''}</div>
-  <table><tr><th>الصنف</th><th>عيار</th><th>وزن</th><th>جرام</th>${sale?'<th>مصنعية</th>':''}<th>السعر</th></tr>${inv.items.map(i=>`<tr><td>${esc(i.description)}${i.code?'<br>'+i.code:''}</td><td>${i.karat}</td><td>${i.weight}</td><td>${fmt(i.gram_price)}</td>${sale?`<td>${fmt(i.making)}</td>`:''}<td>${fmt(i.line_total)}</td></tr>`).join('')}</table>
-  ${(()=>{const d=(inv.items||[]).reduce((a,i)=>a+(i.making_discount||0),0);return d?`<div>خصم المصنعية: ${fmt(d)}</div>`:''})()}${inv.adjust_amount?`<div>${inv.adjust_amount>0?'إضافة':'خصم'}: ${fmt(Math.abs(inv.adjust_amount))} (${esc(inv.adjust_reason)})</div>`:''}${inv.deposit?`<div>العربون المخصوم: ${fmt(inv.deposit)}</div>`:''}
-  ${inv.pay_method?`<div>طريقة الدفع: ${({cash:'نقداً',transfer:'تحويل',mixed:'نقد وتحويل'})[inv.pay_method]||''}</div>`:''}<h4>الإجمالي: ${fmt(inv.total)} ريال يمني</h4><div>${esc(inv.words)}</div>
-  <div class="c" style="margin-top:6px"><img src="${inv.qr}" style="width:26mm"><div style="font-size:9px">امسح للتحقق من الفاتورة</div></div>
-  <div style="display:flex;justify-content:space-between;margin-top:14px"><span>توقيع ${sale?'الزبون':'البائع'}: ..........</span><span>توقيع الموظف: ..........</span></div>${inv.status==='void'?'<h4 class="c">*** ملغاة ***</h4>':''}</div>`;
-  modal(`<h2>${sale?'فاتورة':'سند'} ${inv.number}</h2><p>الإجمالي <b class="gold-t">${fmt(inv.total)}</b> ريال</p><div class="row"><select id="psz" style="width:160px" onchange="PRINT_SIZE=this.value;printInvoice(window._lastInv)"><option value="t80" ${PRINT_SIZE==='t80'?'selected':''}>حرارية 80مم</option><option value="a5" ${PRINT_SIZE==='a5'?'selected':''}>A5</option></select><button class="btn gold" onclick="window.print()">طباعة</button><button class="btn" onclick="closeModal()">إغلاق</button></div><div style="background:#fff;padding:10px;margin-top:12px;border-radius:10px;overflow:auto">${$('print').innerHTML}</div><p class="mut" style="font-size:12px">لحفظها PDF للواتساب: اختر "Microsoft Print to PDF" من نافذة الطباعة.</p>`);window._lastInv=inv}
+/* printing: a full-page invoice on the shop's normal printer (A4 or A5), printed by itself after each sale */
+let PRINT_SIZE=(()=>{try{return localStorage.getItem('gm_paper')||'a4'}catch(e){return 'a4'}})();
+let AUTO_PRINT=(()=>{try{return localStorage.getItem('gm_autoprint')!=='0'}catch(e){return true}})();
+const PAYN={cash:'نقداً',transfer:'تحويل',mixed:'نقد وتحويل'};
+function invHTML(inv){const sale=inv.kind==='sale',s=inv.shop||{};const disc=(inv.items||[]).reduce((a,i)=>a+(i.making_discount||0),0);
+  const sub=(inv.items||[]).reduce((a,i)=>a+(i.line_total||0),0);
+  return `<div class="inv ${PRINT_SIZE}">
+  <div class="ihd"><div class="ilogo"><img src="/assets/logo_light.png" alt=""></div><div class="ishop"><b>${esc(s.name||'جمال المشرقي للذهب والمجوهرات')}</b><div>${esc(inv.branch_name)}${inv.branch_address?' — '+esc(inv.branch_address):''}</div><div>${esc(inv.branch_phone||s.phone||'')}</div></div>
+  <div class="ino"><div class="ity">${sale?'فاتورة بيع':'سند شراء ذهب'}</div><div class="inum">${esc(inv.number)}</div><div>${esc(inv.created_at)}</div></div></div>
+  ${inv.demo?'<div class="idemo">نسخة تجريبية — ليست فاتورة رسمية</div>':''}
+  <div class="iparty"><div><small>${sale?'العميل':'البائع'}</small><b>${esc(inv.customer_name||'—')}</b>${inv.customer_phone?`<span>${esc(inv.customer_phone)}</span>`:''}${inv.customer_id_note?`<span>الهوية: ${esc(inv.customer_id_note)}</span>`:''}</div><div><small>الموظف</small><b>${esc(inv.user_name)}</b></div>${inv.pay_method?`<div><small>طريقة الدفع</small><b>${PAYN[inv.pay_method]||''}</b></div>`:''}</div>
+  <table class="itb"><thead><tr><th>#</th><th>الصنف</th><th>الرمز</th><th>العيار</th><th>الوزن (جم)</th><th>سعر الجرام</th>${sale?'<th>المصنعية</th>':''}<th>المبلغ</th></tr></thead><tbody>
+  ${inv.items.map((i,n)=>`<tr><td>${n+1}</td><td>${esc(i.description)}</td><td>${esc(i.code||'—')}</td><td>${i.karat}</td><td>${(+i.weight).toFixed(2)}</td><td>${fmt(i.gram_price)}</td>${sale?`<td>${fmt(i.making)}</td>`:''}<td><b>${fmt(i.line_total)}</b></td></tr>`).join('')}</tbody></table>
+  <div class="ifoot"><div class="iqr"><img src="${inv.qr}" alt=""><small>امسح للتحقق من الفاتورة</small></div>
+  <div class="itot">${disc?`<div><span>خصم المصنعية</span><b>${fmt(disc)}</b></div>`:''}${inv.adjust_amount?`<div><span>${inv.adjust_amount>0?'إضافة':'خصم'}${inv.adjust_reason?' ('+esc(inv.adjust_reason)+')':''}</span><b>${fmt(Math.abs(inv.adjust_amount))}</b></div>`:''}${inv.deposit?`<div><span>العربون المخصوم</span><b>${fmt(inv.deposit)}</b></div>`:''}
+  <div class="igr"><span>الإجمالي</span><b>${fmt(inv.total)} ريال يمني</b></div><div class="iwd">${esc(inv.words)}</div></div></div>
+  ${sale?'<div class="ipol">البيع نهائي، ولا يوجد إرجاع أو استبدال بعد الشراء. الضمان: العيار والوزن المذكوران في هذه الفاتورة.</div>':''}
+  <div class="isig"><div>توقيع ${sale?'العميل':'البائع'}<span></span></div><div>توقيع الموظف<span></span></div></div>
+  ${inv.status==='void'?'<div class="ivoid">ملغاة</div>':''}</div>`}
+async function doPrint(){try{const ok=await window.pywebview.api.print_silent(PRINT_SIZE);if(ok&&ok.ok&&ok.data)return true}catch(e){}window.print();return false}
+function waLink(inv){let ph=String(inv.customer_phone||'').replace(/[^0-9]/g,'');if(!ph)return '';if(ph.startsWith('00'))ph=ph.slice(2);else if(ph.startsWith('0'))ph='967'+ph.slice(1);else if(ph.length===9)ph='967'+ph;
+  const s=inv.shop||{},L=[`${s.name||'جمال المشرقي للذهب والمجوهرات'}`,`${inv.kind==='sale'?'فاتورة بيع':'سند شراء'} رقم ${inv.number}`,`التاريخ: ${inv.created_at}`,''];
+  inv.items.forEach(i=>L.push(`• ${i.description}${i.code?' ('+i.code+')':''} — عيار ${i.karat} — ${(+i.weight).toFixed(2)} جم — ${fmt(i.line_total)} ريال`));
+  L.push('',`الإجمالي: ${fmt(inv.total)} ريال يمني`,`رمز التحقق: ${String(inv.signature||'').slice(0,10)}`,'','شكراً لثقتكم، نتشرف بخدمتكم دائماً.');
+  return 'https://wa.me/'+ph+'?text='+encodeURIComponent(L.join('\n'))}
+async function sendWA(){const inv=window._lastInv;const u=waLink(inv);if(!u){toast('ما فيه رقم جوال للعميل في الفاتورة');return}try{await api('open_url',u)}catch(e){}}
+async function printInvoice(inv,auto){const sale=inv.kind==='sale';window._lastInv=inv;
+  $('print').innerHTML=invHTML(inv);
+  const wa=sale&&inv.customer_phone;
+  modal(`<h2>${sale?'فاتورة':'سند'} ${esc(inv.number)}</h2><p>الإجمالي <b class="gold-t">${fmt(inv.total)}</b> ريال</p><div id="prst" class="mut" style="margin:-4px 0 10px"></div>
+  <div class="row" style="flex-wrap:wrap"><button class="btn gold" onclick="doPrint().then(s=>{$('prst').textContent=s?'انرسلت للطابعة':''})">طباعة</button>${wa?'<button class="btn" onclick="sendWA()">إرسال للعميل واتساب</button>':''}
+  <select id="psz" style="width:120px" onchange="PRINT_SIZE=this.value;try{localStorage.setItem('gm_paper',this.value)}catch(e){};printInvoice(window._lastInv)"><option value="a4" ${PRINT_SIZE==='a4'?'selected':''}>ورق A4</option><option value="a5" ${PRINT_SIZE==='a5'?'selected':''}>ورق A5</option></select>
+  <label class="row" style="color:var(--txt);margin:0"><input type="checkbox" ${AUTO_PRINT?'checked':''} style="width:auto" onchange="AUTO_PRINT=this.checked;try{localStorage.setItem('gm_autoprint',this.checked?'1':'0')}catch(e){}"> طباعة تلقائية بعد كل بيع</label>
+  <button class="btn" onclick="closeModal()">إغلاق</button></div>
+  <div class="invprev"><div>${$('print').innerHTML}</div></div>`);
+  if(auto&&AUTO_PRINT){$('prst').textContent='جاري الطباعة...';const ok=await doPrint();$('prst').textContent=ok?'انرسلت للطابعة تلقائياً':''}}
 async function printLabel(code){const l=await api('label',code);
   $('print').innerHTML=`<div class="label"><img class="qr" src="${l.qr}"><div style="flex:1"><b>${l.code}</b> · ع${l.karat}<br>${l.weight} جم · ${esc(l.type)}<br><img class="bc" src="${l.barcode}"></div></div>`;
   modal(`<h2>ملصق ${code}</h2><div style="background:#fff;padding:12px;border-radius:10px">${$('print').innerHTML}</div><p class="mut" style="font-size:13px">رمز QR يفتح صفحة القطعة بسعر اللحظة على: <span style="direction:ltr;display:inline-block">${esc(l.url)}</span></p><div class="row"><button class="btn gold" onclick="window.print()">طباعة</button><button class="btn" onclick="closeModal()">إغلاق</button></div>`)}
@@ -592,11 +651,11 @@ async function syncNow(){$('syState').textContent='جاري المزامنة…'
 async function loadSettings(){loadSync();const s=await api('get_settings');INFO=await api('info');
   $('siteUrl').textContent=INFO.site_url||'الموقع غير شغال (المنفذ 8080 مستخدم)';$('shPhone').value=s.shop.phone||'';$('shAddr').value=s.shop.address||'';
   const r=s.reservation;$('rH').value=r.hours;$('rD').value=r.deposit_pct;$('rF').value=r.free_cancel_hours;$('rN').value=r.noshow_deduct_pct;$('rM').value=r.noshow_min;$('rR').value=r.refund_days;
-  $('pw').value=s.pound_weight;$('mm').value=s.min_scrap_margin;
+  $('pw').value=s.pound_weight;api('showcase_settings').then(c=>{$('nwD').value=c.new_days}).catch(()=>{});$('mm').value=s.min_scrap_margin;
   $('aiOn').checked=!!s.ai.enabled;$('aiKey').value=s.ai.api_key||'';$('aiModel').value=s.ai.model||'gpt-5-mini';$('aiCap').value=s.ai.monthly_cap_usd??1;$('aiCost').textContent='المصروف هذا الشهر: $'+s.ai_month_cost.toFixed(4);
   $('resetBtn').style.display=INFO.mode==='demo'?'':'none';$('switchBtn').textContent=INFO.mode==='demo'?'الانتقال للوضع الحقيقي':'الانتقال لوضع التجربة';
   const u=await api('users');$('usersT').innerHTML='<tr><th>الاسم</th><th>المستخدم</th><th>الرتبة</th><th>الفرع</th></tr>'+u.map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.username)}</td><td>${RL[x.role]}</td><td>${esc(x.branch_name||'الكل')}</td></tr>`).join('')}
-async function saveSettings(){await api('save_settings',{shop:{phone:$('shPhone').value,address:$('shAddr').value},reservation:{hours:$('rH').value,deposit_pct:$('rD').value,free_cancel_hours:$('rF').value,noshow_deduct_pct:$('rN').value,noshow_min:$('rM').value,refund_days:$('rR').value},pound_weight:$('pw').value,min_scrap_margin:$('mm').value});toast('تم الحفظ')}
+async function saveSettings(){try{await api('showcase_settings',{new_days:+$('nwD').value||0})}catch(e){}await api('save_settings',{shop:{phone:$('shPhone').value,address:$('shAddr').value},reservation:{hours:$('rH').value,deposit_pct:$('rD').value,free_cancel_hours:$('rF').value,noshow_deduct_pct:$('rN').value,noshow_min:$('rM').value,refund_days:$('rR').value},pound_weight:$('pw').value,min_scrap_margin:$('mm').value});toast('تم الحفظ')}
 async function saveAI(){await api('save_settings',{ai:{enabled:$('aiOn').checked,api_key:$('aiKey').value,model:$('aiModel').value.trim(),monthly_cap_usd:+$('aiCap').value}});toast('تم حفظ إعدادات المساعد');loadSettings()}
 async function addUser(){await api('create_user',{name:$('nuN').value,username:$('nuU').value,password:$('nuP').value,role:$('nuR').value,branch_id:$('nuB').value});['nuN','nuU','nuP'].forEach(i=>$(i).value='');toast('تمت الإضافة');loadSettings()}
 async function backup(){const p=await api('backup_now');toast('تم الحفظ: '+p)}

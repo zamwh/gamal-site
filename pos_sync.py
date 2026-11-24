@@ -48,6 +48,14 @@ def _branch_user(store, branch_id):
     return store.one("SELECT id FROM users WHERE username=?", (name,))["id"]
 
 
+def _apply_show(store, code, sh):
+    import re as _re
+    d = lambda v: v if isinstance(v, str) and _re.fullmatch(r"\d{4}-\d{2}-\d{2}", v) else None
+    store.db.execute("UPDATE pieces SET new_until=?, featured=?, featured_until=? WHERE code=?",
+                     (d(sh.get("new_until")), 1 if sh.get("featured") else 0, d(sh.get("featured_until")), code))
+    store.db.commit()
+
+
 def sync(store, data):
     branch_id = _branch_for(store, data.get("key"))
     uid = _branch_user(store, branch_id)
@@ -77,6 +85,8 @@ def sync(store, data):
                             branch_id, np.get("category", "new"), None, str(np.get("notes", ""))[:200], bool(np.get("show_online", True)),
                             str(np.get("title", ""))[:80], photos, str(np.get("style", ""))[:20], str(np.get("occasion", ""))[:20],
                             str(np.get("description", ""))[:400], code=code, media=roles or None)
+            if isinstance(np.get("showcase"), dict):
+                _apply_show(store, code, np["showcase"])
             pieces_in.append({"code": code, "ok": True})
         except Exception as e:
             pieces_in.append({"code": code, "error": str(e)[:120]})
@@ -91,7 +101,10 @@ def sync(store, data):
             for role, url in (mu.get("media") or {}).items():
                 if role in core.PHOTO_ROLES:
                     roles[role] = media.save_piece_photo(url, folder, enhance_it=False) if url else None
-            store.set_piece_photos(owner_id, code, roles)
+            if roles:
+                store.set_piece_photos(owner_id, code, roles)
+            if isinstance(mu.get("showcase"), dict):
+                _apply_show(store, code, mu["showcase"])
             media_out.append({"code": code, "ok": True})
         except Exception as e:
             media_out.append({"code": code, "error": str(e)[:120]})

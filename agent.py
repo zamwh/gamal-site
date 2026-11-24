@@ -72,6 +72,7 @@ CORE_PROMPT = """أنت "مستشار جمال المشرقي" في موقع "ج
 - "الأرخص"، "أخف"، "أصغر"، "أكبر": استخدم sort في search_pieces (price_asc / weight_asc ...). لا تقول "هذا الأرخص" إلا من نتيجة مرتبة بالسعر.
 - إذا رفض شيئاً ("بدون شراشيب"، "لا ورد"، "أرخص من هذا"، "أخف من هذا"): مرّره شرطاً في البحث (exclude_features / cheaper_than / max_weight) ولا تعرض أبداً قطعة تخالفه.
 - الهدية: ابدأ بالقطع الأخف والأقل سعراً، إلا إذا طلب غير كذا.
+- "وش الجديد؟" أو "وش وصلكم حديثاً؟": ابحث بـ new_only=true. لا تقول عن قطعة إنها جديدة أو وصلت حديثاً إلا إذا new_arrival=true. إذا ما فيه جديد الحين قلها بصراحة واعرض أحلى المتوفر.
 - إذا رجع البحث قطعاً، اعرض الأقرب دائماً. ممنوع تقول "ما عندي" أو "ما ظهر لي" والقطع موجودة؛ إذا ما تطابق تماماً قلها بصراحة واعرضها.
 
 فهم الذوق (مهم):
@@ -156,6 +157,7 @@ TOOLS = [
             "cheaper_than_code": {"type": "string", "description": "رمز قطعة عرضتها؛ يرجع فقط الأرخص منها فعلاً"},
             "lighter_than_code": {"type": "string", "description": "رمز قطعة عرضتها؛ يرجع فقط الأخف منها"},
             "similar_to_code": {"type": "string", "description": "رمز قطعة أعجبته؛ يرتب حسب الشبه بها"},
+            "new_only": {"type": "boolean", "description": "true إذا سأل عن الجديد أو اللي وصل حديثاً: يرجع القطع المسجلة \"وصل حديثاً\" فقط"},
             "required_features": {"type": "array", "items": {"type": "string", "enum": ["وحدات متكررة", "تكوين مركزي", "متدرج", "طبقات", "متناظر", "شراشيب", "ورود", "تخريم"]},
                                   "description": "ملامح طلبها صراحة (شرط)"}}}}},
     {"type": "function", "function": {
@@ -475,7 +477,7 @@ class SalesAgent:
 
     # ---- tools (all data from the DB)
     def _public(self, p, price=None):
-        from core import card_photo
+        from core import card_photo, showcase_state
         cp = card_photo(p) if "photos" in p.keys() else None
         return {"code": p["code"], "title": (p["title"] if "title" in p.keys() else None) or p["type"],
                 "title_en": (p["title_en"] if "title_en" in p.keys() else None) or None,
@@ -483,6 +485,7 @@ class SalesAgent:
                 "price": price if price is not None else self.store.piece_price(p)["total"],
                 "branch": None, "photo": self._murl(cp) if cp else None,
                 "status": p["status"], "style": p["style"] if "style" in p.keys() else None,
+                "is_new": showcase_state(p)["new"], "featured": showcase_state(p)["featured"],
                 "occasion": p["occasion"] if "occasion" in p.keys() else None}
 
     def _murl(self, f):
@@ -499,7 +502,8 @@ class SalesAgent:
                 "k": p["karat"], "price": p["price"], "style": p["style"] if "style" in k else None,
                 "occasion": p["occasion"] if "occasion" in k else None,
                 "making": (f"{p['making_value']:,.0f} للجرام" if p["making_mode"] == "gram" else f"{p['making_value']:,.0f} للقطعة"),
-                "desc": ((p["description"] if "description" in k else "") or "")[:180]}
+                "desc": ((p["description"] if "description" in k else "") or "")[:180],
+                "new_arrival": __import__("core").showcase_state(p)["new"]}
 
     def _available(self):
         return [p for p in self.store.list_pieces(status="available") if p["show_online"]]
@@ -570,6 +574,8 @@ class SalesAgent:
                 return "weight"
             if p["code"] in rejected:
                 return "rejected"
+            if args.get("new_only") and not __import__("core").showcase_state(p)["new"]:
+                return "not_new"
             return None
         avail = self._available()
         eligible, dropped = [], {}

@@ -193,6 +193,67 @@ class Api:
             return media.save_piece_photo(data_url, media_dir(self._s), self._app.base_logo, enhance_it=role != "card")
         return self._run(f)
 
+    def print_silent(self, paper="a4"):
+        """Print the invoice straight to the default printer, no dialog (Windows WebView2).
+        Returns False when not possible here, and the screen falls back to the normal print window."""
+        def f():
+            self._need_login()
+            if sys.platform != "win32":
+                return False
+            import webview
+            w = webview.windows[0]
+            form = w.native
+            wv = getattr(getattr(form, "browser", None), "webview", None)
+            if wv is None or wv.CoreWebView2 is None:
+                return False
+            from System import Action
+            done = {"ok": False}
+
+            def go():
+                core2 = wv.CoreWebView2
+                ps = core2.Environment.CreatePrintSettings()
+                ps.ShouldPrintBackgrounds = True
+                ps.ShouldPrintHeaderAndFooter = False
+                if paper == "a5":
+                    ps.PageWidth, ps.PageHeight = 5.83, 8.27
+                else:
+                    ps.PageWidth, ps.PageHeight = 8.27, 11.69
+                core2.PrintAsync(ps)
+                done["ok"] = True
+            form.Invoke(Action(go))
+            return done["ok"]
+        r = self._run(f)
+        if not r.get("ok"):
+            return {"ok": True, "data": False}       # never block a sale on printing
+        return r
+
+    def open_url(self, url):
+        """Open a WhatsApp chat in the computer's browser/app (only wa.me links)."""
+        def f():
+            self._need_login()
+            if not str(url).startswith("https://wa.me/"):
+                raise GoldError("رابط غير مسموح")
+            import webbrowser
+            webbrowser.open(url)
+            return True
+        return self._run(f)
+
+    def set_showcase(self, code, d):
+        return self._run(lambda: self._s.set_showcase(self._need_login(), code, d.get("new_days"), d.get("featured"),
+                                                      d.get("featured_days")))
+
+    def showcase_settings(self, d=None):
+        def f():
+            uid = self._need_login()
+            cur = dict(self._s.setting("showcase", {}) or {})
+            cur.setdefault("new_days", 14)
+            if d is not None:
+                self._s.require(uid, "owner", "manager")
+                cur["new_days"] = max(0, min(90, int(d.get("new_days", cur["new_days"]))))
+                self._s.set_setting("showcase", cur)
+            return cur
+        return self._run(f)
+
     def set_piece_photos(self, code, roles):
         return self._run(lambda: self._s.set_piece_photos(self._need_login(), code, roles))
 
@@ -397,13 +458,18 @@ def main():
     import webview
     from web import Server
     app = App()
-    try:
-        app.server = Server(app, 8080)
-        app.server.start()
-    except OSError:
-        app.server = None
+    app.server = None
+    for port in [8080] + list(range(8181, 8200)):     # 8080 may be taken by another program on this computer
+        try:
+            app.server = Server(app, port)
+            app.server.start()
+            break
+        except OSError:
+            app.server = None
     api = Api(app)
-    webview.create_window("جمال المشرقي للذهب والمجوهرات", os.path.join(BASE, "ui", "index.html"),
+    # the screen is served by the program's own server, so fonts, logos and piece photos all load
+    page = f"http://127.0.0.1:{app.server.port}/pos/index.html" if app.server else os.path.join(BASE, "ui", "index.html")
+    webview.create_window("جمال المشرقي للذهب والمجوهرات", page,
                           js_api=api, width=1360, height=860, min_size=(1100, 700), background_color="#0b0b0c")
     webview.start(debug=False)
 

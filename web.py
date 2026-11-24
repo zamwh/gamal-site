@@ -209,6 +209,15 @@ class Server:
                         with app.lock:
                             d = media_dir(app.store)
                         return self._file(os.path.join(d, m.group(1)), CTYPES[m.group(2)], "public, max-age=600")
+                    if path in ("/pos", "/pos/", "/pos/index.html"):
+                        # the shop program's own screen: only for the computer it runs on
+                        if self.client_address[0] not in ("127.0.0.1", "::1"):
+                            return self._send(404, {"error": "not found"})
+                        with open(os.path.join(BASE, "ui", "index.html"), "rb") as f:
+                            return self._send(200, f.read(), "text/html; charset=utf-8", "no-store")
+                    m = re.fullmatch(r"/assets/((?:fonts/)?[A-Za-z0-9_.-]+\.(png|woff2|jpg))", path)
+                    if m:
+                        return self._file(os.path.join(BASE, "assets", m.group(1)), CTYPES[m.group(2)])
                     if path == "/scene":        # standalone cinematic scroll prototype
                         with open(os.path.join(SITE_DIR, "scene.html"), "rb") as f:
                             return self._send(200, f.read(), "text/html; charset=utf-8", "no-store")

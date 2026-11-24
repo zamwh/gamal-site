@@ -72,9 +72,20 @@ def _photo(s, p):
     return _file_url(s, f) if f else None
 
 
-def _media_sig(p):
+def _show(p):
+    k = p.keys()
+    return {"new_until": p["new_until"] if "new_until" in k else None, "featured": int(p["featured"] or 0) if "featured" in k else 0,
+            "featured_until": p["featured_until"] if "featured_until" in k else None}
+
+
+def _ph_sig(p):
     from core import piece_roles
     return json.dumps(piece_roles(p), sort_keys=True)
+
+
+def _media_sig(p):
+    """photos + showcase (new arrival / featured): a change in either is sent to the server"""
+    return {"ph": _ph_sig(p), "sh": json.dumps(_show(p), sort_keys=True)}
 
 
 def _media(s, p):
@@ -119,11 +130,14 @@ def run_once(s, timeout=25):
                         "making_mode": p["making_mode"], "making_value": p["making_value"], "category": p["category"],
                         "show_online": bool(p["show_online"]), "title": p.get("title") or "", "style": p.get("style") or "",
                         "occasion": p.get("occasion") or "", "description": p.get("description") or "", "photo": _photo(s, p),
-                        "media": _media(s, p)}
+                        "media": _media(s, p), "showcase": _show(p)}
                        for p in pieces]}
     upd = _pending_media(s, c)[:2] if len(pieces) < 2 else []
     if upd:
-        body["media_updates"] = [{"code": p["code"], "media": _media(s, p)} for p in upd]
+        sigs0 = c.get("sent_media", {})
+        body["media_updates"] = [dict({"code": p["code"], "showcase": _show(p)},
+                                      **({"media": _media(s, p)} if (sigs0.get(p["code"]) if isinstance(sigs0.get(p["code"]), dict) else {}).get("ph") != _ph_sig(p) else {}))
+                                 for p in upd]
     pr = s.current_prices()
     if c.get("price_pending") and pr:
         body["price"] = {k: pr.get(k) for k in ("k21_sell", "k21_buy", "pound_sell", "pound_buy")}

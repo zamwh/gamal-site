@@ -209,7 +209,8 @@ class Store:
     MIGRATIONS = {
         "pieces": [("title", "TEXT"), ("photos", "TEXT NOT NULL DEFAULT '[]'"), ("style", "TEXT"),
                    ("occasion", "TEXT"), ("description", "TEXT"), ("traits", "TEXT"),
-                   ("title_en", "TEXT"), ("media", "TEXT")],
+                   ("title_en", "TEXT"), ("media", "TEXT"), ("new_until", "TEXT"), ("featured", "INTEGER NOT NULL DEFAULT 0"),
+                   ("featured_until", "TEXT")],
         "reservations": [("kind", "TEXT NOT NULL DEFAULT 'deposit'"), ("payer_name", "TEXT"),
                          ("receipt", "TEXT"), ("amount", "REAL"), ("source", "TEXT"), ("session", "TEXT"),
                          ("pickup", "TEXT")],
@@ -372,6 +373,11 @@ class Store:
                          style or None, occasion or None, (description or "").strip() or None, pid))
         if media:
             self._write_roles(pid, {k: v for k, v in media.items() if k in PHOTO_ROLES}, None)
+        # every new piece shows as "new arrival" for a set number of days, then moves to its normal section by itself
+        days = int((self.setting("showcase", {}) or {}).get("new_days", 14) or 0)
+        if days > 0 and category == "new":
+            self.db.execute("UPDATE pieces SET new_until=? WHERE id=?",
+                            ((dt.date.today() + dt.timedelta(days=days)).isoformat(), pid))
         self.log(uid, "piece_add", "piece", pid, {"code": code, "weight": weight, "karat": karat})
         self.db.commit()
         return self.piece(code)
@@ -385,6 +391,25 @@ class Store:
         self.db.execute("UPDATE pieces SET media=?, photos=? WHERE id=?",
                         (json.dumps(cur, ensure_ascii=False), json.dumps(list(dict.fromkeys(ordered)), ensure_ascii=False), pid))
         return cur
+
+    def set_showcase(self, uid, code, new_days=None, featured=None, featured_days=None):
+        """new_days: 0 removes "new arrival", N keeps it N more days from today.
+        featured: True/False; featured_days: 0 or None = until switched off."""
+        self.require(uid, "owner", "manager")
+        p = self.piece(code)
+        today = dt.date.today()
+        if new_days is not None:
+            n = int(new_days)
+            self.db.execute("UPDATE pieces SET new_until=? WHERE id=?",
+                            ((today + dt.timedelta(days=n)).isoformat() if n > 0 else None, p["id"]))
+        if featured is not None:
+            fd = int(featured_days or 0)
+            self.db.execute("UPDATE pieces SET featured=?, featured_until=? WHERE id=?",
+                            (1 if featured else 0, (today + dt.timedelta(days=fd)).isoformat() if featured and fd > 0 else None, p["id"]))
+        self.db.execute("UPDATE pieces SET updated_at=? WHERE id=?", (now(), p["id"]))
+        self.log(uid, "piece_showcase", "piece", p["id"], {"code": p["code"], "new_days": new_days, "featured": featured})
+        self.db.commit()
+        return self.piece(code)
 
     def set_piece_photos(self, uid, code, roles):
         """roles: {"card"|"macro"|"orig": filename or None to remove}. Website order: card, macro, orig."""
@@ -885,6 +910,15 @@ def piece_roles(p):
             ph = []
         m = {"card": None, "macro": None, "orig": ph[0] if ph else None}
     return {k: m.get(k) for k in PHOTO_ROLES}
+
+
+def showcase_state(p):
+    """{"new": bool, "new_until", "featured": bool, "featured_until"} as of today."""
+    today = dt.date.today().isoformat()
+    g = lambda k: (p[k] if k in p.keys() else None)
+    nu, fu = g("new_until"), g("featured_until")
+    return {"new": bool(nu and nu >= today), "new_until": nu,
+            "featured": bool(g("featured")) and (not fu or fu >= today), "featured_until": fu}
 
 
 def card_photo(p):

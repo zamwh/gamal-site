@@ -112,6 +112,8 @@
 
   /* ---------- collections ---------- */
   var COLS = [
+    { key: 'new', t: 'وصل حديثاً', s: 'أحدث ما وصل للمحل', f: function (p) { return p.is_new } },
+    { key: 'featured', t: 'مختارات المحل', s: 'قطع يختارها المحل لك', f: function (p) { return p.featured } },
     { key: 'bridal', t: 'أطقم العرايس', s: 'العقد والحلق والكف والحزام', f: function (p) { return p.kind === 'طقم' } },
     { key: 'necklaces', t: 'العقود والكردانات', s: 'صدر · مجدول · كردان', f: function (p) { return p.kind === 'عقد' } },
     { key: 'grand', t: 'الفخامة الكاملة', s: 'قطع تخطف الأنظار', f: function (p) { return p.style === 'فخم' } },
@@ -159,7 +161,7 @@
   function card(p, extra) {
     var fav = inList(p.code);
     return '<article class="card ' + (extra || '') + '" data-code="' + esc(p.code) + '"><div class="ph">' + (p.photo ? '<img loading="lazy" src="' + esc(p.photo) + '" alt="' + esc(p.title) + '">' : '') +
-      '<span class="tag">' + p.karat + 'K</span>' + (p.status === 'reserved' ? '<span class="tag l">محجوزة</span>' : '') +
+      '<span class="tag">' + p.karat + 'K</span>' + (p.status === 'reserved' ? '<span class="tag l">محجوزة</span>' : p.is_new ? '<span class="tag l nw">وصل حديثاً</span>' : '') +
       '<button class="fav' + (fav ? ' on' : '') + '" data-fav="' + esc(p.code) + '" aria-label="اختياراتي"><svg class="i"><use href="#s-heart"/></svg></button><span class="qv">شاهد القطعة</span></div>' +
       '<div class="bd"><h3>' + esc(p.title) + '</h3><div class="m"><span class="num">' + p.weight.toFixed(2) + '</span> جم · عيار 21</div><div class="pr">' + moneyH(p.price) + '</div></div></article>';
   }
