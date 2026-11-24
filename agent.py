@@ -744,7 +744,7 @@ class SalesAgent:
             import difflib                             # or writes the same answer twice in other words
             paras, kept = [x for x in re.split(r"\n\s*\n", clean.strip()) if x.strip()], []
             for x in paras:
-                if any(difflib.SequenceMatcher(None, x, y).ratio() > 0.6 for y in kept):
+                if len(x) > 60 and any(difflib.SequenceMatcher(None, x, y).ratio() > 0.7 for y in kept):
                     continue
                 kept.append(x)
             clean = "\n\n".join(kept)
