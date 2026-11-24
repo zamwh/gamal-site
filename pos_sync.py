@@ -50,7 +50,29 @@ def _branch_user(store, branch_id):
 def sync(store, data):
     branch_id = _branch_for(store, data.get("key"))
     uid = _branch_user(store, branch_id)
-    applied, conflicts = [], []
+    applied, conflicts, pieces_in = [], [], []
+    # new pieces entered at the branch: the server becomes their home, so the website and every branch see them
+    import media, os
+    for np in (data.get("pieces") or [])[:100]:
+        code = str(np.get("code", "")).strip().upper()
+        if not code or store.one("SELECT 1 FROM pieces WHERE code=?", (code,)):
+            pieces_in.append({"code": code, "dup": True})
+            continue
+        photos = []
+        if np.get("photo"):
+            try:
+                folder = os.path.join(store.base_dir, "media", store.mode); os.makedirs(folder, exist_ok=True)
+                photos = [media.save_piece_photo(np["photo"], folder)]
+            except Exception:
+                photos = []
+        try:
+            store.add_piece(uid, np["type"], np["karat"], np["weight"], np.get("making_mode", "gram"), np.get("making_value", 0),
+                            branch_id, np.get("category", "new"), None, str(np.get("notes", ""))[:200], bool(np.get("show_online", True)),
+                            str(np.get("title", ""))[:80], photos, str(np.get("style", ""))[:20], str(np.get("occasion", ""))[:20],
+                            str(np.get("description", ""))[:400], code=code)
+            pieces_in.append({"code": code, "ok": True})
+        except Exception as e:
+            pieces_in.append({"code": code, "error": str(e)[:120]})
     for s in (data.get("sales") or [])[:200]:
         ref = str(s.get("ref", ""))[:40]
         codes = [str(c).strip().upper() for c in (s.get("codes") or [])][:30]
@@ -79,5 +101,5 @@ def sync(store, data):
               "branch_id": p["branch_id"], "title": (p["title"] if "title" in p.keys() else None) or p["type"]}
              for p in store.list_pieces() if p["status"] in ("available", "reserved")]
     cur = store.current_prices() or {}
-    return {"ok": True, "branch_id": branch_id, "applied": applied, "conflicts": conflicts, "stock": stock,
+    return {"ok": True, "branch_id": branch_id, "applied": applied, "conflicts": conflicts, "pieces": pieces_in, "stock": stock,
             "prices": {k: cur.get(k) for k in ("k21_sell", "k21_buy", "pound_sell", "pound_buy", "created_at")}}

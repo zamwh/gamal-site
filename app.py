@@ -46,6 +46,10 @@ class App:
             except Exception:
                 self.analytics = None       # analytics must never stop sales
             self.agent = SalesAgent(self.store, self.lock, self.analytics)
+            if not getattr(self, "_sync", None):      # branch ↔ server, every 30 s in the background
+                import sync_client
+                self._sync = sync_client.Worker(self)
+                self._sync.start()
             try:
                 from core import refresh_demo_photos
                 refresh_demo_photos(self.store)
@@ -145,7 +149,28 @@ class Api:
 
     # ---- prices / branches
     def set_prices(self, p):
-        return self._run(lambda: self._s.set_prices(self._need_login(), **p))
+        def f():
+            r = self._s.set_prices(self._need_login(), **p)
+            import sync_client
+            sync_client.mark_price_changed(self._s)        # the new price goes to the website and every branch
+            return r
+        return self._run(f)
+
+    # ---- link to the server (one stock for the three branches and the website)
+    def sync_status(self):
+        import sync_client
+        return self._run(lambda: sync_client.status(self._s))
+
+    def sync_configure(self, d):
+        import sync_client
+        def f():
+            self._s.require(self._need_login(), "owner")
+            return sync_client.configure(self._s, d.get("url", ""), d.get("key", ""), d.get("prefix", ""))
+        return self._run(f)
+
+    def sync_now(self):
+        import sync_client
+        return self._run(lambda: sync_client.run_once(self._s))
 
     def branches(self):
         return self._run(self._s.branches)

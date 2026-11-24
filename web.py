@@ -243,7 +243,7 @@ class Server:
             def do_POST(self):
                 path = urllib.parse.urlparse(self.path).path
                 ip = self._ip()
-                limit = MAX_UPLOAD if path == "/api/request" else MAX_BODY
+                limit = MAX_UPLOAD if path in ("/api/request", "/api/pos/sync") else MAX_BODY
                 try:
                     n = int(self.headers.get("Content-Length") or 0)
                 except ValueError:

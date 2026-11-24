@@ -330,12 +330,13 @@ class Store:
     def _next_code(self):
         seq = int(self.setting("piece_seq", 0)) + 1
         self.set_setting("piece_seq", seq)
-        prefix = "D" if self.mode == "demo" else "G"
+        # each branch POS has its own prefix (set when it is linked to the server), so codes never collide
+        prefix = self.setting("code_prefix") or ("D" if self.mode == "demo" else "G")
         return f"{prefix}{seq:06d}"
 
     def add_piece(self, uid, type_, karat, weight, making_mode, making_value, branch_id,
                   category="new", cost_per_gram=None, notes="", show_online=True,
-                  title="", photos=None, style="", occasion="", description=""):
+                  title="", photos=None, style="", occasion="", description="", code=None):
         u = self.user(uid)
         if int(karat) not in KARATS:
             raise GoldError("عيار غير مدعوم")
@@ -348,7 +349,9 @@ class Store:
             raise GoldError("الفرع غير موجود")
         if u["role"] == "seller" and u["branch_id"] and u["branch_id"] != branch_id:
             raise GoldError("البائع يضيف قطعاً لفرعه فقط")
-        pid, code, ts = new_id(), self._next_code(), now()
+        if code and self.one("SELECT 1 FROM pieces WHERE code=?", (code,)):
+            raise GoldError(f"رقم القطعة {code} موجود")
+        pid, code, ts = new_id(), (code or self._next_code()), now()
         self.db.execute("""INSERT INTO pieces (id, code, type, karat, weight, making_mode, making_value, category,
                            cost_per_gram, branch_id, status, show_online, notes, created_by, created_at, updated_at)
                            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
@@ -841,3 +844,13 @@ def refresh_demo_photos(s):
             shutil.copyfile(a, b)
             n += 1
     return n
+
+
+def mark_sold_elsewhere(s, code, where="فرع آخر أو الموقع"):
+    """Server says this piece is no longer available: close it here too, so this branch can never sell it."""
+    p = s.one("SELECT id, status FROM pieces WHERE code=?", (code,))
+    if not p or p["status"] not in ("available", "reserved"):
+        return False
+    s.db.execute("UPDATE pieces SET status='sold', updated_at=? WHERE id=?", (now(), p["id"]))
+    s.log(None, "sold_elsewhere", "piece", p["id"], {"code": code, "where": where})
+    return True
