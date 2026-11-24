@@ -132,8 +132,14 @@
       a.addEventListener('click', function () { closeCats() });
     });
   }
-  function openCats(e) { if (e) e.preventDefault(); $('#mnav').classList.remove('open'); $('#catp').classList.add('open'); document.documentElement.classList.add('plock'); var f = $('#catRow a'); if (f) { $('#catPv').src = f.dataset.img; $('#catPv').classList.add('on') } }
-  function closeCats() { $('#catp').classList.remove('open'); document.documentElement.classList.remove('plock') }
+  // freeze the page behind an open panel: works on every phone browser (overflow:hidden alone does not on some)
+  var LOCK_Y = 0, LOCKS = 0;
+  function lockPage() { if (LOCKS++) return; LOCK_Y = scrollY; var b = document.body.style; document.documentElement.classList.add('plock'); b.position = 'fixed'; b.top = -LOCK_Y + 'px'; b.left = '0'; b.right = '0'; b.width = '100%' }
+  function unlockPage() { if (!LOCKS) return; LOCKS = 0; var b = document.body.style; document.documentElement.classList.remove('plock'); b.position = b.top = b.left = b.right = b.width = ''; scrollTo(0, LOCK_Y) }
+  document.addEventListener('touchmove', function (e) {   // a drag on the dimmed area, or inside a panel with nothing left to scroll, goes nowhere
+    if (!LOCKS) return; var sc = e.target.closest && e.target.closest('.catp-in'); if (!sc || sc.scrollHeight <= sc.clientHeight + 1) e.preventDefault() }, { passive: false });
+  function openCats(e) { if (e) e.preventDefault(); $('#mnav').classList.remove('open'); $('#catp').classList.add('open'); lockPage(); var f = $('#catRow a'); if (f) { $('#catPv').src = f.dataset.img; $('#catPv').classList.add('on') } }
+  function closeCats() { $('#catp').classList.remove('open'); unlockPage() }
   $$('[data-cats]').forEach(function (b) { b.addEventListener('click', openCats) });
   $('#catX').onclick = closeCats; $('#catp').addEventListener('click', function (e) { if (e.target.id === 'catp') closeCats() });
   addEventListener('keydown', function (e) { if (e.key === 'Escape') closeCats() });
@@ -181,8 +187,8 @@
   /* ---------- collection page ---------- */
   var curCol = null, term = '', PB = 'all';
   function fmtShort(yer) { var v = conv(yer); return (v >= 1e6 ? (v / 1e6).toFixed(1).replace(/\.0$/, '') + ' مليون' : fmt(v)) + ' ' + curLbl() }
-  function openFlt() { $('#fltp').classList.add('open'); document.documentElement.classList.add('plock') }
-  function closeFlt() { $('#fltp').classList.remove('open'); document.documentElement.classList.remove('plock') }
+  function openFlt() { $('#fltp').classList.add('open'); lockPage() }
+  function closeFlt() { $('#fltp').classList.remove('open'); unlockPage() }
   $('#fltBtn').onclick = openFlt; $('#fltX').onclick = closeFlt;
   $('#fltp').addEventListener('click', function (e) { if (e.target.id === 'fltp') closeFlt(); if (e.target.closest('#chips a')) closeFlt() });
   function renderCollection(key) {
