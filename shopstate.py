@@ -150,6 +150,8 @@ def summary(state):
         req.append("مستبعد (شرط قاطع): " + "، ".join(r["excluded"]))
     if r.get("required"):
         req.append("مطلوب: " + "، ".join(r["required"]))
+    if r.get("excluded_kinds"):
+        req.append("لا يبغى (لا تعرضها أبداً): " + "، ".join(r["excluded_kinds"]))
     rows = []
     for i, e in enumerate(state["shown"][-12:], 1):
         tags = [t for t, f in (("اختاره", e["selected"]), ("أعجبه", e["liked"]), ("رفضه", e["rejected"])) if f]

@@ -223,6 +223,10 @@ class Store:
             for name, decl in cols:
                 if name not in have:
                     self.db.execute(f"ALTER TABLE {table} ADD COLUMN {name} {decl}")
+        # Nov 2026: the One Mall address had an invented floor/shop number, and the branch order differed from the owner's
+        if self.one("SELECT 1 FROM branches WHERE address=?", ("خط السبل — مركز وان مول، الدور الأول، المحل رقم 3",)):
+            self.db.execute("UPDATE branches SET name='الفرع الثالث', address='السبل — داخل ون مول' WHERE address=?", ("خط السبل — مركز وان مول، الدور الأول، المحل رقم 3",))
+            self.db.execute("UPDATE branches SET name='الفرع الثاني' WHERE address='بجوار البوابة الرئيسية لمركز جرعان'")
         if self.one("SELECT 1 FROM settings WHERE key='secret'") and self.setting("payments") is None:
             self._init_web_settings()
         self.db.commit()
@@ -839,8 +843,8 @@ def reset_demo(base_dir=BASE_DIR):
 
 def seed_demo(s):
     branches = [("الفرع الأول", "مركز جرعان — المحل رقم 6", "", ""),
-                ("الفرع الثاني", "خط السبل — مركز وان مول، الدور الأول، المحل رقم 3", "", ""),
-                ("الفرع الثالث", "بجوار البوابة الرئيسية لمركز جرعان", "", "")]
+                ("الفرع الثاني", "بجوار البوابة الرئيسية لمركز جرعان", "", ""),
+                ("الفرع الثالث", "السبل — داخل ون مول", "", "")]
     ids = []
     for name, addr, phone, mp in branches:
         bid = new_id()

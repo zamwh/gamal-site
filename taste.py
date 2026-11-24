@@ -241,22 +241,23 @@ class Taste:
         sure, likely = [], []
         for dim in ("kind", "detail", "presence", "composition", "character"):
             for v, w, src in self.top(p, dim)[:2 if dim == "composition" else 1]:
-                (sure if (src == "stated" and w >= 1.2) or w >= 2.2 else likely).append(f"{names[dim]}: {v}")
+                (sure if src == "stated" and w >= 1.2 else likely).append(f"{names[dim]}: {v}")
         avoid = [f"{names[d]}: {v}" for d in ("detail", "presence", "character")
                  for v, e in p["dims"].get(d, {}).items() if self.w(p, d, v) <= -0.8]
         out = []
         if sure:
-            out.append("مؤكد: " + "، ".join(sure))
+            out.append("قاله الزبون بنفسه: " + "، ".join(sure))
         if likely:
-            out.append("محتمل (لا تبني عليه بقوة): " + "، ".join(likely))
+            out.append("من تصفحه فقط، مو من كلامه (استخدمه للترتيب بس، ولا تقل له إنك تعرف ذوقه): " + "، ".join(likely))
         if avoid:
             out.append("يبتعد عن: " + "، ".join(avoid))
         if p.get("budget"):
             out.append(f"ميزانية ذكرها: حتى {p['budget']['max']:,} ريال")
         if p.get("occasion"):
             out.append(f"المناسبة: {p['occasion']['v']}")
-        if p["liked"]:
-            out.append("قطع أعجبته: " + "، ".join(list(p["liked"])[-4:]))
+        said = [c for c, v in p["liked"].items() if (v or {}).get("src") == "stated"]
+        if said:
+            out.append("قطع قال إنها أعجبته: " + "، ".join(said[-4:]))
         if p["rejected"]:
             out.append("قطع رفضها (لا تعيدها): " + "، ".join(list(p["rejected"])[-6:]))
         return "\n".join(out)
