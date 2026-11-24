@@ -5,6 +5,8 @@
   window.addEventListener('error', hideSplash); setTimeout(hideSplash, 3500);
   var $ = function (s, r) { return (r || document).querySelector(s) }, $$ = function (s, r) { return [].slice.call((r || document).querySelectorAll(s)) };
   var ONLINE = location.protocol.indexOf('http') === 0;
+  // each opened page = a fresh conversation, so the assistant never answers old, invisible messages
+  var CHAT_ID = ((window.T && window.T.session) || 's') + '-' + Math.random().toString(36).slice(2, 7);
   var T = window.T || function () { };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] }) };
   var fmt = function (n) { return Math.round(n).toLocaleString('en-US') };
@@ -444,7 +446,7 @@
   var chatEl = $('#chat'), msgs = $('#msgs'), busy = false;
   function openChat(text) {
     chatEl.classList.add('open'); T('ai_open'); chatUsed = true; hideHint(); document.body.classList.remove('has-hint'); if (innerWidth < 760) document.body.style.overflow = 'hidden';
-    if (!msgs.children.length) { addMsg('أهلاً وسهلاً في جمال المشرقي 🌿 أنا مساعد آلي، أساعدك تلقى القطعة اللي تناسب ذوقك. تفضل اسأل براحتك.', 'a'); chips(['أطقم العرايس', 'عقود', 'سعر الذهب اليوم', 'وين فروعكم؟']) }
+    if (!msgs.children.length) { addMsg('حياك الله في جمال المشرقي ✨ أنا مستشارك الخاص، أعرف كل قطعة متوفرة وسعرها اليوم. تجهّز لمناسبة، ولا تدور على شيء معيّن؟', 'a'); chips(['أطقم العرايس', 'عقود', 'سعر الذهب اليوم', 'وين فروعكم؟']) }
     if (text) send(text); else setTimeout(function () { $('#chatIn').focus() }, 400);
   }
   window.openChat = openChat;
@@ -488,7 +490,7 @@
       chips(d.suggest);
     };
     if (!ONLINE || !SITE.ai) { setTimeout(function () { done(localReply(t)) }, 700); return }
-    fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session: window.T.session, message: t }) })
+    fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session: CHAT_ID, message: t }) })
       .then(function (r) { return r.json() }).then(done).catch(function () { done(localReply(t)) });
   }
   $('#chatForm').onsubmit = function (e) { e.preventDefault(); send($('#chatIn').value) };
