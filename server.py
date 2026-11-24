@@ -23,6 +23,12 @@ class App:
         self.store = core.Store(mode, data)
         self.analytics = Analytics(os.path.join(data, f"analytics-{mode}.db"))
         self.agent = SalesAgent(self.store, self.lock, self.analytics)
+        try:
+            n = core.refresh_demo_photos(self.store)
+            if n:
+                print(f"updated {n} demo photos", flush=True)
+        except Exception as e:
+            print("photo refresh skipped:", e, flush=True)
 
 
 def main():

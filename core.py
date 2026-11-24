@@ -822,3 +822,22 @@ def seed_demo(s):
     s.create_purchase(owner, [{"type": "كسر", "karat": 21, "weight": 6.2, "as_scrap": True}],
                       "بائع تجريبي", "770000098", "بطاقة شخصية")
     s.db.commit()
+
+
+def refresh_demo_photos(s):
+    """Demo mode: when better shop photos ship with an update, swap them in (same file names)."""
+    if s.mode != "demo":
+        return 0
+    src = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "demo")
+    dst = os.path.join(s.base_dir, "media", s.mode)
+    n = 0
+    if not os.path.isdir(src) or not os.path.isdir(dst):
+        return 0
+    for f in os.listdir(src):
+        if not f.endswith(".jpg"):
+            continue
+        a, b = os.path.join(src, f), os.path.join(dst, "demo_" + f)
+        if os.path.exists(b) and os.path.getsize(a) != os.path.getsize(b):
+            shutil.copyfile(a, b)
+            n += 1
+    return n

@@ -47,6 +47,11 @@ class App:
                 self.analytics = None       # analytics must never stop sales
             self.agent = SalesAgent(self.store, self.lock, self.analytics)
             try:
+                from core import refresh_demo_photos
+                refresh_demo_photos(self.store)
+            except Exception:
+                pass
+            try:
                 self.store.daily_backup_if_needed()
             except Exception:
                 pass
