@@ -217,6 +217,17 @@ main{overflow:auto;padding:22px 26px}
       <!-- settings -->
       <section class="view" id="v-set">
         <h2>الإعدادات</h2>
+        <div class="glass card" style="margin-bottom:16px">
+          <h3>الربط مع السيرفر والفروع</h3>
+          <p class="mut" style="font-size:13px">البرنامج يبيع حتى بدون نت. أول ما يرجع النت يرسل المبيعات والقطع الجديدة والسعر للسيرفر، ويستلم مخزون كل الفروع. المفتاح يطلع لصاحب المحل من لوحة الإدارة على الموقع.</p>
+          <div class="grid g2" style="gap:10px">
+            <input class="in" id="syUrl" placeholder="رابط الموقع مثل https://..." style="direction:ltr">
+            <input class="in" id="syKey" placeholder="مفتاح الفرع" style="direction:ltr">
+            <input class="in" id="syPre" placeholder="حرف الفرع: A أو B أو C" maxlength="3" style="direction:ltr">
+            <div style="display:flex;gap:8px"><button class="btn gold" onclick="saveSync()">حفظ الربط</button><button class="btn" onclick="syncNow()">مزامنة الآن</button></div>
+          </div>
+          <div id="syState" class="mut" style="font-size:13px;margin-top:10px"></div>
+        </div>
         <div class="grid g2">
           <div class="glass card">
             <h3>الموقع ورمز QR</h3>
@@ -376,7 +387,11 @@ async function loadAI(){if(!['owner','manager'].includes(USER.role)){$('chatLogs
 
 /* log & settings */
 async function loadLog(){const rows=await api('audit');$('logT').innerHTML='<tr><th>الوقت</th><th>الموظف</th><th>العملية</th><th>التفاصيل</th></tr>'+rows.map(a=>`<tr><td class="mut">${esc(a.ts)}</td><td>${esc(a.user_name||'—')}</td><td>${esc(a.action)}</td><td class="mut" style="font-size:12px">${esc(a.details||'')}</td></tr>`).join('')}
-async function loadSettings(){const s=await api('get_settings');INFO=await api('info');
+async function loadSync(){const st=await api('sync_status');$('syUrl').value=st.url||'';$('syPre').value=st.prefix||'';
+  $('syState').innerHTML=(st.linked?'مربوط':'غير مربوط')+' · بانتظار الإرسال: '+st.queued_sales+' بيع، '+st.queued_pieces+' قطعة'+(st.last_ok?' · آخر مزامنة '+st.last_ok:'')+(st.last_error?'<br><span style="color:#e0a050">آخر محاولة بدون نت: '+st.last_error+'</span>':'')+(st.conflicts&&st.conflicts.length?'<br><span style="color:#eb5757">تعارض: '+st.conflicts.map(c=>c.codes.join('،')+' — '+c.error).join(' | ')+'</span>':'')}
+async function saveSync(){await api('sync_configure',{url:$('syUrl').value.trim(),key:$('syKey').value.trim(),prefix:$('syPre').value.trim()});toast&&toast('تم الحفظ');loadSync()}
+async function syncNow(){$('syState').textContent='جاري المزامنة…';await api('sync_now');loadSync()}
+async function loadSettings(){loadSync();const s=await api('get_settings');INFO=await api('info');
   $('siteUrl').textContent=INFO.site_url||'الموقع غير شغال (المنفذ 8080 مستخدم)';$('shPhone').value=s.shop.phone||'';$('shAddr').value=s.shop.address||'';
   const r=s.reservation;$('rH').value=r.hours;$('rD').value=r.deposit_pct;$('rF').value=r.free_cancel_hours;$('rN').value=r.noshow_deduct_pct;$('rM').value=r.noshow_min;$('rR').value=r.refund_days;
   $('pw').value=s.pound_weight;$('mm').value=s.min_scrap_margin;
