@@ -140,7 +140,7 @@ def get(app, u, path, q):
             ai["api_key"] = ("••••" + ai["api_key"][-4:]) if ai.get("api_key") else ""
             return {"ai": ai, "links": s.setting("links", {}), "payments": s.setting("payments", []),
                     "prices": s.current_prices(), "reservation": s.setting("reservation"),
-                    "policy": s.setting("policy", {}) or {}}
+                    "policy": dict(__import__("agent").DEFAULT_POLICY, **{k: v for k, v in (s.setting("policy", {}) or {}).items() if (v or "").strip()})}
     raise GoldError("غير موجود")
 
 
