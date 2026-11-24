@@ -811,3 +811,17 @@ html.day .catp-in{background:rgba(250,246,238,.96)}
 .flist .chip.on{color:var(--gold)}
 .flist .chip.on::after{content:"";width:6px;height:6px;border-radius:50%;background:var(--gold)}
 @media(max-width:760px){.fcols{grid-template-columns:1fr;gap:20px}.fltp .catp-in{max-height:82svh;overflow:auto}.cbar .search{height:46px}}
+/* the shop right under the opening: ordinary, clear, fast */
+.shop{padding:clamp(56px,6vw,90px) 0 clamp(50px,6vw,90px);background:var(--bg)}
+.shop-h{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px}
+.shop-h .ttl{margin-bottom:0}
+.stabs{display:flex;gap:24px;border-bottom:1px solid var(--line);margin-bottom:26px;overflow-x:auto;scrollbar-width:none}
+.stabs::-webkit-scrollbar{display:none}
+.stabs button{flex:none;background:none;border:0;font:inherit;font-size:15px;color:var(--mut);padding:10px 0 12px;position:relative;cursor:pointer;transition:color .3s}
+.stabs button.on{color:var(--ink)}
+.stabs button.on::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1.5px;background:var(--gold)}
+.shop .grid{grid-template-columns:repeat(4,1fr)}
+.shop-more{display:flex;justify-content:center;margin-top:34px}
+#brideBanner{min-height:86svh}
+@media(max-width:1000px){.shop .grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:760px){.shop .grid{grid-template-columns:1fr 1fr;gap:14px 10px}.stabs{gap:18px;margin:0 -20px 20px;padding:0 20px}.shop-h .ttl{font-size:30px}}

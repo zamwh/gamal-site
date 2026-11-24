@@ -162,6 +162,7 @@
     $$('[data-fav]', root).forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); toggleList(b.dataset.fav, via); b.classList.toggle('on', inList(b.dataset.fav)) } });
   }
   function renderNew() {
+    if (!$('#newRail')) return;
     var items = SITE.pieces.slice().sort(function (a, b) { return a.code < b.code ? 1 : -1 }).slice(0, 8);
     $('#newRail').innerHTML = items.map(function (p) { return card(p) }).join(''); bindCards($('#newRail'));
   }
@@ -411,7 +412,19 @@
     }).join('');
     reveal();
   }
-  function renderAll() { renderCats(); renderEd(); renderHsc(); renderTicker(); renderHomeCols(); renderNew(); renderSpot(); renderBranches(); calc(); saveList(); bindLinks(); bindChatBtns() }
+  // the shop: plain, quick, like any good store — tabs, cards, prices
+  var STAB = 'all';
+  function renderShop() {
+    var g = $('#shopGrid'); if (!g) return;
+    var cats = COLS.filter(function (c) { return c.key.indexOf('cat-') === 0 && colItems(c).length });
+    $('#stabs').innerHTML = '<button class="' + (STAB === 'all' ? 'on' : '') + '" data-t="all">الكل</button>' + cats.map(function (c) { return '<button class="' + (STAB === c.key ? 'on' : '') + '" data-t="' + c.key + '">' + c.t + '</button>' }).join('');
+    $$('#stabs [data-t]').forEach(function (b) { b.onclick = function () { STAB = b.dataset.t; T('shop_tab', null, STAB); renderShop() } });
+    var col = COLS.filter(function (c) { return c.key === STAB })[0];
+    var items = (col ? colItems(col) : SITE.pieces).slice().sort(function (a, b) { return a.code < b.code ? 1 : -1 }).slice(0, 8);
+    g.innerHTML = items.map(function (p) { return card(p) }).join('') || '<div class="empty" style="grid-column:1/-1">لا توجد قطع في هذه الفئة الآن.</div>';
+    bindCards(g);
+  }
+  function renderAll() { renderShop(); renderCats(); renderEd(); renderHsc(); renderTicker(); renderHomeCols(); renderNew(); renderSpot(); renderBranches(); calc(); saveList(); bindLinks(); bindChatBtns() }
 
   /* ---------- checkout: terms first, accounts after, receipt, review ---------- */
   var CK = null;
@@ -588,16 +601,16 @@
 
   /* ---------- assistant hint: short messages popping from the button, rotating, then quiet ---------- */
   var HINTS = [
-    { t: 'محتار وش تختار؟ أنا هنا أساعدك', q: '' },
-    { t: 'قل لي المناسبة، وأرشّح لك الأنسب من قطع اليوم', q: '' },
-    { t: 'تبي تعرف سعر قطعة على ذهب اليوم؟ اسألني', q: '' },
-    { t: 'عندي أفكار تنسيقات تليق بك', q: 'أبغى أفكار تنسيقات' },
-    { t: 'تجهّز لعرس؟ خلني أرتب لك باقة متكاملة', q: 'أبغى أجهز باقة عروس' },
-    { t: 'تدور هدية تفرّح؟ أقترح لك على ميزانيتك', q: 'أبغى هدية' },
-    { t: 'تفضّل الناعم ولا الفخم؟ قل لي وأطلع لك الأقرب لذوقك', q: '' }], hintN = 0, chatUsed = false, hintHide;
+    { t: 'وصلتنا قطع جديدة هالأسبوع، تبغى أوريك أحلاها؟', q: 'وش أحدث القطع اللي وصلتكم؟' },
+    { t: 'خلني أطلع لك أقوى التشكيلات اللي عندنا الحين', q: 'وريني أفخم التشكيلات عندكم' },
+    { t: 'تجهّز لعرس؟ أرتب لك طقم متكامل على ذوقك', q: 'أبغى أجهز طقم عروس' },
+    { t: 'قل لي المناسبة والميزانية، وأرشّح لك الأنسب', q: '' },
+    { t: 'محتار بين قطعتين؟ أقارن لك بينهم بصراحة', q: 'أبغى أقارن بين قطعتين' },
+    { t: 'تبي تعرف كم سعر قطعة على ذهب اليوم؟ اسألني', q: '' }], hintN = 0, chatUsed = false, hintHide;
+  function pieceHint() { var p = openCode && BY[openCode]; return p && ROUTE === 'piece' ? { t: 'تبغى أشرح لك تفاصيل «' + p.title + '» ووش يميزها؟', q: 'اشرح لي تفاصيل ' + p.title + ' (' + p.code + ')' } : null }
   function hint() {
     if (chatUsed || chatEl.classList.contains('open') || $('#modal').classList.contains('open') || hintN >= HINTS.length) return;
-    if (hintN === 0) HINTS.sort(function () { return Math.random() - .5 }); var h = HINTS[hintN++]; $('#aibTx').textContent = h.t; $('#aib').dataset.q = h.q;
+    if (hintN === 0) HINTS.sort(function () { return Math.random() - .5 }); var h = pieceHint() || HINTS[hintN]; hintN++; $('#aibTx').textContent = h.t; $('#aib').dataset.q = h.q;
     $('#aib').classList.add('on'); document.body.classList.add('has-hint');
     clearTimeout(hintHide); hintHide = setTimeout(hideHint, 6500);
   }

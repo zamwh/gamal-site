@@ -210,9 +210,9 @@ def extract_budget(t, rates):
 class SkillEngine:
     """Picks 1–2 short cards by stage; the full global library stays untouched in skills/global."""
     ALWAYS = ["truth", "foundations"]
-    BY_STAGE = {"browse": ["discovery"], "interest": ["discovery", "matching", "persuasion", "handoff"],
-                "taste": ["taste_sets", "matching", "persuasion", "handoff"],
-                "objection": ["objection", "persuasion"], "ready": ["handoff"]}
+    BY_STAGE = {"browse": ["mastery", "discovery"], "interest": ["mastery", "discovery", "matching", "handoff"],
+                "taste": ["mastery", "taste_sets", "matching", "handoff"],
+                "objection": ["mastery", "objection", "persuasion"], "ready": ["mastery", "handoff"]}
 
     def __init__(self, root=SKILLS_DIR):
         self.root = root
