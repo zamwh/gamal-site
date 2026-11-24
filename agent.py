@@ -741,6 +741,13 @@ class SalesAgent:
                 seen_.add(k_)
                 keep_.append(x)
             clean = " ".join(keep_) if len(keep_) < len(parts_) else clean
+            import difflib                             # or writes the same answer twice in other words
+            paras, kept = [x for x in re.split(r"\n\s*\n", clean.strip()) if x.strip()], []
+            for x in paras:
+                if any(difflib.SequenceMatcher(None, x, y).ratio() > 0.6 for y in kept):
+                    continue
+                kept.append(x)
+            clean = "\n\n".join(kept)
             clean = re.sub(r"[ \t]{2,}", " ", clean)
             clean = re.sub(r" +([،.؛:؟])", r"\1", clean)
             clean = re.sub(r"\n{3,}", "\n\n", clean).strip()
