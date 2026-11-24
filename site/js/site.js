@@ -132,8 +132,8 @@
       a.addEventListener('click', function () { closeCats() });
     });
   }
-  function openCats(e) { if (e) e.preventDefault(); $('#mnav').classList.remove('open'); $('#catp').classList.add('open'); var f = $('#catRow a'); if (f) { $('#catPv').src = f.dataset.img; $('#catPv').classList.add('on') } }
-  function closeCats() { $('#catp').classList.remove('open') }
+  function openCats(e) { if (e) e.preventDefault(); $('#mnav').classList.remove('open'); $('#catp').classList.add('open'); document.documentElement.classList.add('plock'); var f = $('#catRow a'); if (f) { $('#catPv').src = f.dataset.img; $('#catPv').classList.add('on') } }
+  function closeCats() { $('#catp').classList.remove('open'); document.documentElement.classList.remove('plock') }
   $$('[data-cats]').forEach(function (b) { b.addEventListener('click', openCats) });
   $('#catX').onclick = closeCats; $('#catp').addEventListener('click', function (e) { if (e.target.id === 'catp') closeCats() });
   addEventListener('keydown', function (e) { if (e.key === 'Escape') closeCats() });
@@ -181,8 +181,8 @@
   /* ---------- collection page ---------- */
   var curCol = null, term = '', PB = 'all';
   function fmtShort(yer) { var v = conv(yer); return (v >= 1e6 ? (v / 1e6).toFixed(1).replace(/\.0$/, '') + ' مليون' : fmt(v)) + ' ' + curLbl() }
-  function openFlt() { $('#fltp').classList.add('open') }
-  function closeFlt() { $('#fltp').classList.remove('open') }
+  function openFlt() { $('#fltp').classList.add('open'); document.documentElement.classList.add('plock') }
+  function closeFlt() { $('#fltp').classList.remove('open'); document.documentElement.classList.remove('plock') }
   $('#fltBtn').onclick = openFlt; $('#fltX').onclick = closeFlt;
   $('#fltp').addEventListener('click', function (e) { if (e.target.id === 'fltp') closeFlt(); if (e.target.closest('#chips a')) closeFlt() });
   function renderCollection(key) {

@@ -826,3 +826,8 @@ html.day .catp-in{background:rgba(250,246,238,.96)}
 @media(max-width:1000px){.shop .grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:760px){.shop .grid{grid-template-columns:1fr 1fr;gap:14px 10px}.stabs{gap:18px;margin:0 -20px 20px;padding:0 20px}.shop-h .ttl{font-size:30px}}
 .shop{overflow:hidden}
+/* panels: no scroll chaining to the page behind */
+html.plock,html.plock body{overflow:hidden!important;touch-action:none}
+.catp{overscroll-behavior:contain;touch-action:none}
+.catp-in{max-height:calc(100svh - 110px);overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch}
+@media(max-width:760px){.catp-in,.fltp .catp-in{max-height:82svh}}
