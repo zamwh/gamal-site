@@ -86,6 +86,10 @@
     HL = SITE.pieces.filter(function (p) { return p.photo }).slice(0, 5);
     $('#slides').innerHTML = HL.map(function (p, i) { return '<div class="slide' + (i ? '' : ' on') + '"><div class="im" style="background-image:url(\'' + esc(p.photo) + '\')"></div></div>' }).join('');
     $('#sTot').textContent = ('0' + HL.length).slice(-2); go(0);
+    // the opening: two real pieces, each half hidden beyond the edge of the screen, the words between them
+    var dark = SITE.pieces.filter(function (p) { return p.photo && /collar|set/.test(p.photo) });
+    var L = dark.filter(function (p) { return /collar/.test(p.photo) })[0] || SITE.pieces[0], R = dark.filter(function (p) { return /set/.test(p.photo) })[0] || SITE.pieces[1] || L;
+    [['#hpL', L], ['#hpR', R]].forEach(function (x) { var a = $(x[0]); if (!a || !x[1]) return; a.href = '#p-' + x[1].code; a.querySelector('img').src = x[1].photo; a.querySelector('img').alt = x[1].title });
   }
   function go(n) {
     var s = $$('#slides .slide'); if (!s.length) return;
@@ -101,7 +105,7 @@
     h.addEventListener('pointermove', function (e) { if (x0 !== null) { dx = e.clientX - x0; if (Math.abs(dx) > 8) moved = true } });
     function end() { if (x0 === null) return; if (Math.abs(dx) > 50) go(hi + (dx < 0 ? 1 : -1)); x0 = null }
     h.addEventListener('pointerup', end); h.addEventListener('pointercancel', end);
-    h.addEventListener('click', function (e) { if (moved || e.target.closest('a,button,.live,.sctl')) return; var p = HL[hi]; if (p) location.hash = 'p-' + p.code });
+    
   })();
 
   /* ---------- collections ---------- */

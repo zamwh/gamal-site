@@ -70,16 +70,17 @@
 
 
   /* ---------- the opening frame steps back as you begin to scroll ---------- */
-  if (!REDUCED) gsap.to('#slides', { scale: 0.84, y: -30, opacity: 0.3, ease: 'none', scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: 0.8 } });
+  if (!REDUCED) gsap.to('#hpL img', { x: -90, scale: 0.9, opacity: 0.25, ease: 'none', scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: 0.8 } });
+  if (!REDUCED) gsap.to('#hpR img', { x: 90, scale: 0.9, opacity: 0.25, ease: 'none', scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: 0.8 } });
   if (!REDUCED) gsap.to('.hero .inner', { y: -70, opacity: 0, ease: 'none', scrollTrigger: { trigger: '#hero', start: '20% top', end: '80% top', scrub: 0.8 } });
 
   /* ---------- anatomy of a piece ---------- */
   var NOTES = [
-    { x: 0.50, y: 0.17, k: 'الحلق', t: 'حلق بشراشيب ناعمة يكمّل الطقم' },
-    { x: 0.54, y: 0.45, k: 'القلب', t: 'وردة مخرّمة يدوياً في قلب العقد' },
-    { x: 0.54, y: 0.66, k: 'الشراشيب', t: 'تتحرك مع كل خطوة، وتلمع في الزفة' },
-    { x: 0.33, y: 0.57, k: 'الكف', t: 'كف بخمس خواتم متصلة' },
-    { x: 0.12, y: 0.55, k: 'الحزام', t: 'حزام من الورود المدوّرة' }
+    { x: 0.50, y: 0.17, r: 0.13, k: 'الحلق', t: 'حلق بشراشيب ناعمة يكمّل الطقم' },
+    { x: 0.54, y: 0.45, r: 0.15, k: 'القلب', t: 'وردة مخرّمة يدوياً في قلب العقد' },
+    { x: 0.54, y: 0.67, r: 0.14, k: 'الشراشيب', t: 'تتحرك مع كل خطوة، وتلمع في الزفة' },
+    { x: 0.33, y: 0.57, r: 0.14, k: 'الكف', t: 'كف بخمس خواتم متصلة' },
+    { x: 0.14, y: 0.55, r: 0.16, k: 'الحزام', t: 'حزام من الورود المدوّرة' }
   ];
   function setupAnat(SITE, money) {
     var p = (SITE.pieces || []).filter(function (x) { return x.photo && /set\.jpg|demo_set/.test(x.photo) })[0] ||
@@ -88,52 +89,55 @@
     document.getElementById('aTitle').innerHTML = p.title.replace(/(\S+)$/, '<em>$1</em>');
     document.getElementById('aMeta').innerHTML = p.weight.toFixed(2) + ' جرام · عيار 21 · ' + money(p.price);
     document.getElementById('aGo').href = '#p-' + p.code;
-    var img = document.getElementById('aImg'); img.src = p.photo; img.alt = p.title;
-    var pts = document.getElementById('apts'), notes = document.getElementById('anotes'), mob = document.getElementById('amob');
-    pts.innerHTML = NOTES.map(function (n, i) { return '<i class="apt" style="left:' + n.x * 100 + '%;top:' + n.y * 100 + '%"><b>' + (i + 1) + '</b></i>' }).join('');
-    notes.innerHTML = '<svg class="alines" id="alines"></svg>' + NOTES.map(function (n, i) { return '<div class="anote"><small>' + ('0' + (i + 1)) + ' · ' + n.k + '</small><span>' + n.t + '</span></div>' }).join('');
-    mob.innerHTML = NOTES.map(function (n, i) { return '<div><small>' + ('0' + (i + 1)) + ' · ' + n.k + '</small><span>' + n.t + '</span></div>' }).join('');
-    var stage = sec.querySelector('.astage'), frame = document.getElementById('aframe'), svg = document.getElementById('alines'), labels = notes.querySelectorAll('.anote');
-    function layout() {   // lines: dot → out of the frame → to its label, labels spaced so they never touch
+    var frame = document.getElementById('aframe'), img = document.getElementById('aImg');
+    img.src = p.photo; img.alt = p.title;
+    // a second, fully lit copy of the photo, seen only through a soft circle of light
+    var lit = document.getElementById('aLit'); if (!lit) { lit = document.createElement('img'); lit.id = 'aLit'; lit.className = 'alit'; lit.alt = ''; frame.appendChild(lit) }
+    lit.src = p.photo;
+    var notes = document.getElementById('anotes'), mob = document.getElementById('amob');
+    document.getElementById('apts').innerHTML = '';
+    notes.innerHTML = NOTES.map(function (n) { return '<div class="anote"><small>' + n.k + '</small><span>' + n.t + '</span></div>' }).join('');
+    mob.innerHTML = NOTES.map(function (n) { return '<div><small>' + n.k + '</small><span>' + n.t + '</span></div>' }).join('');
+    var labels = notes.querySelectorAll('.anote'), stage = sec.querySelector('.astage');
+    function layout() {   // each label sits level with its detail, spaced so labels never touch
       if (MOBILE) return;
-      var sr = stage.getBoundingClientRect(), fr = frame.getBoundingClientRect(), colX = fr.right - sr.left + 70, H = sr.height;
+      var sr = stage.getBoundingClientRect(), fr = frame.getBoundingClientRect(), colX = fr.right - sr.left + 56;
       var order = NOTES.map(function (n, i) { return { i: i, y: fr.top - sr.top + n.y * fr.height } }).sort(function (a, b) { return a.y - b.y });
-      var gap = 86, top = Math.max(H * 0.28, order[0].y - 40);
-      var last = -1e9; order.forEach(function (o, k) { o.ly = Math.max(o.y - 14, top, last + gap); last = o.ly });
-      svg.setAttribute('viewBox', '0 0 ' + sr.width + ' ' + H); svg.innerHTML = '';
-      order.forEach(function (o) {
-        var n = NOTES[o.i], dx = fr.left - sr.left + n.x * fr.width, dy = fr.top - sr.top + n.y * fr.height, ex = fr.right - sr.left + 24;
-        var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', 'M' + dx + ' ' + dy + ' L' + ex + ' ' + dy + ' L' + (colX - 12) + ' ' + (o.ly + 14));
-        path.dataset.i = o.i; svg.appendChild(path);
-        var L = path.getTotalLength(); path.style.strokeDasharray = L; path.style.strokeDashoffset = L; path.dataset.len = L;
-        var lab = labels[o.i]; lab.style.left = colX + 'px'; lab.style.top = o.ly + 'px';
-      });
+      var last = -1e9, top = sr.height * 0.3;
+      order.forEach(function (o) { o.ly = Math.max(o.y - 22, top, last + 92); last = o.ly; labels[o.i].style.left = colX + 'px'; labels[o.i].style.top = o.ly + 'px' });
     }
     layout();
-    if (REDUCED) {   // calm version: everything shown, nothing moves
-      gsap.set(pts.children, { scale: 1 }); gsap.set(labels, { opacity: 1 }); gsap.set('#aend', { opacity: 1 });
-      svg.querySelectorAll('path').forEach(function (p) { p.style.strokeDashoffset = 0 }); if (mob.children[0]) gsap.set(mob.children[0], { opacity: 1 });
-      return;
+    var spot = { x: NOTES[0].x, y: NOTES[0].y, r: 0, dim: 1 };
+    function paint() {
+      var w = frame.clientWidth;
+      lit.style.setProperty('--x', (spot.x * 100) + '%'); lit.style.setProperty('--y', (spot.y * 100) + '%'); lit.style.setProperty('--r', (spot.r * w) + 'px');
+      img.style.filter = 'brightness(' + spot.dim.toFixed(3) + ') saturate(' + (0.6 + spot.dim * 0.4).toFixed(3) + ')';
     }
-    var paths = function (i) { return svg.querySelector('path[data-i="' + i + '"]') };
-    var at = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: '#anat', start: 'top top', end: '+=' + (MOBILE ? 320 : 360) + '%', pin: '.astage', scrub: 1, invalidateOnRefresh: true, onRefresh: layout } });
-    at.from(frame, { scale: 0.9, opacity: 0, duration: 1, ease: 'power2.out' }, 0)
-      .from('.ahead > *', { y: 30, opacity: 0, duration: 0.8, stagger: 0.15, ease: 'power2.out' }, 0.2);
+    paint();
+    if (REDUCED) { gsap.set(labels, { opacity: 1 }); gsap.set('#aend', { opacity: 1 }); if (mob.children[0]) gsap.set(mob.children[0], { opacity: 1 }); return }
+    var at = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: '#anat', start: 'top top', end: '+=' + (MOBILE ? 320 : 360) + '%', pin: '.astage', scrub: 1, invalidateOnRefresh: true, onRefresh: function () { layout(); paint() } } });
+    at.from(frame, { scale: 0.92, opacity: 0, duration: 1, ease: 'power2.out' }, 0)
+      .from('.ahead > *', { y: 30, opacity: 0, duration: 0.8, stagger: 0.15, ease: 'power2.out' }, 0.2)
+      // the rest of the piece sinks into shadow; light opens on the first detail
+      .to(spot, { dim: 0.28, duration: 0.8, ease: 'power1.inOut', onUpdate: paint }, 1.0)
+      .to(spot, { r: NOTES[0].r, duration: 0.8, ease: 'power2.out', onUpdate: paint }, 1.1);
     NOTES.forEach(function (n, i) {
-      var t = 1.2 + i * 1.3, dot = pts.children[i];
-      at.to(dot, { scale: 1, duration: 0.35, ease: 'back.out(1.4)' }, t);
+      var t = 1.2 + i * 1.3;
+      if (i) at.to(spot, { x: n.x, y: n.y, r: n.r, duration: 0.9, ease: 'power2.inOut', onUpdate: paint }, t - 0.2);
       if (MOBILE) {
         var cur = mob.children[i], prev = mob.children[i - 1];
         if (prev) at.to(prev, { opacity: 0, y: -10, duration: 0.4 }, t - 0.1);
-        at.fromTo(cur, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, t + 0.1);
+        at.fromTo(cur, { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, t + 0.2);
       } else {
-        at.to({}, { duration: 0.8, onUpdate: function () { var pth = paths(i); if (pth) pth.style.strokeDashoffset = pth.dataset.len * (1 - this.progress()) } }, t + 0.1)
-          .to(labels[i], { opacity: 1, x: 0, duration: 0.6, ease: 'power2.out' }, t + 0.6);
-        if (i) at.to(labels[i - 1], { opacity: 0.45, duration: 0.5 }, t + 0.4);
+        at.to(labels[i], { opacity: 1, x: 0, duration: 0.6, ease: 'power2.out' }, t + 0.3);
+        if (i) at.to(labels[i - 1], { opacity: 0.35, duration: 0.5 }, t);
       }
     });
-    at.to('#aend', { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out' }, 1.2 + NOTES.length * 1.3)
+    var tEnd = 1.2 + NOTES.length * 1.3;
+    // finally the whole piece comes back into the light
+    at.to(spot, { dim: 1, r: 0, duration: 0.9, ease: 'power1.inOut', onUpdate: paint }, tEnd - 0.2)
+      .to(labels, { opacity: 0.6, duration: 0.6 }, tEnd)
+      .to('#aend', { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out' }, tEnd)
       .to({}, { duration: 0.8 });
     gsap.set('#aend', { y: 20 }); gsap.set(labels, { x: -14 });
   }
