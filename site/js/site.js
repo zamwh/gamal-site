@@ -157,7 +157,7 @@
     $('#colTitle').innerHTML = curCol ? esc(curCol.t) : 'كل <em>القطع</em>';
     $('#colCrumb').textContent = curCol ? curCol.t : 'المجموعات';
     $('#colLead').textContent = curCol ? curCol.s + ' — الأسعار على سعر الذهب اليوم.' : 'الأسعار على سعر الذهب اليوم.';
-    var bg = (items[0] || {}).photo; $('#colBg').style.backgroundImage = bg ? "url('" + bg + "')" : '';
+    $('#colBg').style.backgroundImage = '';   // no piece fills the screen here
     $('#chips').innerHTML = '<a class="chip' + (curCol ? '' : ' on') + '" href="#collections">الكل</a>' + COLS.filter(function (c) { return colItems(c).length }).map(function (c) { return '<a class="chip' + (curCol === c ? ' on' : '') + '" href="#collection-' + c.key + '">' + c.t + '</a>' }).join('');
     var t = term.trim(); if (t) items = items.filter(function (p) { return (p.title + ' ' + p.kind + ' ' + (p.style || '') + ' ' + (p.occasion || '')).indexOf(t) >= 0 });
     $('#grid').innerHTML = items.length ? items.map(function (p, i) { return card(p, 'rv' + (i % 4 ? ' d' + (i % 4) : '')) }).join('') : '<div class="empty" style="grid-column:1/-1">ما لقينا قطع بهذا البحث. اسأل المستشار يساعدك.</div>';
@@ -291,7 +291,6 @@
     var vh = innerHeight; hscFx(vh);
     // hero: the image sinks and dims as you leave
     var hr = $('#hero').getBoundingClientRect(), hp = clamp(-hr.top / vh, 0, 1);
-    $('#slides').style.transform = 'translate3d(0,' + (hp * 22).toFixed(1) + '%,0) scale(' + (1 + hp * .08).toFixed(3) + ')';
     $('.hero .inner').style.opacity = (1 - hp * 1.4).toFixed(3); $('.hero .inner').style.transform = 'translate3d(0,' + (hp * -60).toFixed(1) + 'px,0)';
     // spotlight + banner parallax
     var sp = $('#spotPh img'); if (sp) { var r = sp.parentNode.getBoundingClientRect(), t = (r.top + r.height / 2 - vh / 2) / vh; sp.style.transform = 'translate3d(0,' + (t * -8).toFixed(2) + '%,0) scale(1.04)' }
@@ -554,7 +553,8 @@
     BY = {}; SITE.pieces.forEach(function (p) { BY[p.code] = p });
     $$('#cur button').forEach(function (b) { b.classList.toggle('on', b.dataset.c === CUR) });
     renderHero(); renderAll();
-    var bp = SITE.pieces.filter(function (p) { return p.kind === 'طقم' && p.photo && p.style === 'فخم' }).pop() || SITE.pieces[0];
+    // the one piece that may fill the whole screen: the flower set with the belt, in the middle of the page
+    var bp = SITE.pieces.filter(function (p) { return p.photo && (p.title.indexOf('الوردة') >= 0 || p.title.indexOf('الحزام') >= 0) })[0] || SITE.pieces.filter(function (p) { return p.kind === 'طقم' && p.photo && p.style === 'فخم' }).pop() || SITE.pieces[0];
     if (bp) { $('#brideBg').style.backgroundImage = "url('" + bp.photo + "')"; $('#brideHeadBg').style.backgroundImage = "url('" + bp.photo + "')" }
     $('#yr').textContent = new Date().getFullYear(); route();
   }

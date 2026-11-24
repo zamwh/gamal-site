@@ -607,3 +607,23 @@ html.day .rfx{background:#0d0b08}
 }
 @media(prefers-reduced-motion:reduce){.robj{opacity:1}}
 @media(max-width:760px){.rtext .lead{display:none}.rside{bottom:calc(96px + env(safe-area-inset-bottom))}}
+/* ---------- hero: no piece covers the screen — the piece sits in a frame beside the words ---------- */
+.hero .slides{inset:auto;left:max(24px,calc((100vw - 1320px)/2));top:50%;width:min(31vw,430px);aspect-ratio:4/5;height:auto;transform:translateY(-58%);border-radius:18px;overflow:hidden;box-shadow:0 50px 110px -40px rgba(0,0,0,.9);outline:1px solid rgba(217,184,114,.16);outline-offset:-1px}
+.hero .slide .im{inset:0}
+.hero .inner{inset:0 0 0 auto;width:60%;align-items:flex-start;text-align:right;padding:0 max(24px,calc((100vw - 1320px)/2)) 0 20px}
+.hero .inner::before{display:none}
+.hero .cta{justify-content:flex-start}
+.hero::after{background:linear-gradient(to top,var(--bg) 0%,transparent 22%)}
+.hero .scroll-cue{display:none}
+.hero h1{font-size:clamp(44px,6vw,96px)}
+@media(max-width:760px){
+  .hero{min-height:0}
+  .hero .slides{left:50%;top:84px;width:56vw;transform:translateX(-50%)}
+  .hero .inner{inset:auto 0 0 0;top:calc(84px + 70vw + 14px);width:auto;justify-content:flex-start;padding:0 22px}
+  .hero h1{font-size:36px;margin:8px 0 12px}
+  .hero .inner p{display:none}
+  .hero .cta .btn{height:48px;padding:0 20px;font-size:14px}
+}
+/* ---------- the middle of the page: the flower set alone, full screen ---------- */
+#brideBanner{min-height:100svh}
+#brideBanner .bg{background-position:center 25%}
