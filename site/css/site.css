@@ -904,3 +904,9 @@ html.day .lx-feat,html.day .lxc{background:#fffaf0}html.day .lx-main{background:
 html[dir=ltr] .i.ar{transform:scaleX(-1)}
 #pg-home .ribbon{margin-top:24px}
 .lx-h{margin:0}.lx-eye{margin-bottom:10px}
+
+/* v6.1: featured card uncropped on mobile, swipe, day mode paused */
+.lx-feat{user-select:none;-webkit-user-select:none}
+.lx-feat .im{background-size:contain;background-repeat:no-repeat;background-position:center}
+@media(max-width:760px){.lx-feat{display:flex;flex-direction:column}.lx-feat .im{min-height:0;aspect-ratio:1/1;width:100%;margin:14px 0 10px}}
+#modeBtn{display:none!important}

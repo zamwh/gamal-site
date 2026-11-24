@@ -44,7 +44,7 @@
   $$('#cur button').forEach(function (b) { b.onclick = function () { CUR = b.dataset.c; try { localStorage.setItem('gm_cur', CUR) } catch (e) { } renderAll(); route() } });
 
   /* ---------- theme: dark by default ---------- */
-  var mode = 'night'; try { mode = localStorage.getItem('gm_mode3') || 'night' } catch (e) { }
+  var mode = 'night'; /* day mode paused */
   function applyMode() { document.documentElement.classList.toggle('day', mode === 'day'); $('meta[name=theme-color]').content = mode === 'day' ? '#f5f0e6' : '#070605' }
   $('#modeBtn').onclick = function () { mode = mode === 'day' ? 'night' : 'day'; try { localStorage.setItem('gm_mode3', mode) } catch (e) { } applyMode() };
   applyMode();

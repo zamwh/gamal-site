@@ -21,6 +21,25 @@
     box.querySelectorAll('.lx-dots i').forEach(function (d) { d.onclick = function (e) { e.preventDefault(); showFeat(+d.dataset.i) } });
     clearTimeout(ft); ft = setTimeout(function () { showFeat(fi + 1) }, 8000);
   }
+  var swBound = false;
+  function bindSwipe() {
+    var box = $('#lxFeat'); if (!box || swBound) return; swBound = true;
+    var x0 = null, y0 = 0;
+    box.style.touchAction = 'pan-y';
+    function start(x, y) { x0 = x; y0 = y }
+    function end(x, y) {
+      if (x0 === null) return; var dx = x - x0, dy = y - y0; x0 = null;
+      if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+      var rtl = document.documentElement.dir !== 'ltr';
+      showFeat(fi + ((dx < 0) !== rtl ? 1 : -1));
+      box.addEventListener('click', function k(ev) { ev.preventDefault(); ev.stopPropagation(); box.removeEventListener('click', k, true) }, true);
+      setTimeout(function () { x0 = null }, 0);
+    }
+    box.addEventListener('touchstart', function (e) { var t = e.changedTouches[0]; start(t.clientX, t.clientY) }, { passive: true });
+    box.addEventListener('touchend', function (e) { var t = e.changedTouches[0]; end(t.clientX, t.clientY) }, { passive: true });
+    box.addEventListener('mousedown', function (e) { start(e.clientX, e.clientY) });
+    box.addEventListener('mouseup', function (e) { end(e.clientX, e.clientY) });
+  }
   function card(eye, p, desc, href, tag, img) {
     return '<a class="lxc lx-rise" href="' + href + '"><div class="tx">' + (tag ? '<span class="tag">' + eye + '</span>' : '<div class="ey">' + eye + '</div>') +
       '<h3>' + esc(p ? title(p) : desc[0]) + '</h3><p>' + esc(desc[1]) + '</p>' + (p ? '<div class="pr">' + money(p.price) + '</div>' : '') +
@@ -34,7 +53,7 @@
     var main = ps.find(function (p) { return /وردة|ورد/.test(p.title) && /حزام/.test(p.title) }) || byPrice[0];
     var mi = $('#lxMainImg'); mi.src = main.photo; mi.alt = title(main); $('#lxMain').href = '#p-' + main.code;
     FEAT = byPrice.filter(function (p) { return p.code !== main.code }).slice(0, 3);
-    showFeat(fi);
+    showFeat(fi); bindSwipe();
     var necklace = ps.find(function (p) { return p.kind === 'عقد' && p.code !== main.code }) || ps[0];
     var newest = ps.slice().reverse().find(function (p) { return p.code !== main.code && p.code !== necklace.code }) || ps[1] || ps[0];
     var setP = ps.find(function (p) { return p.kind === 'طقم' && p.code !== main.code }) || ps[0];
