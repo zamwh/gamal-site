@@ -1,0 +1,74 @@
+@font-face{font-family:RX;font-weight:200;src:url(../fonts/readex-pro-arabic-200-normal.woff2)format('woff2');unicode-range:U+0600-06FF,U+0750-077F,U+FB50-FDFF,U+FE70-FEFF}
+@font-face{font-family:RX;font-weight:300;src:url(../fonts/readex-pro-arabic-300-normal.woff2)format('woff2');unicode-range:U+0600-06FF,U+0750-077F,U+FB50-FDFF,U+FE70-FEFF}
+@font-face{font-family:RX;font-weight:400;src:url(../fonts/readex-pro-arabic-400-normal.woff2)format('woff2');unicode-range:U+0600-06FF,U+0750-077F,U+FB50-FDFF,U+FE70-FEFF}
+@font-face{font-family:RX;font-weight:500;src:url(../fonts/readex-pro-arabic-500-normal.woff2)format('woff2');unicode-range:U+0600-06FF,U+0750-077F,U+FB50-FDFF,U+FE70-FEFF}
+@font-face{font-family:RX;font-weight:200;src:url(../fonts/readex-pro-latin-200-normal.woff2)format('woff2');unicode-range:U+0000-00FF,U+2000-206F}
+@font-face{font-family:RX;font-weight:300;src:url(../fonts/readex-pro-latin-300-normal.woff2)format('woff2');unicode-range:U+0000-00FF,U+2000-206F}
+@font-face{font-family:RX;font-weight:400;src:url(../fonts/readex-pro-latin-400-normal.woff2)format('woff2');unicode-range:U+0000-00FF,U+2000-206F}
+@font-face{font-family:RX;font-weight:500;src:url(../fonts/readex-pro-latin-500-normal.woff2)format('woff2');unicode-range:U+0000-00FF,U+2000-206F}
+@font-face{font-family:Naskh;font-weight:700;src:url(../fonts/readex-pro-arabic-300-normal.woff2)format('woff2')}
+@font-face{font-family:Alex;font-weight:500;src:url(../fonts/readex-pro-arabic-400-normal.woff2)format('woff2')}
+@font-face{font-family:Alex;font-weight:600;src:url(../fonts/readex-pro-arabic-500-normal.woff2)format('woff2')}
+@font-face{font-family:Num;font-weight:600;src:url(../fonts/readex-pro-latin-300-normal.woff2)format('woff2')}
+@font-face{font-family:Num;font-weight:500;src:url(../fonts/readex-pro-latin-300-normal.woff2)format('woff2')}
+/* جمال المشرقي — cinematic scroll prototype (standalone, does not touch the main site) */
+:root{--bg:#050403;--gold:#d9b872;--gold2:#f3dca2;--ink:#f2eadb;--mut:rgba(242,234,219,.6)}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:RX,system-ui,sans-serif;font-weight:300}
+body{overflow-x:hidden}
+.top{position:fixed;inset:0 0 auto;z-index:20;display:flex;justify-content:center;padding:18px 0;pointer-events:none}
+.top img{width:84px;opacity:.95}
+.intro{height:100svh;display:grid;place-items:center;text-align:center;position:relative}
+.intro p{margin:0;color:var(--mut);font-size:13px;letter-spacing:.32em}
+.intro h1{font-weight:200;font-size:clamp(30px,5vw,60px);margin:14px 0 0;letter-spacing:-.5px}
+.intro h1 em{font-style:normal;color:var(--gold)}
+.cue{position:absolute;bottom:44px;left:50%;width:1px;height:64px;background:linear-gradient(var(--gold),transparent);transform:translateX(-50%);overflow:hidden}
+.cue::after{content:"";position:absolute;inset:0;background:var(--gold2);animation:cue 2.4s cubic-bezier(.65,0,.35,1) infinite}
+@keyframes cue{0%{transform:translateY(-100%)}100%{transform:translateY(100%)}}
+
+/* the stage */
+.film{position:relative;height:100svh;overflow:hidden;background:var(--bg)}
+.film canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.amb{position:absolute;left:50%;top:50%;width:120vmax;height:120vmax;margin:-60vmax 0 0 -60vmax;border-radius:50%;
+  background:radial-gradient(circle,rgba(217,184,114,.20) 0,rgba(217,184,114,.07) 22%,rgba(217,184,114,0) 48%);opacity:0;will-change:transform,opacity}
+.vig{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 45%,rgba(0,0,0,.85) 100%);pointer-events:none}
+.persp{position:absolute;inset:0;display:grid;place-items:center;perspective:1600px;perspective-origin:50% 45%}
+.obj{position:relative;width:min(52vmin,560px);aspect-ratio:1114/1402;transform-style:preserve-3d;will-change:transform,opacity,filter}
+.obj img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;-webkit-user-drag:none;user-select:none}
+.obj .depth{filter:brightness(.38) saturate(1.2)}
+.obj .d1{transform:translateZ(-5px)}.obj .d2{transform:translateZ(-10px)}.obj .d3{transform:translateZ(-15px)}
+.obj .main{transform:translateZ(0)}
+.obj .halo{position:absolute;inset:-8%;background:url(../img/scene_ring.webp) center/contain no-repeat;filter:blur(44px) saturate(1.4);opacity:.32;transform:translateZ(-30px)}
+.obj .spec{position:absolute;inset:0;transform:translateZ(1px);mix-blend-mode:screen;pointer-events:none;
+  -webkit-mask:url(../img/scene_ring.webp) center/contain no-repeat;mask:url(../img/scene_ring.webp) center/contain no-repeat;
+  background:linear-gradient(105deg,transparent 30%,rgba(255,244,214,.0) 40%,rgba(255,244,214,.85) 50%,rgba(255,244,214,0) 60%,transparent 70%);background-size:250% 100%;background-position:120% 0}
+.floor{position:absolute;left:50%;top:50%;width:min(46vmin,440px);height:min(7vmin,64px);margin-left:calc(min(46vmin,440px)/-2);
+  border-radius:50%;background:radial-gradient(rgba(0,0,0,.95),transparent 70%);filter:blur(10px);opacity:0}
+.cap{position:absolute;left:0;right:0;text-align:center;pointer-events:none;padding:0 22px}
+.cap.a{bottom:7svh}
+.cap small{display:block;color:var(--gold);font-size:12px;letter-spacing:.36em;margin-bottom:12px}
+.cap h2{margin:0;font-weight:200;font-size:clamp(28px,4.4vw,56px);line-height:1.25}
+.cap h2 em{font-style:normal;background:linear-gradient(100deg,#f6e7c1,#e2c27e 45%,#f3dca2 70%,#d9b872);-webkit-background-clip:text;background-clip:text;color:transparent}
+.cap .ln{display:block;overflow:hidden}.cap .ln>span{display:inline-block}
+.bar{position:absolute;bottom:26px;left:50%;width:110px;height:1px;background:rgba(217,184,114,.18);transform:translateX(-50%)}
+.bar i{position:absolute;inset:0;background:var(--gold);transform-origin:right;transform:scaleX(0)}
+.curtain{position:absolute;left:0;right:0;bottom:0;height:0;background:linear-gradient(to top,#0b0907,var(--bg));pointer-events:none}
+
+/* what comes after: the next section is revealed */
+.next{position:relative;min-height:100svh;padding:16svh 24px 120px;text-align:center;background:#0b0907}
+.next .line{width:1px;height:90px;margin:0 auto 34px;background:linear-gradient(transparent,var(--gold))}
+.next small{color:var(--gold);letter-spacing:.32em;font-size:12px}
+.next h3{font-weight:200;font-size:clamp(28px,4vw,50px);margin:14px 0 16px}
+.next p{color:var(--mut);max-width:520px;margin:0 auto 34px;line-height:2}
+.next a{display:inline-flex;align-items:center;justify-content:center;height:52px;padding:0 30px;border-radius:99px;color:#1a1206;text-decoration:none;
+  background:linear-gradient(100deg,#b8913f,#e9cf8f 50%,#c9a352);font-weight:400}
+.pick{position:fixed;z-index:30;top:16px;left:16px;display:flex;gap:6px}
+.pick a{font-size:12px;color:var(--mut);text-decoration:none;border:1px solid rgba(217,184,114,.25);border-radius:99px;padding:6px 12px}
+.pick a.on{color:#1a1206;background:var(--gold)}
+
+@media(prefers-reduced-motion:reduce){
+  .film{height:auto;min-height:100svh}
+  .obj{transform:none!important;opacity:1!important;filter:none!important}
+  .amb{opacity:1}.cap{opacity:1!important}.cap .ln>span{transform:none!important}
+  .cue::after{animation:none}
+}

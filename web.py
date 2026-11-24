@@ -202,6 +202,9 @@ class Server:
                         with app.lock:
                             d = media_dir(app.store)
                         return self._file(os.path.join(d, m.group(1)), CTYPES[m.group(2)], "public, max-age=600")
+                    if path == "/scene":        # standalone cinematic scroll prototype
+                        with open(os.path.join(SITE_DIR, "scene.html"), "rb") as f:
+                            return self._send(200, f.read(), "text/html; charset=utf-8", "no-store")
                     if path in ("/admin", "/admin/"):
                         with open(os.path.join(SITE_DIR, "admin.html"), "rb") as f:
                             return self._send(200, f.read(), "text/html; charset=utf-8", "no-store")
