@@ -474,12 +474,13 @@ class SalesAgent:
 
     # ---- tools (all data from the DB)
     def _public(self, p, price=None):
-        photos = json.loads(p["photos"] or "[]") if "photos" in p.keys() else []
+        from core import card_photo
+        cp = card_photo(p) if "photos" in p.keys() else None
         return {"code": p["code"], "title": (p["title"] if "title" in p.keys() else None) or p["type"],
                 "title_en": (p["title_en"] if "title_en" in p.keys() else None) or None,
                 "kind": p["type"], "karat": p["karat"], "weight": p["weight"],
                 "price": price if price is not None else self.store.piece_price(p)["total"],
-                "branch": None, "photo": self._murl(photos[0]) if photos else None,
+                "branch": None, "photo": self._murl(cp) if cp else None,
                 "status": p["status"], "style": p["style"] if "style" in p.keys() else None,
                 "occasion": p["occasion"] if "occasion" in p.keys() else None}
 
@@ -1261,10 +1262,11 @@ class SalesAgent:
         n = 0
         for p in rows:
             try:
-                ph = json.loads(p["photos"] or "[]")
-                if not ph:
+                from core import original_photo
+                orig = original_photo(p)          # the look is read from the real photo, never the styled one
+                if not orig:
                     continue
-                path = os.path.join(self.store.base_dir, "media", self.store.mode, ph[0])
+                path = os.path.join(self.store.base_dir, "media", self.store.mode, orig)
                 from PIL import Image
                 im = Image.open(path)
                 im.thumbnail((768, 768))

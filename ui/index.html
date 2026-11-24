@@ -162,6 +162,21 @@ html.dark .ln.op{background:rgba(255,255,255,.04)}
 .label img.qr{height:12mm}.label img.bc{height:6mm;width:24mm}
 input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 #wMode{flex-wrap:nowrap;flex:none}
+
+.pslots{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.pslot{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;aspect-ratio:3/4;margin:0;padding:10px;border-radius:16px;border:1.5px dashed rgba(176,134,52,.5);background:rgba(255,250,238,.55);cursor:pointer;overflow:hidden;text-align:center}
+.pslot:hover{border-color:#b08634}
+.pslot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.pslot.has b,.pslot.has small{position:relative;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+.pslot.has::after{content:"";position:absolute;inset:auto 0 0;height:46%;background:linear-gradient(transparent,rgba(0,0,0,.7))}
+.pslot.has b,.pslot.has small{z-index:1}
+.pslot b{font-size:13px;color:#5a4320}.pslot small{font-size:11px;color:#8a7350;margin:0}
+.pslot .pplus{position:absolute;top:38%;font-size:34px;color:#b08634;font-weight:300}
+.pslot .px{position:absolute;top:8px;inset-inline-end:8px;z-index:2;width:28px;height:28px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:17px;line-height:1;cursor:pointer}
+html.dark .pslot{background:rgba(30,24,14,.55)}html.dark .pslot b{color:#ecd29a}html.dark .pslot small{color:#b9a47c}
+.phs{display:inline-flex;gap:4px}.phs i{font-style:normal;font-size:11px;padding:2px 7px;border-radius:999px;border:1px solid rgba(176,134,52,.35);color:#a8957a;opacity:.7}
+.phs i.on{background:linear-gradient(135deg,#e9cf8d,#c79b45);color:#3b2a0c;border-color:transparent;opacity:1}
+@media(max-width:640px){.pslots{grid-template-columns:1fr 1fr 1fr;gap:8px}.pslot b{font-size:11.5px}.pslot small{display:none}}
 </style>
 </head>
 <body>
@@ -488,14 +503,44 @@ async function doBuy(){const items=[...document.querySelectorAll('#buyLines>div'
 
 /* pieces */
 async function loadPieces(){const rows=await api('list_pieces',$('pst').value,$('pbr').value,$('ps').value);
-  $('piecesT').innerHTML='<tr><th>الرقم</th><th>النوع</th><th>العيار</th><th>الوزن</th><th>المصنعية</th><th>السعر الآن</th><th>الفرع</th><th>الحالة</th><th></th></tr>'+rows.map(p=>`<tr><td>${p.code}</td><td>${esc(p.type)}${p.category==='clean_scrap'?' <span class="pill">كسر نظيف</span>':''}</td><td>${p.karat}</td><td>${p.weight}</td><td>${fmt(p.making_value)}${p.making_mode==='gram'?'/جم':''}</td><td class="gold-t">${fmt(p.price)}</td><td>${esc(p.branch_name)}</td><td><span class="pill ${p.status}">${ST[p.status]}</span></td><td><button class="btn sm" onclick="printLabel('${p.code}')">ملصق</button> ${p.status==='available'||p.status==='inactive'?`<button class="btn sm" onclick="pieceMenu('${p.code}','${p.status}')">⋯</button>`:''}</td></tr>`).join('')}
-function openAddPiece(){const bo=BR.map(b=>`<option value="${b.id}" ${USER.branch_id===b.id?'selected':''}>${esc(b.name)}</option>`).join('');
-  modal(`<h2>قطعة جديدة</h2><div class="grid g2"><div><label>النوع</label><input id="ap_t" placeholder="خاتم، سلسلة، طقم..."></div><div><label>الفرع</label><select id="ap_b">${bo}</select></div>
-  <div><label>العيار</label><select id="ap_k"><option>21</option><option>18</option><option>24</option></select></div><div><label>الوزن (جرام) — من الميزان</label><input id="ap_w" type="number" step="0.001"></div>
-  <div><label>المصنعية</label><select id="ap_mm"><option value="gram">على الجرام</option><option value="fixed">مبلغ ثابت للقطعة</option></select></div><div><label>قيمة المصنعية</label><input id="ap_mv" type="number"></div></div>
-  <label>ملاحظات</label><input id="ap_n"><label class="row" style="color:var(--txt)"><input type="checkbox" id="ap_o" checked style="width:auto"> تظهر في الموقع</label>
-  <div class="row" style="margin-top:16px"><button class="btn gold" onclick="savePiece()">حفظ وطباعة الملصق</button><button class="btn" onclick="closeModal()">إلغاء</button></div>`)}
-async function savePiece(){const p=await api('add_piece',{type:$('ap_t').value,branch_id:$('ap_b').value,karat:+$('ap_k').value,weight:+$('ap_w').value,making_mode:$('ap_mm').value,making_value:+$('ap_mv').value||0,notes:$('ap_n').value,show_online:$('ap_o').checked});closeModal();toast('تمت إضافة '+p.code);printLabel(p.code);loadPieces()}
+  $('piecesT').innerHTML='<tr><th>الرقم</th><th>النوع</th><th>العيار</th><th>الوزن</th><th>المصنعية</th><th>السعر الآن</th><th>الفرع</th><th>الصور</th><th>الحالة</th><th></th></tr>'+rows.map(p=>`<tr><td>${p.code}</td><td>${esc(p.type)}${p.category==='clean_scrap'?' <span class="pill">كسر نظيف</span>':''}</td><td>${p.karat}</td><td>${p.weight}</td><td>${fmt(p.making_value)}${p.making_mode==='gram'?'/جم':''}</td><td class="gold-t">${fmt(p.price)}</td><td>${esc(p.branch_name)}</td><td>${photoState(p)}</td><td><span class="pill ${p.status}">${ST[p.status]}</span></td><td><button class="btn sm" onclick="printLabel('${p.code}')">ملصق</button> ${['owner','manager'].includes(USER.role)?`<button class="btn sm" onclick="openPhotos('${p.code}')">الصور</button>`:''} ${p.status==='available'||p.status==='inactive'?`<button class="btn sm" onclick="pieceMenu('${p.code}','${p.status}')">⋯</button>`:''}</td></tr>`).join('')}
+/* new stock: details + three photos (velvet card shot, real close-up, untouched original) */
+const KIND_LIST=['طقم','عقد','سلسلة','حلق','خاتم','أسورة','كف','حزام','جنيه'];
+const PROLES=[['card','صورة العرض (مخمل)','تظهر في بطاقة الموقع'],['macro','لقطة قريبة (ماكرو)','تظهر داخل التفاصيل'],['orig','الصورة الأصلية','حقيقية بدون تعديل، داخل التفاصيل']];
+let PH={},APK='طقم';
+function readImg(file){return new Promise((ok,bad)=>{const r=new FileReader();r.onerror=bad;r.onload=()=>{const im=new Image();im.onerror=bad;im.onload=()=>{const m=2400,k=Math.min(1,m/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);ok(c.toDataURL('image/jpeg',.92))};im.src=r.result};r.readAsDataURL(file)})}
+function slotsHTML(){return `<div class="pslots">${PROLES.map(([k,t,h])=>`<label class="pslot ${PH[k]?'has':''}" id="sl_${k}"><input type="file" accept="image/*" onchange="pickPh('${k}',this)" hidden>${PH[k]?`<img src="${PH[k].src}"><button type="button" class="px" onclick="event.preventDefault();event.stopPropagation();PH['${k}']={src:'',name:null,del:true};refreshSlots()">×</button>`:`<span class="pplus">+</span>`}<b>${t}</b><small>${h}</small></label>`).join('')}</div>`}
+function refreshSlots(){const b=$('slotsBox');if(b)b.innerHTML=slotsHTML();for(const k in PH)if(PH[k]&&PH[k].del&&!PH[k].src){const el=$('sl_'+k);if(el){el.classList.remove('has')}}}
+async function pickPh(k,inp){const f=inp.files&&inp.files[0];if(!f)return;try{const d=await readImg(f);PH[k]={src:d,data:d}}catch(e){toast('ملف الصورة غير صالح');return}refreshSlots()}
+async function uploadSlots(){const out={};for(const [k] of PROLES){const v=PH[k];if(!v)continue;if(v.data){out[k]=await api('upload_photo',v.data,k)}else if(v.del){out[k]=null}}return out}
+function openAddPiece(){PH={};APK='طقم';const bo=BR.map(b=>`<option value="${b.id}" ${USER.branch_id===b.id?'selected':''}>${esc(b.name)}</option>`).join('');
+  modal(`<h2>تسجيل قطعة جديدة</h2>
+  <label>النوع</label><div class="pills" id="apKinds">${KIND_LIST.map(k=>`<span class="${k===APK?'on':''}" onclick="APK='${k}';$('ap_t').value='';document.querySelectorAll('#apKinds span').forEach(x=>x.classList.toggle('on',x.textContent==='${k}'))">${k}</span>`).join('')}</div>
+  <input id="ap_t" placeholder="نوع ثاني؟ اكتبه هنا (اختياري)" style="margin-top:8px" oninput="if(this.value)document.querySelectorAll('#apKinds span').forEach(x=>x.classList.remove('on'))">
+  <label>اسم القطعة في الموقع</label><input id="ap_ti" placeholder="مثل: طقم الوردة الطويل مع الحزام">
+  <div class="grid g2"><div><label>الوزن (جرام) — من الميزان</label><input id="ap_w" type="number" step="0.001" style="font-size:20px;font-weight:700"></div><div><label>الفرع</label><select id="ap_b">${bo}</select></div>
+  <div><label>المصنعية</label><select id="ap_mm"><option value="gram">على الجرام</option><option value="fixed">مبلغ ثابت للقطعة</option></select></div><div><label>قيمة المصنعية</label><input id="ap_mv" type="number"></div>
+  <div><label>المناسبة (اختياري)</label><select id="ap_oc"><option value="">—</option><option>عرس</option><option>خطوبة</option><option>هدية</option><option>يومي</option></select></div><div><label>العيار</label><select id="ap_k"><option>21</option></select></div></div>
+  <label>وصف مختصر لشكل القطعة (يقرأه المستشار)</label><input id="ap_d" placeholder="مثل: عقد طويل بوردة وشراشيب، حزام بطبقات، وحلق">
+  <label>الصور</label><div id="slotsBox">${slotsHTML()}</div>
+  <p class="mut" style="font-size:12.5px;margin:6px 0 0">تقدر تحفظ القطعة بالصورة الأصلية بس، وتضيف صورة المخمل والماكرو بعدين من زر "الصور".</p>
+  <label class="row" style="color:var(--txt)"><input type="checkbox" id="ap_o" checked style="width:auto"> تظهر في الموقع</label>
+  <div class="row" style="margin-top:16px"><button class="btn gold" id="apSave" onclick="savePiece()">حفظ وطباعة الملصق</button><button class="btn" onclick="closeModal()">إلغاء</button></div>`)}
+async function savePiece(){const btn=$('apSave');if(btn.disabled)return;
+  const type=($('ap_t').value.trim()||APK),w=+$('ap_w').value;if(!type)return toast('اختر النوع');if(!(w>0))return toast('اكتب الوزن');
+  btn.disabled=true;btn.textContent='جاري الحفظ...';
+  try{const media=await uploadSlots();
+    const p=await api('add_piece',{type,title:$('ap_ti').value.trim(),branch_id:$('ap_b').value,karat:+$('ap_k').value,weight:w,making_mode:$('ap_mm').value,making_value:+$('ap_mv').value||0,occasion:$('ap_oc').value,description:$('ap_d').value.trim(),show_online:$('ap_o').checked,media});
+    closeModal();toast('تمت إضافة '+p.code);printLabel(p.code);loadPieces()}
+  catch(e){btn.disabled=false;btn.textContent='حفظ وطباعة الملصق'}}
+async function openPhotos(code){const d=await api('piece_photos',code);PH={};for(const [k] of PROLES){if(d.roles[k])PH[k]={src:MB()+d.roles[k],name:d.roles[k]}}
+  modal(`<h2>صور القطعة ${esc(d.code)}</h2><p class="mut" style="margin:0 0 6px">${esc(d.title)}</p><div id="slotsBox">${slotsHTML()}</div>
+  <p class="mut" style="font-size:12.5px">البطاقة في الموقع تعرض صورة المخمل، ولو ما فيه تعرض الأصلية. التفاصيل تعرض الثلاث بالترتيب.</p>
+  <div class="row" style="margin-top:14px"><button class="btn gold" id="phSave" onclick="savePhotos('${esc(d.code)}')">حفظ الصور</button><button class="btn" onclick="closeModal()">إغلاق</button></div>`)}
+async function savePhotos(code){const b=$('phSave');if(b.disabled)return;b.disabled=true;b.textContent='جاري الرفع...';
+  try{const roles=await uploadSlots();await api('set_piece_photos',code,roles);closeModal();toast('تم حفظ الصور');loadPieces()}catch(e){b.disabled=false;b.textContent='حفظ الصور'}}
+function photoState(p){let r={};try{r=JSON.parse(p.media||'{}')}catch(e){}if(!r.card&&!r.macro&&!r.orig){let ph=[];try{ph=JSON.parse(p.photos||'[]')}catch(e){}r={orig:ph[0]}}
+  return `<span class="phs">${[['card','مخمل'],['macro','ماكرو'],['orig','أصلية']].map(([k,t])=>`<i class="${r[k]?'on':''}">${t}</i>`).join('')}</span>`}
 function pieceMenu(code,st){const bo=BR.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
   modal(`<h2>القطعة ${code}</h2><label>نقل لفرع</label><div class="row"><select id="tb">${bo}</select><button class="btn" onclick="api('transfer_piece','${code}',$('tb').value).then(()=>{closeModal();toast('تم النقل');loadPieces()})">نقل</button></div>
   <div class="row" style="margin-top:16px">${st==='available'?`<button class="btn red" onclick="api('set_piece_status','${code}','inactive','').then(()=>{closeModal();loadPieces()})">إيقاف القطعة</button>`:`<button class="btn" onclick="api('set_piece_status','${code}','available','').then(()=>{closeModal();loadPieces()})">تفعيل القطعة</button>`}<button class="btn" onclick="closeModal()">إغلاق</button></div>`)}

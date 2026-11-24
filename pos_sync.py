@@ -11,6 +11,7 @@ as a conflict and logged for the accountant.
 import hmac
 import secrets
 
+import core
 from core import GoldError
 
 
@@ -58,21 +59,42 @@ def sync(store, data):
         if not code or store.one("SELECT 1 FROM pieces WHERE code=?", (code,)):
             pieces_in.append({"code": code, "dup": True})
             continue
-        photos = []
-        if np.get("photo"):
+        photos, roles = [], {}
+        folder = os.path.join(store.base_dir, "media", store.mode); os.makedirs(folder, exist_ok=True)
+        for role, url in (np.get("media") or {}).items():
+            if role in core.PHOTO_ROLES and url:
+                try:
+                    roles[role] = media.save_piece_photo(url, folder, enhance_it=False)
+                except Exception:
+                    pass
+        if not roles and np.get("photo"):
             try:
-                folder = os.path.join(store.base_dir, "media", store.mode); os.makedirs(folder, exist_ok=True)
-                photos = [media.save_piece_photo(np["photo"], folder)]
+                photos = [media.save_piece_photo(np["photo"], folder, enhance_it=False)]
             except Exception:
                 photos = []
         try:
             store.add_piece(uid, np["type"], np["karat"], np["weight"], np.get("making_mode", "gram"), np.get("making_value", 0),
                             branch_id, np.get("category", "new"), None, str(np.get("notes", ""))[:200], bool(np.get("show_online", True)),
                             str(np.get("title", ""))[:80], photos, str(np.get("style", ""))[:20], str(np.get("occasion", ""))[:20],
-                            str(np.get("description", ""))[:400], code=code)
+                            str(np.get("description", ""))[:400], code=code, media=roles or None)
             pieces_in.append({"code": code, "ok": True})
         except Exception as e:
             pieces_in.append({"code": code, "error": str(e)[:120]})
+    media_out = []
+    owner_id = store.one("SELECT id FROM users WHERE role='owner' ORDER BY id LIMIT 1")["id"]
+    for mu in (data.get("media_updates") or [])[:10]:
+        code = str(mu.get("code", "")).strip().upper()
+        try:
+            store.piece(code)
+            folder = os.path.join(store.base_dir, "media", store.mode); os.makedirs(folder, exist_ok=True)
+            roles = {}
+            for role, url in (mu.get("media") or {}).items():
+                if role in core.PHOTO_ROLES:
+                    roles[role] = media.save_piece_photo(url, folder, enhance_it=False) if url else None
+            store.set_piece_photos(owner_id, code, roles)
+            media_out.append({"code": code, "ok": True})
+        except Exception as e:
+            media_out.append({"code": code, "error": str(e)[:120]})
     for s in (data.get("sales") or [])[:200]:
         ref = str(s.get("ref", ""))[:40]
         codes = [str(c).strip().upper() for c in (s.get("codes") or [])][:30]
@@ -101,5 +123,5 @@ def sync(store, data):
               "branch_id": p["branch_id"], "title": (p["title"] if "title" in p.keys() else None) or p["type"]}
              for p in store.list_pieces() if p["status"] in ("available", "reserved")]
     cur = store.current_prices() or {}
-    return {"ok": True, "branch_id": branch_id, "applied": applied, "conflicts": conflicts, "pieces": pieces_in, "stock": stock,
+    return {"ok": True, "branch_id": branch_id, "media": media_out, "applied": applied, "conflicts": conflicts, "pieces": pieces_in, "stock": stock,
             "prices": {k: cur.get(k) for k in ("k21_sell", "k21_buy", "pound_sell", "pound_buy", "created_at")}}

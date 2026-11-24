@@ -56,17 +56,41 @@ def _pending_pieces(s, c):
     return [p for p in s.q("SELECT * FROM pieces WHERE code LIKE ? ORDER BY created_at", (pre + "%",)) if p["code"] not in sent]
 
 
-def _photo(s, p):
+def _file_url(s, name):
     try:
-        ph = json.loads(p.get("photos") or "[]")
-        if not ph:
-            return None
         from PIL import Image
-        im = Image.open(os.path.join(s.base_dir, "media", s.mode, ph[0])); im.thumbnail((1600, 1600))
-        b = io.BytesIO(); im.convert("RGB").save(b, "JPEG", quality=86)
+        im = Image.open(os.path.join(s.base_dir, "media", s.mode, name)); im.thumbnail((1600, 1600))
+        b = io.BytesIO(); im.convert("RGB").save(b, "JPEG", quality=88)
         return "data:image/jpeg;base64," + base64.b64encode(b.getvalue()).decode()
     except Exception:
         return None
+
+
+def _photo(s, p):
+    from core import original_photo
+    f = original_photo(p)
+    return _file_url(s, f) if f else None
+
+
+def _media_sig(p):
+    from core import piece_roles
+    return json.dumps(piece_roles(p), sort_keys=True)
+
+
+def _media(s, p):
+    from core import piece_roles
+    # only photos set here travel; a photo added on the server (e.g. from the phone) is never erased by a branch
+    return {k: _file_url(s, v) for k, v in piece_roles(p).items() if v}
+
+
+def _pending_media(s, c):
+    """Pieces already on the server whose photos changed here (e.g. the velvet shots added later)."""
+    pre = c.get("prefix") or ""
+    if not pre:
+        return []
+    sent, sigs = set(c.get("sent_pieces", [])), c.get("sent_media", {})
+    return [p for p in s.q("SELECT * FROM pieces WHERE code LIKE ? ORDER BY updated_at DESC", (pre + "%",))
+            if p["code"] in sent and sigs.get(p["code"]) != _media_sig(p)]
 
 
 def run_once(s, timeout=25):
@@ -84,13 +108,22 @@ def run_once(s, timeout=25):
             continue
         sales.append({"ref": (c.get("prefix") or "") + "-" + inv["number"], "codes": codes,
                       "customer": inv["customer_name"] or "", "phone": inv["customer_phone"] or "", "_n": inv["number"]})
-    pieces = sorted(pend, key=lambda p: p["code"] not in need)[:3]     # photos are heavy: a few per round
+    pieces, nph = [], 0
+    for p in sorted(pend, key=lambda p: p["code"] not in need):       # photos are heavy: about four per round
+        k = max(1, sum(1 for v in __import__("core").piece_roles(p).values() if v))
+        if pieces and nph + k > 4:
+            break
+        pieces.append(p); nph += k
     body = {"key": c["key"], "sales": [{k: v for k, v in x.items() if k != "_n"} for x in sales],
             "pieces": [{"code": p["code"], "type": p["type"], "karat": p["karat"], "weight": p["weight"],
                         "making_mode": p["making_mode"], "making_value": p["making_value"], "category": p["category"],
                         "show_online": bool(p["show_online"]), "title": p.get("title") or "", "style": p.get("style") or "",
-                        "occasion": p.get("occasion") or "", "description": p.get("description") or "", "photo": _photo(s, p)}
+                        "occasion": p.get("occasion") or "", "description": p.get("description") or "", "photo": _photo(s, p),
+                        "media": _media(s, p)}
                        for p in pieces]}
+    upd = _pending_media(s, c)[:2] if len(pieces) < 2 else []
+    if upd:
+        body["media_updates"] = [{"code": p["code"], "media": _media(s, p)} for p in upd]
     pr = s.current_prices()
     if c.get("price_pending") and pr:
         body["price"] = {k: pr.get(k) for k in ("k21_sell", "k21_buy", "pound_sell", "pound_buy")}
@@ -105,6 +138,12 @@ def run_once(s, timeout=25):
     done_refs = {a["ref"] for a in res.get("applied", [])} | {x["ref"] for x in res.get("conflicts", [])}
     c["sent_invoices"] = list(set(c.get("sent_invoices", [])) | {x["_n"] for x in sales if x["ref"] in done_refs})[-5000:]
     c["sent_pieces"] = list(set(c.get("sent_pieces", [])) | {x["code"] for x in res.get("pieces", []) if x.get("ok") or x.get("dup")})[-20000:]
+    sigs = c.get("sent_media", {})
+    byc = {p["code"]: p for p in pieces + upd}
+    for x in res.get("pieces", []) + res.get("media", []):
+        if (x.get("ok") or x.get("dup")) and x.get("code") in byc:
+            sigs[x["code"]] = _media_sig(byc[x["code"]])
+    c["sent_media"] = sigs
     if res.get("conflicts"):
         c["conflicts"] = (c.get("conflicts", []) + res["conflicts"])[-100:]
     if "price" in body:

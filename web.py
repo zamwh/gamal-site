@@ -26,6 +26,7 @@ SITE_DIR = os.path.join(BASE, "site")
 SITE = os.path.join(SITE_DIR, "index.html")
 MAX_BODY = 20_000
 MAX_UPLOAD = 4_500_000          # receipt image as base64 JSON
+MAX_SYNC = 12_000_000           # a branch sending new pieces with their three photos
 STATIC = re.compile(r"/(img|fonts|js|css)/([A-Za-z0-9_.-]+\.(png|jpg|jpeg|webp|woff2|js|css|svg))")
 CTYPES = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp", "woff2": "font/woff2",
           "js": "text/javascript; charset=utf-8", "css": "text/css; charset=utf-8", "svg": "image/svg+xml"}
@@ -130,7 +131,10 @@ class Server:
         if not p["show_online"]:
             return {"code": p["code"], "status": "hidden"}
         d = self.app.agent._public(p)
+        import core
+        roles = core.piece_roles(p)
         d.update({"photos": [self.app.agent._murl(f) for f in json.loads(p["photos"] or "[]")],
+                  "gallery": [{"role": k, "url": self.app.agent._murl(roles[k])} for k in core.PHOTO_ROLES if roles[k]],
                   "description": p["description"], "occasion": p["occasion"],
                   "breakdown": s.piece_price(p), "price_time": (s.current_prices() or {}).get("created_at")})
         return d
@@ -252,7 +256,8 @@ class Server:
             def do_POST(self):
                 path = urllib.parse.urlparse(self.path).path
                 ip = self._ip()
-                limit = MAX_UPLOAD if path in ("/api/request", "/api/pos/sync") else MAX_BODY
+                limit = (MAX_SYNC if path == "/api/pos/sync" else
+                         MAX_UPLOAD if path in ("/api/request", "/api/admin/photo") else MAX_BODY)
                 try:
                     n = int(self.headers.get("Content-Length") or 0)
                 except ValueError:

@@ -40,7 +40,7 @@ def watermark(im, logo_path, rel=0.11, opacity=0.6):
     return base.convert("RGB")
 
 
-def save_piece_photo(data_url, folder, logo_path=None, crop=None):
+def save_piece_photo(data_url, folder, logo_path=None, crop=None, enhance_it=True):
     m = re.match(r"data:image/(jpeg|jpg|png|webp|heic);base64,(.+)$", data_url or "", re.S)
     if not m:
         raise GoldError("الصورة لازم تكون JPG أو PNG")
@@ -52,11 +52,16 @@ def save_piece_photo(data_url, folder, logo_path=None, crop=None):
         im.load()
     except Exception:
         raise GoldError("ملف الصورة غير صالح")
-    return save_image(im, folder, logo_path, crop)
+    return save_image(im, folder, logo_path, crop, enhance_it)
 
 
-def save_image(im, folder, logo_path=None, crop=None):
-    im = enhance(im)
+def save_image(im, folder, logo_path=None, crop=None, enhance_it=True):
+    if enhance_it:
+        im = enhance(im)
+    else:                                    # already processed at the branch: keep it as it is
+        im = ImageOps.exif_transpose(im).convert("RGB")
+        if max(im.size) > MAX_EDGE:
+            im.thumbnail((MAX_EDGE, MAX_EDGE), Image.LANCZOS)
     if crop:
         im = im.crop(crop)
     im = watermark(im, logo_path)

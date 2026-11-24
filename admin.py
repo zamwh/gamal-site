@@ -10,6 +10,7 @@ import re
 import secrets
 import time
 
+import core
 from core import GoldError
 
 SESSIONS = {}          # token -> (user_id, expires)
@@ -69,11 +70,24 @@ def get(app, u, path, q):
             for p in s.list_pieces(search=(q.get("q") or "").strip()):
                 if p["status"] == "sold" and not q.get("sold"):
                     continue
+                roles = core.piece_roles(p)
+                cp = core.card_photo(p)
                 out.append({"code": p["code"], "title": (p["title"] if "title" in p.keys() else None) or p["type"],
+                            "photos": {k: bool(v) for k, v in roles.items()}, "thumb": "/media/" + cp if cp else None,
                             "type": p["type"], "karat": p["karat"], "weight": p["weight"], "status": p["status"],
                             "branch": p["branch_name"], "online": bool(p["show_online"]),
                             "price": p["price"] if p["status"] != "sold" else None})
             return out[:300]
+    if path == "/api/admin/piece_photos":
+        s.require(u["id"], "owner", "manager")
+        with app.lock:
+            p = s.piece(str(q.get("code", "")))
+            roles = core.piece_roles(p)
+            return {"code": p["code"], "title": p["title"] or p["type"],
+                    "roles": {k: ("/media/" + v if v else None) for k, v in roles.items()}}
+    if path == "/api/admin/branches":
+        with app.lock:
+            return [{"id": b["id"], "name": b["name"]} for b in s.branches()]
     if path == "/api/admin/pos_keys":
         s.require(u["id"], "owner")
         import pos_sync
@@ -98,9 +112,9 @@ def get(app, u, path, q):
                 for r in rows:
                     try:
                         p = s.piece(r["code"])
-                        ph = json.loads(p["photos"] or "[]")
+                        cp = core.card_photo(p)
                         r.update({"title": p["title"] or p["type"], "status": p["status"],
-                                  "photo": "/media/" + ph[0] if ph else None})
+                                  "photo": "/media/" + cp if cp else None})
                     except GoldError:
                         r.update({"title": r["code"], "status": "?"})
             return rows
@@ -168,6 +182,21 @@ def post(app, u, path, d):
     if path == "/api/admin/ai_test":
         s.require(u["id"], "owner")
         return app.agent.test()
+    if path == "/api/admin/photo":
+        # one photo per request (phones on slow networks): saved, then put in its role
+        s.require(u["id"], "owner", "manager")
+        role = str(d.get("role", ""))
+        if role not in core.PHOTO_ROLES:
+            raise GoldError("نوع الصورة غير معروف")
+        code = str(d.get("code", "")).strip().upper()
+        name = None
+        if not d.get("remove"):
+            import media
+            from web import media_dir
+            name = media.save_piece_photo(str(d.get("data", "")), media_dir(s), getattr(app, "base_logo", None) or os.path.join(os.path.dirname(os.path.abspath(__file__)), "site", "img", "logo_night.png"), enhance_it=role != "card")
+        with app.lock:
+            p = s.set_piece_photos(u["id"], code, {role: name})
+            return {"ok": True, "roles": {k: ("/media/" + v if v else None) for k, v in core.piece_roles(p).items()}}
     with app.lock:
         if path == "/api/admin/sell":
             # one sale from any branch: recorded in the same sales system the shop uses; the piece turns SOLD at once
@@ -175,6 +204,13 @@ def post(app, u, path, d):
             code = str(d.get("code", "")).strip().upper()
             r = s.create_sale(u["id"], [{"code": code}], str(d.get("name", ""))[:80], str(d.get("phone", ""))[:20])
             return {"ok": True, "invoice": (r.get("number") if isinstance(r, dict) else None)}
+        if path == "/api/admin/piece_add":
+            s.require(u["id"], "owner", "manager")
+            p = s.add_piece(u["id"], str(d.get("type", "")).strip()[:30] or "قطعة", 21, d.get("weight"),
+                            "fixed" if d.get("making_mode") == "fixed" else "gram", float(d.get("making_value") or 0),
+                            str(d.get("branch_id", "")), "new", None, "", bool(d.get("show_online", True)),
+                            str(d.get("title", ""))[:80], [], "", str(d.get("occasion", ""))[:20], str(d.get("description", ""))[:400])
+            return {"ok": True, "code": p["code"]}
         if path == "/api/admin/piece_status":
             s.set_piece_status(u["id"], str(d.get("code", "")).upper(), str(d.get("status", "")), str(d.get("reason", ""))[:120])
             return {"ok": True}

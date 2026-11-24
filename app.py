@@ -182,14 +182,25 @@ class Api:
             self._need_login(), p["type"], p["karat"], p["weight"], p["making_mode"], p["making_value"],
             p["branch_id"], p.get("category", "new"), p.get("cost_per_gram") or None, p.get("notes", ""),
             p.get("show_online", True), p.get("title", ""), p.get("photos") or [], p.get("style", ""),
-            p.get("occasion", ""), p.get("description", "")))
+            p.get("occasion", ""), p.get("description", ""), media=p.get("media") or None))
 
-    def upload_photo(self, data_url):
-        """Staff uploads a photo (from PC or phone): cleaned, resized, watermarked, stored under media/."""
+    def upload_photo(self, data_url, role=None):
+        """Staff uploads a photo (from PC or phone): resized, watermarked, stored under media/.
+        The styled velvet shot is already finished, so only real photos get the gentle clarity pass."""
         def f():
             self._need_login()
             from web import media_dir
-            return media.save_piece_photo(data_url, media_dir(self._s), self._app.base_logo)
+            return media.save_piece_photo(data_url, media_dir(self._s), self._app.base_logo, enhance_it=role != "card")
+        return self._run(f)
+
+    def set_piece_photos(self, code, roles):
+        return self._run(lambda: self._s.set_piece_photos(self._need_login(), code, roles))
+
+    def piece_photos(self, code):
+        def f():
+            import core
+            p = self._s.piece(code)
+            return {"code": p["code"], "title": p["title"] or p["type"], "roles": core.piece_roles(p)}
         return self._run(f)
 
     def set_piece_media(self, code, d):
@@ -342,7 +353,7 @@ class Api:
                     try:
                         p = self._s.piece(r["code"])
                         r.update({"title": p["title"] or p["type"], "status": p["status"],
-                                  "photo": (json.loads(p["photos"] or "[]") or [None])[0]})
+                                  "photo": __import__("core").card_photo(p)})
                     except GoldError:
                         r.update({"title": r["code"], "status": "?"})
                     r["sold"] = bool(self._s.one(

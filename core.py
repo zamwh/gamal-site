@@ -209,7 +209,7 @@ class Store:
     MIGRATIONS = {
         "pieces": [("title", "TEXT"), ("photos", "TEXT NOT NULL DEFAULT '[]'"), ("style", "TEXT"),
                    ("occasion", "TEXT"), ("description", "TEXT"), ("traits", "TEXT"),
-                   ("title_en", "TEXT")],
+                   ("title_en", "TEXT"), ("media", "TEXT")],
         "reservations": [("kind", "TEXT NOT NULL DEFAULT 'deposit'"), ("payer_name", "TEXT"),
                          ("receipt", "TEXT"), ("amount", "REAL"), ("source", "TEXT"), ("session", "TEXT"),
                          ("pickup", "TEXT")],
@@ -345,7 +345,7 @@ class Store:
 
     def add_piece(self, uid, type_, karat, weight, making_mode, making_value, branch_id,
                   category="new", cost_per_gram=None, notes="", show_online=True,
-                  title="", photos=None, style="", occasion="", description="", code=None):
+                  title="", photos=None, style="", occasion="", description="", code=None, media=None):
         u = self.user(uid)
         if int(karat) not in KARATS:
             raise GoldError("عيار غير مدعوم")
@@ -370,7 +370,33 @@ class Store:
         self.db.execute("UPDATE pieces SET title=?, photos=?, style=?, occasion=?, description=? WHERE id=?",
                         ((title or "").strip() or None, json.dumps(list(photos or []), ensure_ascii=False),
                          style or None, occasion or None, (description or "").strip() or None, pid))
+        if media:
+            self._write_roles(pid, {k: v for k, v in media.items() if k in PHOTO_ROLES}, None)
         self.log(uid, "piece_add", "piece", pid, {"code": code, "weight": weight, "karat": karat})
+        self.db.commit()
+        return self.piece(code)
+
+    # ---- piece photos by role: card (velvet catalog shot), macro (real close-up), orig (untouched real photo)
+    def _write_roles(self, pid, roles, old):
+        cur = dict(old or {})
+        for k, v in roles.items():
+            cur[k] = v or None
+        ordered = [cur.get(k) for k in PHOTO_ROLES if cur.get(k)]
+        self.db.execute("UPDATE pieces SET media=?, photos=? WHERE id=?",
+                        (json.dumps(cur, ensure_ascii=False), json.dumps(list(dict.fromkeys(ordered)), ensure_ascii=False), pid))
+        return cur
+
+    def set_piece_photos(self, uid, code, roles):
+        """roles: {"card"|"macro"|"orig": filename or None to remove}. Website order: card, macro, orig."""
+        self.require(uid, "owner", "manager")
+        p = self.piece(code)
+        roles = {k: v for k, v in (roles or {}).items() if k in PHOTO_ROLES}
+        old = piece_roles(p)
+        cur = self._write_roles(p["id"], roles, old)
+        if cur.get("orig") != old.get("orig"):
+            self.db.execute("UPDATE pieces SET traits=NULL WHERE id=? AND (traits IS NULL OR traits NOT LIKE '%\"src\": \"manual\"%')", (p["id"],))
+        self.db.execute("UPDATE pieces SET updated_at=? WHERE id=?", (now(), p["id"]))
+        self.log(uid, "piece_photos", "piece", p["id"], {"code": p["code"], "roles": {k: bool(v) for k, v in cur.items()}})
         self.db.commit()
         return self.piece(code)
 
@@ -841,6 +867,34 @@ def reset_demo(base_dir=BASE_DIR):
     if os.path.exists(path):
         os.remove(path)
     return Store("demo", base_dir)
+
+
+PHOTO_ROLES = ("card", "macro", "orig")
+
+
+def piece_roles(p):
+    """{"card", "macro", "orig"} for a piece row/dict. Older pieces have only a photos list: its first photo is the original."""
+    try:
+        m = json.loads((p["media"] if "media" in p.keys() else None) or "{}") if hasattr(p, "keys") else {}
+    except Exception:
+        m = {}
+    if not any(m.get(k) for k in PHOTO_ROLES):
+        try:
+            ph = json.loads(p["photos"] or "[]")
+        except Exception:
+            ph = []
+        m = {"card": None, "macro": None, "orig": ph[0] if ph else None}
+    return {k: m.get(k) for k in PHOTO_ROLES}
+
+
+def card_photo(p):
+    r = piece_roles(p)
+    return r["card"] or r["orig"] or r["macro"]
+
+
+def original_photo(p):
+    r = piece_roles(p)
+    return r["orig"] or r["card"]
 
 
 def seed_demo(s):

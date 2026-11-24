@@ -225,10 +225,12 @@
     var base = BY[code]; if (!base) { $('#pieceWrap').innerHTML = '<div class="empty" style="margin:160px 0">هذه القطعة بيعت أو لم تعد متاحة. <a class="link" href="#collections">شاهد القطع المتوفرة</a></div>'; return }
     openCode = code; T('piece_view', code, null, via === 'ai');
     function draw(p) {
-      var photos = (p.photos && p.photos.length ? p.photos : [p.photo]).filter(Boolean), pct = SITE.deposit_pct || 10;
+      var gal = (p.gallery && p.gallery.length ? p.gallery : (p.photos && p.photos.length ? p.photos : [p.photo]).filter(Boolean).map(function (u) { return { role: '', url: u } }));
+      var photos = gal.map(function (g) { return g.url }), pct = SITE.deposit_pct || 10;
+      var RL = { card: 'عرض', macro: 'تفاصيل قريبة', orig: 'الصورة الحقيقية' };
       var sim = SITE.pieces.filter(function (x) { return x.code !== p.code && (x.kind === p.kind || x.style === p.style) }).slice(0, 4);
-      $('#pieceWrap').innerHTML = '<div class="pd"><div class="gal"><div class="main" id="gm"><img src="' + esc(photos[0] || '') + '" alt="' + esc(p.title) + '"></div>' +
-        (photos.length > 1 ? '<div class="th">' + photos.map(function (u, i) { return '<button' + (i ? '' : ' class="on"') + ' data-ph="' + esc(u) + '"><img src="' + esc(u) + '" alt=""></button>' }).join('') + '</div>' : '') + '</div>' +
+      $('#pieceWrap').innerHTML = '<div class="pd"><div class="gal"><div class="main" id="gm" data-role="' + esc(gal[0] ? gal[0].role : '') + '"><img src="' + esc(photos[0] || '') + '" alt="' + esc(p.title) + '"><span class="gcap" id="gcap">' + (gal[0] && gal[0].role === 'orig' && gal.length > 1 ? 'صورة حقيقية للقطعة بدون أي تعديل' : '') + '</span></div>' +
+        (photos.length > 1 ? '<div class="th">' + gal.map(function (g, i) { return '<button' + (i ? '' : ' class="on"') + ' data-ph="' + esc(g.url) + '" data-i="' + i + '"><img src="' + esc(g.url) + '" alt="">' + (RL[g.role] ? '<small>' + RL[g.role] + '</small>' : '') + '</button>' }).join('') + '</div>' : '') + '</div>' +
         '<div class="pi"><div class="crumbs"><a href="#home">الرئيسية</a><span>/</span><a href="#collections">المجموعات</a><span>/</span><span>' + esc(p.kind) + '</span></div>' +
         '<h1>' + esc(p.title) + '</h1>' + (p.status === 'reserved' ? '<span class="avail" style="color:var(--warn)"><i></i>محجوزة حالياً</span>' : '<span class="avail"><i></i>متوفرة · تستلمها من الفرع اللي يريحك</span>') +
         '<div class="specs"><div><small>الوزن</small><b class="num">' + p.weight.toFixed(2) + '</b> جم</div><div><small>العيار</small><b class="num">21K</b></div><div><small>رقم القطعة</small><b class="num">' + esc(p.code) + '</b></div></div>' +
@@ -238,8 +240,22 @@
         '<button class="btn" data-fav2>' + (inList(p.code) ? 'في اختياراتي' : 'أضف لاختياراتي') + '</button><button class="btn" data-open-chat="أبغى أعرف أكثر عن ' + esc(p.title) + ' (' + p.code + ')"><svg class="b"><use href="#s-spark"/></svg>اسأل المستشار</button>' +
         '<a class="btn wide" href="#" data-ask><svg class="b"><use href="#s-wa"/></svg>استفسر عنها على واتساب</a><a class="btn wide" href="#" data-share>شاركها مع أحد</a></div></div></div>' +
         (sim.length ? '<section class="band" style="padding-top:20px"><div class="sh"><div><span class="eyebrow">تنسجم معها</span><h2 class="ttl">قطع <em>مشابهة</em></h2></div></div><div class="grid" id="simGrid">' + sim.map(function (x) { return card(x) }).join('') + '</div></section>' : '');
-      $$('[data-ph]').forEach(function (b) { b.onclick = function () { $('#gm img').src = b.dataset.ph; $$('[data-ph]').forEach(function (x) { x.classList.toggle('on', x === b) }) } });
-      var gm = $('#gm'); gm.onclick = function () { gm.classList.toggle('zoom'); if (!gm.classList.contains('zoom')) $('#gm img').style.transform = '' };
+      var gi = 0;
+      function showG(i) {
+        if (!gal.length) return; gi = (i + gal.length) % gal.length; var g = gal[gi];
+        $('#gm img').src = g.url; $('#gm').dataset.role = g.role || '';
+        $('#gcap').textContent = g.role === 'orig' && gal.length > 1 ? GM_tr('صورة حقيقية للقطعة بدون أي تعديل') : '';
+        $$('[data-ph]').forEach(function (x) { x.classList.toggle('on', +x.dataset.i === gi) });
+      }
+      $$('[data-ph]').forEach(function (b) { b.onclick = function () { showG(+b.dataset.i) } });
+      var gm = $('#gm'), sx = null, sy = 0, swiped = false;
+      gm.addEventListener('touchstart', function (e) { var t = e.changedTouches[0]; sx = t.clientX; sy = t.clientY; swiped = false }, { passive: true });
+      gm.addEventListener('touchend', function (e) {
+        if (sx === null || gal.length < 2) return; var t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy; sx = null;
+        if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy)) return;
+        swiped = true; var rtl = document.documentElement.dir !== 'ltr'; showG(gi + ((dx < 0) !== rtl ? 1 : -1));
+      }, { passive: true });
+      gm.onclick = function () { if (swiped) { swiped = false; return } gm.classList.toggle('zoom'); if (!gm.classList.contains('zoom')) $('#gm img').style.transform = '' };
       gm.onmousemove = function (e) { if (!gm.classList.contains('zoom')) return; var r = gm.getBoundingClientRect(); $('#gm img').style.transform = 'scale(2.2)'; $('#gm img').style.transformOrigin = ((e.clientX - r.left) / r.width * 100) + '% ' + ((e.clientY - r.top) / r.height * 100) + '%' };
       $$('[data-buy]').forEach(function (b) { b.onclick = function () { checkout(p, b.dataset.buy, via) } });
       $('[data-fav2]').onclick = function () { toggleList(p.code, via); this.textContent = inList(p.code) ? 'في اختياراتي' : 'أضف لاختياراتي' };

@@ -75,18 +75,94 @@
     if (ME.role === 'accountant') { TAB = 'requests'; return load() }
     api('/api/admin/stock?q=' + encodeURIComponent(STQ)).then(function (rows) {
       mp.innerHTML = head('المخزون والبيع') + '<div class="sub" style="margin:-6px 0 16px">نفس مخزون المحل. القطعة اللي تُباع هنا تختفي من الموقع خلال ثوانٍ، ولا يقدر أحد يحجزها.</div>' +
-        '<div class="box"><input class="inp" id="stq" placeholder="ابحث برقم القطعة أو نوعها" value="' + esc(STQ) + '" style="width:100%;margin-bottom:14px">' +
-        '<table class="tbl"><thead><tr><th>القطعة</th><th>الوزن</th><th>الفرع</th><th>الحالة</th><th>السعر الآن</th><th></th></tr></thead><tbody>' +
-        (rows.length ? rows.map(function (r) { var s = STN[r.status] || [r.status, '']; return '<tr><td>' + esc(r.title) + ' <span class="sub" style="margin:0">' + esc(r.code) + '</span></td><td class="n">' + Number(r.weight).toFixed(2) + '</td><td>' + esc(r.branch) + '</td><td><span class="tag ' + s[1] + '">' + s[0] + '</span>' + (r.online ? '' : ' <span class="sub" style="margin:0">مخفية من الموقع</span>') + '</td><td class="n">' + (r.price ? fmt(r.price) : '—') + '</td><td>' +
-          (r.status === 'available' || r.status === 'reserved' ? '<button class="btn s g" data-sell="' + esc(r.code) + '">تسجيل بيع</button> ' : '') +
-          (r.status === 'available' ? '<button class="btn s" data-st="inactive" data-c="' + esc(r.code) + '">إيقاف</button>' : r.status === 'inactive' ? '<button class="btn s" data-st="available" data-c="' + esc(r.code) + '">تفعيل</button>' : '') + '</td></tr>' }).join('') : '<tr><td colspan="6" class="sub">لا توجد قطع</td></tr>') + '</tbody></table></div>';
+        '<div class="box"><div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap"><input class="inp" id="stq" placeholder="ابحث برقم القطعة أو نوعها" value="' + esc(STQ) + '" style="flex:1;min-width:180px"><button class="btn g" id="addP">+ قطعة جديدة</button></div>' +
+        '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="tbl"><thead><tr><th></th><th>القطعة</th><th>الوزن</th><th>الفرع</th><th>الحالة</th><th>السعر الآن</th><th></th></tr></thead><tbody>' +
+        (rows.length ? rows.map(function (r) { var s = STN[r.status] || [r.status, '']; return '<tr><td class="thc">' + (r.thumb ? '<img src="' + esc(r.thumb) + '" alt="">' : '') + '</td><td>' + esc(r.title) + ' <span class="sub" style="margin:0">' + esc(r.code) + '</span>' + phState(r.photos) + '</td><td class="n">' + Number(r.weight).toFixed(2) + '</td><td>' + esc(r.branch) + '</td><td><span class="tag ' + s[1] + '">' + s[0] + '</span>' + (r.online ? '' : ' <span class="sub" style="margin:0">مخفية من الموقع</span>') + '</td><td class="n">' + (r.price ? fmt(r.price) : '—') + '</td><td>' +
+          '<button class="btn s" data-ph="' + esc(r.code) + '">الصور</button> ' + (r.status === 'available' || r.status === 'reserved' ? '<button class="btn s g" data-sell="' + esc(r.code) + '">تسجيل بيع</button> ' : '') +
+          (r.status === 'available' ? '<button class="btn s" data-st="inactive" data-c="' + esc(r.code) + '">إيقاف</button>' : r.status === 'inactive' ? '<button class="btn s" data-st="available" data-c="' + esc(r.code) + '">تفعيل</button>' : '') + '</td></tr>' }).join('') : '<tr><td colspan="7" class="sub">لا توجد قطع</td></tr>') + '</tbody></table></div></div>';
       var t; $('#stq').oninput = function (e) { clearTimeout(t); t = setTimeout(function () { STQ = e.target.value; load() }, 400) };
       mp.querySelectorAll('[data-sell]').forEach(function (b) { b.onclick = function () {
         var code = b.dataset.sell, name = prompt('تسجيل بيع القطعة ' + code + '\nاسم العميل (اختياري):', ''); if (name === null) return;
         b.disabled = true; api('/api/admin/sell', { code: code, name: name }).then(function (r) { toast('تم البيع — فاتورة ' + (r.invoice || '')); load() }).catch(function (e) { b.disabled = false; toast(e.error || 'خطأ') });
       } });
+      mp.querySelectorAll('[data-ph]').forEach(function (b) { b.onclick = function () { photoSheet(b.dataset.ph) } });
+      $('#addP').onclick = addSheet;
       mp.querySelectorAll('[data-st]').forEach(function (b) { b.onclick = function () { api('/api/admin/piece_status', { code: b.dataset.c, status: b.dataset.st }).then(function () { toast('تم'); load() }).catch(function (e) { toast(e.error || 'خطأ') }) } });
     }).catch(function (e) { mp.innerHTML = '<div class="sub">' + esc(e.error || 'خطأ') + '</div>' });
+  }
+  /* ---- piece photos: velvet card shot / real close-up / untouched original ---- */
+  var ROLES = [['card', 'صورة العرض (مخمل)', 'تظهر في بطاقة الموقع'], ['macro', 'لقطة قريبة (ماكرو)', 'داخل التفاصيل'], ['orig', 'الصورة الأصلية', 'حقيقية بدون تعديل']];
+  function phState(ph) {
+    ph = ph || {};
+    return '<div class="phs">' + [['card', 'مخمل'], ['macro', 'ماكرو'], ['orig', 'أصلية']].map(function (x) { return '<i class="' + (ph[x[0]] ? 'on' : '') + '">' + x[1] + '</i>' }).join('') + '</div>';
+  }
+  function sheet(html) {
+    var o = document.createElement('div'); o.className = 'asheet'; o.innerHTML = '<div class="asb">' + html + '</div>';
+    o.onclick = function (e) { if (e.target === o) close() };
+    function close() { o.remove(); document.body.style.overflow = '' }
+    document.body.appendChild(o); document.body.style.overflow = 'hidden';
+    return { el: o, close: close };
+  }
+  function shrink(file) {
+    return new Promise(function (ok, bad) {
+      var r = new FileReader(); r.onerror = bad;
+      r.onload = function () { var im = new Image(); im.onerror = bad; im.onload = function () {
+        var m = 2000, k = Math.min(1, m / Math.max(im.width, im.height)), c = document.createElement('canvas');
+        c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        ok(c.toDataURL('image/jpeg', 0.9)) }; im.src = r.result };
+      r.readAsDataURL(file);
+    });
+  }
+  function photoSheet(code) {
+    api('/api/admin/piece_photos?code=' + encodeURIComponent(code)).then(function (d) {
+      var sh = sheet('<h3 class="h" style="margin:0 0 4px">صور القطعة ' + esc(d.code) + '</h3><div class="sub" style="margin:0 0 14px">' + esc(d.title) + '</div><div class="pslots" id="psl"></div>' +
+        '<div class="sub" style="margin:12px 0 0">البطاقة تعرض صورة المخمل، ولو ما فيه تعرض الأصلية. كل صورة تنحفظ أول ما تختارها.</div><div style="margin-top:16px"><button class="btn full" id="phc">تم</button></div>');
+      var roles = d.roles;
+      function draw() {
+        $('#psl', sh.el).innerHTML = ROLES.map(function (r) { var u = roles[r[0]];
+          return '<label class="pslot' + (u ? ' has' : '') + '" data-r="' + r[0] + '"><input type="file" accept="image/*" hidden>' + (u ? '<img src="' + esc(u) + '" alt=""><button type="button" class="px" data-x="' + r[0] + '">×</button>' : '<span class="pplus">+</span>') + '<b>' + r[1] + '</b><small>' + r[2] + '</small></label>' }).join('');
+        $$('.pslot input', sh.el).forEach(function (inp) { inp.onchange = function () {
+          var f = inp.files && inp.files[0], role = inp.parentNode.dataset.r; if (!f) return;
+          var sl = inp.parentNode; sl.classList.add('busy'); sl.querySelector('b').textContent = 'جاري الرفع...';
+          shrink(f).then(function (data) { return api('/api/admin/photo', { code: d.code, role: role, data: data }) })
+            .then(function (r) { roles = r.roles; draw(); toast('تم حفظ الصورة') })
+            .catch(function (e) { toast((e && e.error) || 'تعذر رفع الصورة'); draw() });
+        } });
+        $$('[data-x]', sh.el).forEach(function (b) { b.onclick = function (e) { e.preventDefault(); e.stopPropagation();
+          if (!confirm('تحذف هذي الصورة؟')) return;
+          api('/api/admin/photo', { code: d.code, role: b.dataset.x, remove: true }).then(function (r) { roles = r.roles; draw() }).catch(function (e) { toast((e && e.error) || 'خطأ') }) } });
+      }
+      draw();
+      $('#phc', sh.el).onclick = function () { sh.close(); load() };
+    }).catch(function (e) { toast((e && e.error) || 'خطأ') });
+  }
+  var KINDS = ['طقم', 'عقد', 'سلسلة', 'حلق', 'خاتم', 'أسورة', 'كف', 'حزام', 'جنيه'];
+  function addSheet() {
+    api('/api/admin/branches').then(function (brs) {
+      var kind = KINDS[0];
+      var sh = sheet('<h3 class="h" style="margin:0 0 14px">تسجيل قطعة جديدة</h3>' +
+        '<div class="fld"><span>النوع</span><div class="kpills" id="kp">' + KINDS.map(function (k, i) { return '<button type="button" class="' + (i ? '' : 'on') + '">' + k + '</button>' }).join('') + '</div><input class="inp" id="nk" placeholder="نوع ثاني؟ اكتبه هنا" style="margin-top:8px"></div>' +
+        '<label class="fld"><span>اسم القطعة في الموقع</span><input class="inp" id="nt" placeholder="مثل: حزام الورد العريض"></label>' +
+        '<div class="g2f"><label class="fld"><span>الوزن (جرام)</span><input class="inp" id="nw" type="number" step="0.001" inputmode="decimal"></label>' +
+        '<label class="fld"><span>الفرع</span><select class="inp" id="nb">' + brs.map(function (b) { return '<option value="' + esc(b.id) + '">' + esc(b.name) + '</option>' }).join('') + '</select></label>' +
+        '<label class="fld"><span>المصنعية</span><select class="inp" id="nm"><option value="gram">على الجرام</option><option value="fixed">مبلغ ثابت</option></select></label>' +
+        '<label class="fld"><span>قيمة المصنعية</span><input class="inp" id="nv" type="number" inputmode="numeric"></label></div>' +
+        '<label class="fld"><span>المناسبة (اختياري)</span><select class="inp" id="no"><option value="">—</option><option>عرس</option><option>خطوبة</option><option>هدية</option><option>يومي</option></select></label>' +
+        '<label class="fld"><span>وصف مختصر لشكلها (يقرأه المستشار)</span><input class="inp" id="nd" placeholder="مثل: حزام بوحدات ورد متصلة"></label>' +
+        '<label style="display:flex;gap:8px;align-items:center;margin:10px 0"><input type="checkbox" id="non" checked> تظهر في الموقع</label>' +
+        '<div style="display:flex;gap:10px;margin-top:8px"><button class="btn g" id="nsv" style="flex:1">حفظ وإضافة الصور</button><button class="btn" id="ncl">إلغاء</button></div>');
+      $$('#kp button', sh.el).forEach(function (b) { b.onclick = function () { kind = b.textContent; $('#nk', sh.el).value = ''; $$('#kp button', sh.el).forEach(function (x) { x.classList.toggle('on', x === b) }) } });
+      $('#ncl', sh.el).onclick = sh.close;
+      $('#nsv', sh.el).onclick = function () {
+        var w = +$('#nw', sh.el).value, t = $('#nk', sh.el).value.trim() || kind;
+        if (!(w > 0)) return toast('اكتب الوزن');
+        var btn = this; btn.disabled = true;
+        api('/api/admin/piece_add', { type: t, title: $('#nt', sh.el).value.trim(), weight: w, branch_id: $('#nb', sh.el).value, making_mode: $('#nm', sh.el).value,
+          making_value: +$('#nv', sh.el).value || 0, occasion: $('#no', sh.el).value, description: $('#nd', sh.el).value.trim(), show_online: $('#non', sh.el).checked })
+          .then(function (r) { sh.close(); toast('تمت إضافة ' + r.code); photoSheet(r.code) })
+          .catch(function (e) { btn.disabled = false; toast((e && e.error) || 'خطأ') });
+      };
+    });
   }
   function overview(mp) {
     api('/api/admin/analytics?s=overview&' + range()).then(function (d) {
