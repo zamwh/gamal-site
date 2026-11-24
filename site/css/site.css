@@ -825,3 +825,4 @@ html.day .catp-in{background:rgba(250,246,238,.96)}
 #brideBanner{min-height:86svh}
 @media(max-width:1000px){.shop .grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:760px){.shop .grid{grid-template-columns:1fr 1fr;gap:14px 10px}.stabs{gap:18px;margin:0 -20px 20px;padding:0 20px}.shop-h .ttl{font-size:30px}}
+.shop{overflow:hidden}
