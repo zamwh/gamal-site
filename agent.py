@@ -431,7 +431,10 @@ class SalesAgent:
         k = norm(kind)
         words = next((ws for name, ws in KINDS.items() if norm(name) == k or k in ws), [k])
         hay = norm(f"{p['type']} {p['title'] if 'title' in p.keys() else ''}")
-        return any(w in hay for w in words)
+        if any(w in hay for w in words):
+            return True
+        desc = norm((p["description"] if "description" in p.keys() else "") or "")
+        return "عقد" in words and "طقم" in hay and "عقد" in desc     # a set includes a necklace
 
     def _tool(self, name, args, ctx):
         if name == "search_pieces":
