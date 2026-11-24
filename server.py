@@ -72,6 +72,7 @@ def main():
     app.bot = telegram_bot.Bot(app)
     app.bot.start()
     app.store.notify_cb = app.bot.notify        # every sale, reservation and restock reminder reaches the owner on Telegram
+    app.store.piece_cb = app.bot.piece_alert     # a new piece asks for its photos, sent straight from the phone
     while True:
         time.sleep(3600)
         try:

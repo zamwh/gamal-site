@@ -74,7 +74,12 @@
   function stock(mp) {
     if (ME.role === 'accountant') { TAB = 'requests'; return load() }
     api('/api/admin/stock?q=' + encodeURIComponent(STQ)).then(function (rows) {
+      // pieces still waiting for photos come first, so they get photographed from the phone
+      var need = function (r) { return r.photos && (!r.photos.card || !r.photos.orig) && r.status !== 'sold' ? 0 : 1 };
+      rows = rows.slice().sort(function (a, b) { return need(a) - need(b) });
+      var nNeed = rows.filter(function (r) { return need(r) === 0 }).length;
       mp.innerHTML = head('المخزون والبيع') + '<div class="sub" style="margin:-6px 0 16px">نفس مخزون المحل. القطعة اللي تُباع هنا تختفي من الموقع خلال ثوانٍ، ولا يقدر أحد يحجزها.</div>' +
+        (nNeed ? '<div class="box" style="border-color:rgba(217,184,114,.5);margin-bottom:14px"><b>' + nNeed + ' قطعة بانتظار الصور</b><div class="sub" style="margin:4px 0 0">اضغط "الصور" وصوّر من الجوال مباشرة. أو من التليجرام: أزرار الصور تحت تنبيه القطعة الجديدة، أو /photos</div></div>' : '') +
         '<div class="box"><div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap"><input class="inp" id="stq" placeholder="ابحث برقم القطعة أو نوعها" value="' + esc(STQ) + '" style="flex:1;min-width:180px"><button class="btn g" id="addP">+ قطعة جديدة</button></div>' +
         '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="tbl"><thead><tr><th></th><th>القطعة</th><th>الوزن</th><th>الفرع</th><th>الحالة</th><th>السعر الآن</th><th></th></tr></thead><tbody>' +
         (rows.length ? rows.map(function (r) { var s = STN[r.status] || [r.status, '']; return '<tr><td class="thc">' + (r.thumb ? '<img src="' + esc(r.thumb) + '" alt="">' : '') + '</td><td>' + esc(r.title) + ' <span class="sub" style="margin:0">' + esc(r.code) + '</span>' + phState(r.photos) + '</td><td class="n">' + Number(r.weight).toFixed(2) + '</td><td>' + esc(r.branch) + '</td><td><span class="tag ' + s[1] + '">' + s[0] + '</span>' + (r.online ? '' : ' <span class="sub" style="margin:0">مخفية من الموقع</span>') + '</td><td class="n">' + (r.price ? fmt(r.price) : '—') + '</td><td>' +

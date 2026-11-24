@@ -382,7 +382,11 @@ class Store:
                             ((dt.date.today() + dt.timedelta(days=days)).isoformat(), pid))
         self.log(uid, "piece_add", "piece", pid, {"code": code, "weight": weight, "karat": karat})
         self.db.commit()
-        return self.piece(code)
+        p = self.piece(code)
+        if not getattr(self, "_quiet", False):
+            import ops
+            ops.on_new_piece(self, p)       # "new piece, photos needed" with buttons on Telegram
+        return p
 
     # ---- piece photos by role: card (velvet catalog shot), macro (real close-up), orig (untouched real photo)
     def _write_roles(self, pid, roles, old):
@@ -940,6 +944,14 @@ def original_photo(p):
 
 
 def seed_demo(s):
+    s._quiet = True
+    try:
+        _seed_demo(s)
+    finally:
+        s._quiet = False
+
+
+def _seed_demo(s):
     branches = [("الفرع الأول", "مركز جرعان — المحل رقم 6", "", ""),
                 ("الفرع الثاني", "بجوار البوابة الرئيسية لمركز جرعان", "", ""),
                 ("الفرع الثالث", "السبل — داخل ون مول", "", "")]

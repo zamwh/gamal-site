@@ -6,6 +6,7 @@ import json
 import os
 import threading
 import time
+import urllib.parse
 import urllib.request
 
 import core
@@ -104,6 +105,43 @@ def _pending_media(s, c):
             if p["code"] in sent and sigs.get(p["code"]) != _media_sig(p)]
 
 
+def _pull_photos(s, c, stock, limit=6):
+    from core import piece_roles, PHOTO_ROLES
+    folder = os.path.join(s.base_dir, "media", s.mode)
+    os.makedirs(folder, exist_ok=True)
+    n = 0
+    sigs = c.setdefault("sent_media", {})
+    for x in stock:
+        srv = x.get("media") or {}
+        p = s.one("SELECT * FROM pieces WHERE code=?", (x["code"],))
+        if not p or not any(srv.values()):
+            continue
+        loc = piece_roles(p)
+        want = {k: srv[k] for k in PHOTO_ROLES if srv.get(k) and not loc.get(k)}
+        if not want:
+            continue
+        got = {}
+        for k, name in want.items():
+            if n >= limit:
+                break
+            fp = os.path.join(folder, name)
+            if not os.path.exists(fp):
+                with urllib.request.urlopen(c["url"] + "/media/" + urllib.parse.quote(name), timeout=30) as r:
+                    data = r.read()
+                with open(fp, "wb") as f:
+                    f.write(data)
+                n += 1
+            got[k] = name
+        if got:
+            merged = dict(loc, **got)
+            ordered = [merged[k] for k in PHOTO_ROLES if merged.get(k)]
+            s.db.execute("UPDATE pieces SET media=?, photos=? WHERE id=?", (json.dumps(merged), json.dumps(ordered), p["id"]))
+            s.db.commit()
+            if x["code"] in set(c.get("sent_pieces", [])):
+                sigs[x["code"]] = _media_sig(s.one("SELECT * FROM pieces WHERE id=?", (p["id"],)))   # came from the server: nothing to send back
+    _save(s, c)
+
+
 def run_once(s, timeout=25):
     c = _cfg(s)
     if not (c.get("url") and c.get("key")):
@@ -168,6 +206,11 @@ def run_once(s, timeout=25):
     for p in s.q("SELECT code FROM pieces WHERE status IN ('available','reserved')"):
         if p["code"] in known and p["code"] not in live:
             core.mark_sold_elsewhere(s, p["code"])
+    # photos added on the server (from the phone or Telegram) come down, so the cashier shows them too
+    try:
+        _pull_photos(s, c, res.get("stock", []))
+    except Exception as e:
+        print("photo pull:", e, flush=True)
     sp = res.get("prices") or {}
     if sp.get("k21_sell") and not c.get("price_pending") and (not pr or pr.get("k21_sell") != sp["k21_sell"] or pr.get("k21_buy") != sp["k21_buy"]):
         owner = s.one("SELECT id FROM users WHERE role='owner' ORDER BY id LIMIT 1")

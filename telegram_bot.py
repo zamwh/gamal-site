@@ -23,6 +23,7 @@ class Bot(threading.Thread):
         self.mode = {}          # staff chat id -> "staff" | "customer"
         self.status = "stopped"
         self.username = ""
+        self.waiting = {}       # staff chat id -> (piece code, photo role) after pressing a photo button
 
     # ---------- telegram calls
     def call(self, token, method, data=None, timeout=35):
@@ -72,6 +73,70 @@ class Bot(threading.Thread):
                 print("telegram notify:", e, flush=True)
         threading.Thread(target=go, daemon=True).start()
 
+    # ---------- piece photos from the phone: buttons -> send a photo -> saved in its place on the site
+    ROLES = (("card", "صورة المخمل"), ("macro", "اللقطة القريبة"), ("orig", "الصورة الأصلية"))
+
+    def _photo_buttons(self, code):
+        import core
+        with self.app.lock:
+            r = core.piece_roles(self.app.store.piece(code))
+        return [{"text": ("✓ " if r.get(k) else "+ ") + name, "callback_data": f"ph:{code}:{k}"} for k, name in self.ROLES]
+
+    def piece_alert(self, code):
+        """New piece entered in the shop program: ask for its photos."""
+        def go():
+            try:
+                with self.app.lock:
+                    c = cfg(self.app.store)
+                    p = self.app.store.piece(code)
+                token = (c.get("token") or "").strip()
+                if not token or not c.get("enabled", True):
+                    return
+                text = (f"قطعة جديدة {p['code']}\n{p['title'] or p['type']} · {float(p['weight']):.2f} جم\n"
+                        "اضغط نوع الصورة وأرسلها، وتنزل في الموقع على طول.")
+                for chat in list((c.get("staff") or {}).keys()):
+                    self.send(token, chat, text, self._photo_buttons(code))
+            except Exception as e:
+                print("piece_alert:", e, flush=True)
+        threading.Thread(target=go, daemon=True).start()
+
+    def _save_photo(self, token, chat, msg, code, role):
+        import core, media
+        from web import media_dir
+        fid = None
+        if msg.get("photo"):
+            fid = msg["photo"][-1]["file_id"]
+        elif (msg.get("document") or {}).get("mime_type", "").startswith("image/"):
+            fid = msg["document"]["file_id"]
+        if not fid:
+            return self.send(token, chat, "أرسل صورة.")
+        f = self.call(token, "getFile", {"file_id": fid})["result"]
+        raw = urllib.request.urlopen(f"https://api.telegram.org/file/bot{token}/{f['file_path']}", timeout=60).read()
+        from PIL import Image
+        import io
+        im = Image.open(io.BytesIO(raw))
+        im.load()
+        with self.app.lock:
+            s = self.app.store
+            logo = getattr(self.app, "base_logo", None) or os.path.join(os.path.dirname(os.path.abspath(__file__)), "site", "img", "logo_night.png")
+            name = media.save_image(im, media_dir(s), logo, None, role != "card")
+            owner = s.one("SELECT id FROM users WHERE role='owner' ORDER BY id LIMIT 1")["id"]
+            p = s.set_piece_photos(owner, code, {role: name})
+        self.waiting.pop(chat, None)
+        names = dict(self.ROLES)
+        miss = [names[k] for k, v in core.piece_roles(p).items() if not v]
+        self.send(token, chat, f"تم حفظ {names[role]} للقطعة {code} ونزلت في الموقع."
+                  + (f"\nباقي: {'، '.join(miss)}" if miss else "\nصور القطعة كاملة."), self._photo_buttons(code) if miss else None)
+
+    def _pending_list(self, token, chat):
+        import ops
+        with self.app.lock:
+            rows = ops.missing_photos(self.app.store, 10)
+        if not rows:
+            return self.send(token, chat, "كل القطع صورها كاملة.")
+        for r in rows:
+            self.send(token, chat, f"{r['code']} · {r['title']} · {r['weight']:.2f} جم", self._photo_buttons(r["code"]))
+
     # ---------- loop
     def run(self):
         while True:
@@ -112,12 +177,38 @@ class Bot(threading.Thread):
             msg = u.get("message") or {}
         text = (msg.get("text") or "").strip()
         chat, uid = msg.get("chat", {}).get("id"), str(msg.get("from", {}).get("id", ""))
-        if not chat or not text:
-            return
         app = self.app
         with app.lock:
             c = cfg(app.store)
         staff = uid in c["staff"]
+        # piece photos: a button press, then the photo (or a photo captioned "D000123 مخمل")
+        if staff and text.startswith("ph:"):
+            _, code, role = (text.split(":") + ["", ""])[:3]
+            if role in dict(self.ROLES):
+                self.waiting[chat] = (code, role)
+                return self.send(token, chat, f"أرسل الحين {dict(self.ROLES)[role]} للقطعة {code}.")
+        if staff and (msg.get("photo") or msg.get("document")):
+            cap = (msg.get("caption") or "").strip()
+            target = self.waiting.get(chat)
+            if cap:
+                import re as _re
+                m = _re.search(r"([A-Za-z]{1,3}\d{3,8})", cap)
+                role = "card" if any(w in cap for w in ("مخمل", "عرض")) else "macro" if any(w in cap for w in ("ماكرو", "قريب")) \
+                    else "orig" if any(w in cap for w in ("اصل", "أصل", "حقيق")) else (target[1] if target else "card")
+                if m:
+                    target = (m.group(1).upper(), role)
+            if not target:
+                return self.send(token, chat, "اضغط أول على نوع الصورة تحت القطعة، أو اكتب مع الصورة رقم القطعة ونوعها مثل: D000123 مخمل")
+            try:
+                with app.lock:
+                    app.store.piece(target[0])
+            except Exception:
+                return self.send(token, chat, f"ما لقيت قطعة برقم {target[0]}.")
+            return self._save_photo(token, chat, msg, target[0], target[1])
+        if not chat or not text:
+            return
+        if staff and text in ("/photos", "/صور"):
+            return self._pending_list(token, chat)
         if text.startswith("/admin"):
             code = text.split()[-1] if len(text.split()) > 1 else ""
             if code == c["link_code"]:
@@ -126,8 +217,9 @@ class Bot(threading.Thread):
                     c["link_code"] = f"{random.randint(100000, 999999)}"      # one use
                     app.store.set_setting("telegram", c)
                     app.store.db.commit()
-                self.send(token, chat, "تم ربطك بالوكيل الداخلي. اسألني عن المبيعات والمخزون والحجوزات والموقع.\n"
-                                       "للتجربة كزبون اكتب /customer وللرجوع /staff")
+                self.send(token, chat, "تم ربطك. يوصلك هنا كل بيع وكل حجز وتنبيهات الشراء، وكل قطعة جديدة تطلب صورها.\n"
+                                       "اسألني عن المبيعات والمخزون والحجوزات.\n"
+                                       "/photos القطع اللي ناقصها صور\n/customer تجربة كزبون، /staff للرجوع")
             else:
                 self.send(token, chat, "الرمز غير صحيح.")
             return

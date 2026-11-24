@@ -126,6 +126,38 @@ def on_sale(s, inv):
         print("on_sale:", e, flush=True)
 
 
+ROLE_AR = {"card": "صورة المخمل", "macro": "اللقطة القريبة", "orig": "الصورة الأصلية"}
+
+
+def missing_photos(s, limit=30):
+    from core import piece_roles
+    out = []
+    for p in s.q("SELECT * FROM pieces WHERE status IN ('available','reserved') ORDER BY created_at DESC LIMIT 400"):
+        r = piece_roles(p)
+        miss = [k for k in ("card", "macro", "orig") if not r.get(k)]
+        if miss:
+            out.append({"code": p["code"], "title": p["title"] or p["type"], "weight": p["weight"], "missing": miss, "roles": r})
+        if len(out) >= limit:
+            break
+    return out
+
+
+def on_new_piece(s, p):
+    try:
+        from core import piece_roles
+        r = piece_roles(p)
+        miss = [ROLE_AR[k] for k in ("card", "macro", "orig") if not r.get(k)]
+        title = f"قطعة جديدة {p['code']}: {p['title'] or p['type']} · {float(p['weight']):.2f} جم"
+        body = ("ناقصها: " + "، ".join(miss)) if miss else "صورها كاملة"
+        s.db.execute("INSERT INTO notifications (ts,kind,title,body,ref) VALUES (?,?,?,?,?)", (now(), "piece", title, body, p["code"]))
+        s.db.commit()
+        cb = getattr(s, "piece_cb", None)
+        if cb and miss:
+            cb(p["code"])
+    except Exception as e:
+        print("on_new_piece:", e, flush=True)
+
+
 def on_reservation(s, r):
     try:
         notify(s, "reservation", f"طلب {'شراء بتحويل كامل' if r.get('kind') == 'full' else 'حجز بعربون'} جديد — {r['code']}",

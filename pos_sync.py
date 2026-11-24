@@ -133,7 +133,8 @@ def sync(store, data):
         store.set_prices(owner, pr["k21_sell"], pr["k21_buy"], pound_sell=pr.get("pound_sell") or None,
                          pound_buy=pr.get("pound_buy") or None)
     stock = [{"code": p["code"], "status": p["status"], "type": p["type"], "weight": p["weight"], "karat": p["karat"],
-              "branch_id": p["branch_id"], "title": (p["title"] if "title" in p.keys() else None) or p["type"]}
+              "branch_id": p["branch_id"], "title": (p["title"] if "title" in p.keys() else None) or p["type"],
+              "media": core.piece_roles(p)}
              for p in store.list_pieces() if p["status"] in ("available", "reserved")]
     cur = store.current_prices() or {}
     return {"ok": True, "branch_id": branch_id, "media": media_out, "applied": applied, "conflicts": conflicts, "pieces": pieces_in, "stock": stock,
