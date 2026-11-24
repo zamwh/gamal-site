@@ -484,7 +484,7 @@
     el.innerHTML = '<div class="oh">' + (p.photo ? '<img src="' + esc(p.photo) + '" alt="">' : '') + '<div><b>' + esc(p.title) + '</b><span>' + moneyH(p.price) + '</span></div></div>' +
       '<button class="btn g full" data-k="deposit">احجزها بعربون ' + pct + '%</button><button class="btn full" data-k="full">اشترها بتحويل كامل · يثبت سعرها اليوم</button>' +
       '<a class="btn full wa2" target="_blank" rel="noopener"><svg class="b"><use href="#s-wa"/></svg>كلّم المبيعات على واتساب</a>';
-    var a = el.querySelector('.wa2'); a.href = o.wa || wa('السلام عليكم، شدّتني القطعة «' + p.title + '» (رقم ' + o.code + ') في موقعكم، وأبغى مساعدة في شرائها.') || '#';
+    var a = el.querySelector('.wa2'); a.href = o.wa || wa('السلام عليكم، شدّتني القطعة «' + p.title + '» (رقم ' + o.code + ') في موقعكم، وأبغى مساعدة في شرائها.\n' + location.origin + '/p/' + o.code) || '#';
     a.onclick = function (e) { T('ai_handoff_click', o.code, 'offer', 1); if (a.getAttribute('href') === '#') { e.preventDefault(); toast('رقم الواتساب يُضاف قريباً') } };
     $$('[data-k]', el).forEach(function (b) { b.onclick = function () {
       var piece = BY[o.code] || Object.assign({}, o, { title: p.title }); T('ai_offer_click', o.code, b.dataset.k, 1);
@@ -498,6 +498,8 @@
     addMsg(t, 'u'); $('#chatIn').value = ''; chips([]); T('ai_message', null, null, 1);
     var ty = addMsg('', 'a'); ty.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';
     var done = function (d) {
+      var fix = function (u) { return u ? u.replace(/%7BBASE%7D/g, encodeURIComponent(location.origin)) : u };
+      d.handoff = fix(d.handoff); if (d.offer) d.offer.wa = fix(d.offer.wa);
       busy = false; ty.remove(); addMsg(d.text || '…', 'a'); cards(d.pieces);
       if (d.handoff !== undefined) {
         var a = document.createElement('a'); a.className = 'handoff'; a.target = '_blank'; a.rel = 'noopener';

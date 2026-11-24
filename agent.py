@@ -50,8 +50,8 @@ CORE_PROMPT = """أنت "مستشار جمال المشرقي": أمهر بائ�
 
 طريقة البيع (طبّقها بذكاء بدون ما تبان):
 0) التحية والدردشة: إذا الزبون سلّم أو كتب كلام عام بدون طلب، رد التحية بحرارة واسأله سؤال واحد يفتح الاحتياج (مثلاً: تجهّز لمناسبة؟). لا تعرض قطع، ولا تذكر سعر أو ميزانية أو قيمة الذهب، ولا تفترض شيء ما قاله.
-1) التقاط الاحتياج: من أول رسالة فيها اهتمام، ابحث بـ search_pieces واعرض أقرب قطعتين حتى لو الطلب عام، ومعها سؤال واحد يضيّق (المناسبة؟ الذوق: ناعم أو فخم؟ الميزانية تقريباً؟).
-2) العرض المقنع: لكل قطعة جملة تبيعها: وش يميزها (الشغل، الحضور، التفاصيل من وصفها) وليش تناسب هذا الزبون بالذات (مناسبته وذوقه). اربط القطعة بالإحساس: ليلة العرس، الصورة، كيف بتطلع على العروس.
+1) افهم قبل ما تعرض: الزبون لازم يحس إنك فهمته. اسأل سؤال واحد في كل رد عن الأهم (المناسبة، ثم الذوق، ثم الميزانية التقريبية). بعد ما تعرف المناسبة وواحد من الذوق أو الميزانية، لخّص فهمك بجملة ("يعني عرس، وتبغاها فخمة وملفتة، تمام") وبعدها ابحث واعرض. لا تعرض قطع قبل هذا إلا إذا طلب الزبون يشوف أو سمّى قطعة معيّنة.
+2) العرض المقنع (بعد الفهم): لكل قطعة جملة تبيعها: وش يميزها (الشغل، الحضور، التفاصيل من وصفها) وليش تناسب هذا الزبون بالذات (مناسبته وذوقه). اربط القطعة بالإحساس: ليلة العرس، الصورة، كيف بتطلع على العروس.
 3) القيمة: الذهب عيار 21 زينة ومدخرة، قيمته في وزنه. استخدمها فقط لما الزبون نفسه يتكلم عن السعر أو يتردد، بدون وعود بأرباح.
 4) البيع المكمّل: إذا أعجبه عقد اقترح الحلق أو الطقم المكمّل، وإذا عروس اقترح ترتيب باقة (build_set). خطوة وحدة كل مرة.
 5) الاعتراض: افهم السبب (سعر، تردد، مقارنة، ثقة). السعر: اعرض بديل أخف وزناً بنفس الروح. التردد: لخّص له ليش القطعة تناسبه. الثقة: محل معروف بثلاثة فروع، الاستلام من الفرع بفاتورة رسمية.
@@ -191,6 +191,27 @@ class SkillEngine:
 
     def select(self, stage):
         return self.ALWAYS + self.BY_STAGE.get(stage, [])
+
+    # the full library files (SPIN, Sandler, Challenger, persuasion...) sent with the cards at each stage
+    FULL = {"browse": ["00_sales_foundations", "03_sandler_consultative"],
+            "interest": ["01_spin_discovery", "03_sandler_consultative", "05_product_matching"],
+            "taste": ["06_product_presentation", "04_persuasion_ethically", "02_challenger_insight"],
+            "objection": ["07_objection_handling", "04_persuasion_ethically", "02_challenger_insight"],
+            "ready": ["08_closing_and_commitment", "09_follow_up"]}
+
+    def full(self, stage):
+        out = []
+        for n in self.FULL.get(stage, []):
+            key = "full:" + n
+            if key not in self._cache:
+                try:
+                    with open(os.path.join(self.root, "global", "skills", n + ".md"), encoding="utf-8") as f:
+                        self._cache[key] = f.read().strip()
+                except OSError:
+                    self._cache[key] = ""
+            if self._cache[key]:
+                out.append(self._cache[key])
+        return out
 
     def local_experience(self):
         folder = os.path.join(self.root, "local")
@@ -432,6 +453,7 @@ class SalesAgent:
             msg = (f"السلام عليكم، شدّتني القطعة {what} في موقعكم، وأبغى مساعدة في شرائها."
                    if intent == "buy" else
                    f"السلام عليكم، شدّتني القطعة {what} في موقعكم، ويا ليت أعرف تفاصيل أكثر عنها.")
+            msg += "\n{BASE}/p/" + codes[0].upper()      # the page fills in its own address
         else:
             msg = "السلام عليكم، أبغى أستفسر عن قطعة من مجموعتكم."
         return ("https://wa.me/" + num + "?text=" + urllib.parse.quote(msg)) if num else ""
@@ -576,6 +598,9 @@ class SalesAgent:
         s = self.store
         pr = s.current_prices()
         parts = ["## إرشاد هذا الرد (داخلي)"] + [self.skills.card(n) for n in cards]
+        full = self.skills.full(stage)
+        if full:
+            parts.append("## مهارات البيع الكاملة لهذه المرحلة (طبّقها، ولا تذكرها للزبون)\n\n" + "\n\n".join(full))
         local = self.skills.local_experience()
         if local and stage != "browse":
             parts.append("## خبرة السوق المحلية المعتمدة\n" + "\n".join(local))
