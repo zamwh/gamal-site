@@ -336,6 +336,7 @@
     $('#sObj').onclick = function () { location.hash = 'p-' + p.code };
   }
   function renderHsc() {
+    if (!$('#hTrack')) return;
     var items = SITE.pieces.filter(function (p) { return p.photo });
     $('#hTrack').innerHTML = items.map(function (p, i) { return '<a class="hit" href="#p-' + p.code + '"><span class="no num">' + ('0' + (i + 1)).slice(-2) + '</span><img src="' + esc(p.photo) + '" alt="' + esc(p.title) + '" loading="lazy"><div class="t"><small>' + esc(p.kind) + ' · ' + p.karat + 'K</small><b>' + esc(p.title) + '</b><span>' + moneyH(p.price) + '</span></div></a>' }).join('');
     $('#hCount').textContent = '01 / ' + ('0' + items.length).slice(-2);
@@ -363,6 +364,7 @@
     $('#sProg').style.transform = 'scaleX(' + p.toFixed(3) + ')';
   }
   function hscFx(vh) {
+    if (!$('#hsc')) return;
     var h = $('#hsc'), r = h.getBoundingClientRect(); if (r.bottom < 0 || r.top > vh) return;
     var tr = $('#hTrack'), max = tr.scrollWidth - innerWidth; if (max <= 0) return;
     var p = clamp(-r.top / (r.height - vh), 0, 1);
@@ -371,7 +373,17 @@
     its.forEach(function (el, i) { var q = el.getBoundingClientRect(), d = (q.left + q.width / 2 - mid) / innerWidth; el.querySelector('img').style.transform = 'scale(1.08)'; var k = Math.min(1, Math.abs(d) * 1.6); el.style.transform = 'scale(' + (1 - k * 0.12).toFixed(3) + ')'; el.style.opacity = (1 - k * 0.45).toFixed(3); if (Math.abs(d) < .3) n = i });
     $('#hCount').textContent = ('0' + (n + 1)).slice(-2) + ' / ' + ('0' + its.length).slice(-2);
   }
-  function renderAll() { renderHsc(); renderTicker(); renderHomeCols(); renderNew(); renderSpot(); renderBranches(); calc(); saveList(); bindLinks(); bindChatBtns() }
+  // discover: real pieces, editorial rhythm — one large, then pairs; name, weight and price under each photo
+  function renderEd() {
+    var g = $('#edGrid'); if (!g) return;
+    var items = SITE.pieces.filter(function (p) { return p.photo }).slice().sort(function (a, b) { return a.code < b.code ? 1 : -1 }).slice(0, 7);
+    g.innerHTML = items.map(function (p, i) {
+      return '<a class="ei e' + (i + 1) + ' rv' + (i % 2 ? ' d1' : '') + '" href="#p-' + p.code + '"><span class="eim"><img loading="lazy" src="' + esc(p.photo) + '" alt="' + esc(p.title) + '"></span>' +
+        '<span class="et"><b>' + esc(p.title) + '</b><small><span class="num">' + p.weight.toFixed(2) + '</span> جم · عيار 21</small><span class="ep">' + moneyH(p.price) + '</span></span></a>';
+    }).join('');
+    reveal();
+  }
+  function renderAll() { renderEd(); renderHsc(); renderTicker(); renderHomeCols(); renderNew(); renderSpot(); renderBranches(); calc(); saveList(); bindLinks(); bindChatBtns() }
 
   /* ---------- checkout: terms first, accounts after, receipt, review ---------- */
   var CK = null;
@@ -563,7 +575,8 @@
   }
   function hideHint() { $('#aib').classList.remove('on') }
   $('#aib').onclick = function () { var q = this.dataset.q; hideHint(); openChat(q || undefined) };
-  [7000, 28000, 55000, 90000, 140000].forEach(function (ms) { setTimeout(hint, ms) });
+  // on phones a hint covers the page, so only two gentle ones per visit
+  (matchMedia('(max-width: 760px)').matches ? [12000, 60000] : [7000, 28000, 55000, 90000, 140000]).forEach(function (ms) { setTimeout(hint, ms) });
 
 
   /* ---------- live stock: a piece sold in any branch leaves this page within seconds ---------- */

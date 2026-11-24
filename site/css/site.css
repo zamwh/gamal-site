@@ -712,3 +712,63 @@ html.day .rfx{background:#0d0b08}
 .refine select{height:42px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--ink);padding:0 16px;font:inherit;font-size:14px}
 .pband{display:flex;gap:8px;flex-wrap:wrap}
 @media(max-width:760px){.refine{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}.refine::-webkit-scrollbar{display:none}.pband{flex-wrap:nowrap}.pband .chip{white-space:nowrap}}
+/* =================== v5 — one grand piece, editorial discovery, quiet prices, no app bar =================== */
+/* the opening */
+.hero.h3{height:auto;min-height:0;overflow:visible;background:#050403}
+.hero.h3::after{display:none}
+.hero.h3 .inner,.hero.h3 .bar,.hero.h3 .scroll-cue{display:none}
+.h3stage{position:relative;height:100svh;overflow:hidden;display:grid;place-items:center}
+.h3light{position:absolute;left:50%;top:44%;width:80vmin;height:80vmin;margin:-40vmin 0 0 -40vmin;border-radius:50%;
+  background:radial-gradient(circle,rgba(217,184,114,.10),rgba(217,184,114,.03) 45%,transparent 70%);animation:h3drift 14s ease-in-out infinite alternate;pointer-events:none}
+@keyframes h3drift{from{transform:translate(-6%,-3%)}to{transform:translate(6%,4%)}}
+.h3piece{position:absolute;left:50%;top:7svh;height:min(70svh,760px);width:auto;transform:translateX(-50%);will-change:transform,opacity;opacity:0;animation:h3in 2.4s cubic-bezier(.16,1,.3,1) .4s forwards}
+@keyframes h3in{from{opacity:0;transform:translateX(-50%) translateY(30px) scale(.92)}to{opacity:1;transform:translateX(-50%)}}
+.h3copy{position:absolute;left:0;right:0;bottom:9svh;text-align:center;z-index:2;padding:0 22px}
+.h3copy::before{content:"";position:absolute;left:0;right:0;bottom:-9svh;height:46svh;z-index:-1;background:linear-gradient(to top,#050403 35%,rgba(5,4,3,.75) 65%,transparent);pointer-events:none}
+.h3copy h1{font-weight:200;font-size:clamp(36px,5vw,78px);line-height:1.25;margin:0 0 26px;letter-spacing:-.5px}
+.h3copy h1 em{font-style:normal}
+@media(max-width:760px){.h3piece{top:10svh;height:56svh}.h3copy{bottom:7svh}.h3copy h1{font-size:36px;margin-bottom:20px}}
+/* sections breathe less: no long empty black */
+.band{padding-top:clamp(64px,8vw,110px);padding-bottom:clamp(64px,8vw,110px)}
+/* discover: editorial rhythm with real pieces */
+.disc{padding:clamp(70px,8vw,120px) 0 clamp(40px,5vw,80px)}
+.ed{display:grid;grid-template-columns:repeat(12,1fr);gap:clamp(18px,2.2vw,34px);align-items:start}
+.ei{display:block;color:var(--ink)}
+.ei .eim{display:block;overflow:hidden;border-radius:6px;background:#0b0907;aspect-ratio:4/5}
+.ei img{width:100%;height:100%;object-fit:cover;transition:transform 1.8s cubic-bezier(.16,1,.3,1)}
+.ei:hover img{transform:scale(1.04)}
+.ei .et{display:grid;gap:4px;padding:14px 2px 0}
+.ei .et b{font-weight:300;font-size:clamp(17px,1.4vw,21px)}
+.ei .et small{color:var(--mut);font-size:13px}
+.ei .ep{color:var(--gold);font-size:16px}
+.ei .ep .cur{font-size:12px;margin-inline-start:4px}
+.e1{grid-column:span 7;grid-row:span 2}.e1 .eim{aspect-ratio:4/5}
+.e2,.e3{grid-column:span 5}.e2 .eim,.e3 .eim{aspect-ratio:5/4}
+.e4,.e5,.e6{grid-column:span 4}
+.e7{grid-column:3 / span 8}.e7 .eim{aspect-ratio:16/9}
+@media(max-width:760px){
+  .ed{grid-template-columns:1fr 1fr;gap:16px 12px}
+  .e1,.e7{grid-column:1 / -1}.e2,.e3,.e4,.e5,.e6{grid-column:span 1}
+  .e2 .eim,.e3 .eim{aspect-ratio:4/5}.e7 .eim{aspect-ratio:4/5}
+  .ei .et b{font-size:15px}.ei .ep{font-size:14px}
+}
+/* prices: two clear numbers */
+.pboard{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:clamp(26px,3vw,40px) 0}
+.pboard .quotes{margin-top:0}
+.pboard .q .sell{font-size:clamp(46px,6vw,88px)}
+@media(max-width:760px){.pboard .quotes{grid-template-columns:1fr}.pboard .q+.q{border-inline-start:0;padding-inline-start:0;border-top:1px solid var(--line);margin-top:20px;padding-top:20px}.pboard .q .sell{font-size:46px}}
+/* phone: no app-style bottom bar — two quiet floating buttons instead */
+@media(max-width:760px){
+  .mbar{display:none!important}
+  .fab{display:flex!important;left:14px;bottom:calc(14px + env(safe-area-inset-bottom));gap:10px}
+  .fab .wa{width:50px;height:50px}
+  body{padding-bottom:0!important}
+}
+@media(max-width:760px){
+  .fab .ai{height:54px;padding:0 5px;width:54px;justify-content:center}
+  .fab .ai>span:not(.av){display:none}
+  .h3copy{bottom:calc(84px + env(safe-area-inset-bottom))}
+  .rside{bottom:calc(84px + env(safe-area-inset-bottom))}
+  .aib{left:14px;bottom:calc(78px + env(safe-area-inset-bottom))}
+}
+@media(max-width:760px){.aib{left:14px;right:auto;margin-left:0;width:min(290px,calc(100vw - 28px))}.aib::after{left:22px}}

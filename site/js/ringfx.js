@@ -31,7 +31,7 @@
 
   var tl = gsap.timeline({
     defaults: { ease: 'none' },
-    scrollTrigger: { trigger: '#rfx', start: 'top top', end: '+=' + (MOBILE ? 230 : 260) + '%', pin: '.rstage', scrub: 1, anticipatePin: 1, invalidateOnRefresh: true }
+    scrollTrigger: { trigger: '#rfx', start: 'top top', end: '+=' + (MOBILE ? 170 : 190) + '%', pin: '.rstage', scrub: 1, anticipatePin: 1, invalidateOnRefresh: true }
   });
   // 1) enters from deep in the dark, straight toward you, in its place
   tl.to('#robj', { opacity: 1, duration: 1, ease: 'power1.out' }, 0)
@@ -69,6 +69,14 @@
     scrollTrigger: { trigger: '#rfx', start: 'bottom 85%', end: 'bottom 15%', scrub: 1, invalidateOnRefresh: true } });
 
 
+  /* ---------- the opening: one grand piece comes closer, turns a little, then withdraws to open what follows ---------- */
+  if (!REDUCED && document.getElementById('h3piece')) {
+    gsap.set('#h3piece', { transformPerspective: 1400, transformOrigin: '50% 40%' });
+    var ht = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: '#hero', start: 'top top', end: '+=' + (MOBILE ? 110 : 140) + '%', pin: '#h3stage', scrub: 1 } });
+    ht.to('#h3piece', { scale: MOBILE ? 1.18 : 1.25, y: () => innerHeight * 0.06, rotationY: 14, rotationZ: -3, duration: 1.4, ease: 'power2.inOut' }, 0)
+      .to('#h3copy', { opacity: 0, y: -40, duration: 0.7, ease: 'power2.in' }, 0.2)
+      .to('#h3piece', { scale: 0.35, z: -300, opacity: 0, rotationY: -10, duration: 1.1, ease: 'power3.in' }, 1.4);
+  }
   /* ---------- the opening frame steps back as you begin to scroll ---------- */
   if (!REDUCED) gsap.to('#hpL img', { x: -90, scale: 0.9, opacity: 0.25, ease: 'none', scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: 0.8 } });
   if (!REDUCED) gsap.to('#hpR img', { x: 90, scale: 0.9, opacity: 0.25, ease: 'none', scrollTrigger: { trigger: '#hero', start: 'top top', end: 'bottom top', scrub: 0.8 } });
@@ -85,7 +93,7 @@
   function setupAnat(SITE, money) {
     var p = (SITE.pieces || []).filter(function (x) { return x.photo && /set\.jpg|demo_set/.test(x.photo) })[0] ||
             (SITE.pieces || []).filter(function (x) { return x.title.indexOf('عروس متكامل') >= 0 })[0];
-    var sec = document.getElementById('anat'); if (!p) { sec.style.display = 'none'; return }
+    var sec = document.getElementById('anat'); if (!sec) return; if (!p) { sec.style.display = 'none'; return }
     document.getElementById('aTitle').innerHTML = p.title.replace(/(\S+)$/, '<em>$1</em>');
     document.getElementById('aMeta').innerHTML = p.weight.toFixed(2) + ' جرام · عيار 21 · ' + money(p.price);
     document.getElementById('aGo').href = '#p-' + p.code;
@@ -133,7 +141,7 @@
   function setupClimax() {
     var bn = document.getElementById('brideBanner'); if (!bn || REDUCED) return;
     bn.style.setProperty('--sh', 0);
-    var ct = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: bn, start: 'top top', end: '+=' + (MOBILE ? 160 : 200) + '%', pin: true, scrub: 1 } });
+    var ct = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: bn, start: 'top top', end: '+=' + (MOBILE ? 120 : 150) + '%', pin: true, scrub: 1 } });
     ct.fromTo('#brideBg', { scale: MOBILE ? 1.7 : 1.9 }, { scale: 1, duration: 3, ease: 'power2.inOut' }, 0)
       .to(bn, { '--sh': 1, duration: 1.2, ease: 'power1.in' }, 2.1)
       .from('#brideBanner .tx > *', { y: 40, opacity: 0, duration: 0.8, stagger: 0.18, ease: 'power3.out' }, 2.6)
