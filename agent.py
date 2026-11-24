@@ -33,7 +33,7 @@ DEFAULT_AI = {"enabled": False, "api_key": "", "model": "gpt-6-luna", "price_in"
               "price_out": 0.50,
               # stronger model only for the moments that decide a sale (taste/sets, objections)
               "model_strong": "gpt-6.1-terra", "strong_price_in": 1.0, "strong_price_cached": 0.10,
-              "strong_price_out": 5.0, "strong_stages": ["interest", "taste", "objection", "ready"],
+              "strong_price_out": 5.0, "strong_stages": [],
               "daily_cap_usd": 4.5, "monthly_cap_usd": 133.0, "max_out_tokens": 1200,
               "history_msgs": 14, "session_msg_limit": 40, "extra": {},
               # used automatically if the configured model is rejected by the API (renamed/retired)
@@ -353,6 +353,11 @@ class SalesAgent:
         c = dict(DEFAULT_AI)
         c.update(self.store.setting("ai", {}) or {})
         if c.get("model") in ("gpt-5-mini", "", None):       # migrate old default
+            c.update({k: DEFAULT_AI[k] for k in ("model", "price_in", "price_cached", "price_out")})
+        # Luna for every turn (owner's decision, Nov 2026): the costly model is never used
+        c["strong_stages"] = []
+        c["model_strong"] = ""
+        if c.get("model") != "gpt-6-luna":
             c.update({k: DEFAULT_AI[k] for k in ("model", "price_in", "price_cached", "price_out")})
         return c
 
