@@ -710,6 +710,8 @@ class SalesAgent:
             if stage == "taste" and not pieces:
                 c["set_offered"] = 1
             clean = re.sub(r"\[\[[A-Za-z0-9]+\]\]", "", text)
+            clean = re.sub(r"[ \t]{2,}", " ", clean)
+            clean = re.sub(r" +([،.؛:؟])", r"\1", clean)
             clean = re.sub(r"\n{3,}", "\n\n", clean).strip()
             self._log(session, message, clean, ",".join(cards), t_in, t_out, cost)
             self._save_ctx(session, c)
