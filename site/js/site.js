@@ -86,10 +86,8 @@
     HL = SITE.pieces.filter(function (p) { return p.photo }).slice(0, 5);
     $('#slides').innerHTML = HL.map(function (p, i) { return '<div class="slide' + (i ? '' : ' on') + '"><div class="im" style="background-image:url(\'' + esc(p.photo) + '\')"></div></div>' }).join('');
     $('#sTot').textContent = ('0' + HL.length).slice(-2); go(0);
-    // the opening: two real pieces, each half hidden beyond the edge of the screen, the words between them
-    var dark = SITE.pieces.filter(function (p) { return p.photo && /collar|set/.test(p.photo) });
-    var L = dark.filter(function (p) { return /collar/.test(p.photo) })[0] || SITE.pieces[0], R = dark.filter(function (p) { return /set/.test(p.photo) })[0] || SITE.pieces[1] || L;
-    [['#hpL', L], ['#hpR', R]].forEach(function (x) { var a = $(x[0]); if (!a || !x[1]) return; a.href = '#p-' + x[1].code; a.querySelector('img').src = x[1].photo; a.querySelector('img').alt = x[1].title });
+    // the opening: two grand necklaces, each half hidden beyond the edge of the screen
+    [['#hpL', 'img/scene_medallion.webp'], ['#hpR', 'img/scene_tassel.webp']].forEach(function (x) { var a = $(x[0]); if (a) { a.querySelector('img').src = x[1]; a.href = '#collection-necklaces' } });
   }
   function go(n) {
     var s = $$('#slides .slide'); if (!s.length) return;

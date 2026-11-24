@@ -91,9 +91,7 @@
     document.getElementById('aGo').href = '#p-' + p.code;
     var frame = document.getElementById('aframe'), img = document.getElementById('aImg');
     img.src = p.photo; img.alt = p.title;
-    // a second, fully lit copy of the photo, seen only through a soft circle of light
-    var lit = document.getElementById('aLit'); if (!lit) { lit = document.createElement('img'); lit.id = 'aLit'; lit.className = 'alit'; lit.alt = ''; frame.appendChild(lit) }
-    lit.src = p.photo;
+    var old = document.getElementById('aLit'); if (old) old.remove();   // the whole piece stays in full light
     var notes = document.getElementById('anotes'), mob = document.getElementById('amob');
     document.getElementById('apts').innerHTML = '';
     notes.innerHTML = NOTES.map(function (n) { return '<div class="anote"><small>' + n.k + '</small><span>' + n.t + '</span></div>' }).join('');
@@ -107,23 +105,14 @@
       order.forEach(function (o) { o.ly = Math.max(o.y - 22, top, last + 92); last = o.ly; labels[o.i].style.left = colX + 'px'; labels[o.i].style.top = o.ly + 'px' });
     }
     layout();
-    var spot = { x: NOTES[0].x, y: NOTES[0].y, r: 0, dim: 1 };
-    function paint() {
-      var w = frame.clientWidth;
-      lit.style.setProperty('--x', (spot.x * 100) + '%'); lit.style.setProperty('--y', (spot.y * 100) + '%'); lit.style.setProperty('--r', (spot.r * w) + 'px');
-      img.style.filter = 'brightness(' + spot.dim.toFixed(3) + ') saturate(' + (0.6 + spot.dim * 0.4).toFixed(3) + ')';
-    }
-    paint();
+    var spot = {}; function paint() { }
     if (REDUCED) { gsap.set(labels, { opacity: 1 }); gsap.set('#aend', { opacity: 1 }); if (mob.children[0]) gsap.set(mob.children[0], { opacity: 1 }); return }
     var at = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: '#anat', start: 'top top', end: '+=' + (MOBILE ? 320 : 360) + '%', pin: '.astage', scrub: 1, invalidateOnRefresh: true, onRefresh: function () { layout(); paint() } } });
     at.from(frame, { scale: 0.92, opacity: 0, duration: 1, ease: 'power2.out' }, 0)
       .from('.ahead > *', { y: 30, opacity: 0, duration: 0.8, stagger: 0.15, ease: 'power2.out' }, 0.2)
-      // the rest of the piece sinks into shadow; light opens on the first detail
-      .to(spot, { dim: 0.28, duration: 0.8, ease: 'power1.inOut', onUpdate: paint }, 1.0)
-      .to(spot, { r: NOTES[0].r, duration: 0.8, ease: 'power2.out', onUpdate: paint }, 1.1);
+;
     NOTES.forEach(function (n, i) {
       var t = 1.2 + i * 1.3;
-      if (i) at.to(spot, { x: n.x, y: n.y, r: n.r, duration: 0.9, ease: 'power2.inOut', onUpdate: paint }, t - 0.2);
       if (MOBILE) {
         var cur = mob.children[i], prev = mob.children[i - 1];
         if (prev) at.to(prev, { opacity: 0, y: -10, duration: 0.4 }, t - 0.1);
@@ -134,9 +123,7 @@
       }
     });
     var tEnd = 1.2 + NOTES.length * 1.3;
-    // finally the whole piece comes back into the light
-    at.to(spot, { dim: 1, r: 0, duration: 0.9, ease: 'power1.inOut', onUpdate: paint }, tEnd - 0.2)
-      .to(labels, { opacity: 0.6, duration: 0.6 }, tEnd)
+    at.to(labels, { opacity: 0.6, duration: 0.6 }, tEnd)
       .to('#aend', { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out' }, tEnd)
       .to({}, { duration: 0.8 });
     gsap.set('#aend', { y: 20 }); gsap.set(labels, { x: -14 });

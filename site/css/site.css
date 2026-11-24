@@ -706,3 +706,7 @@ html.day .rfx{background:#0d0b08}
 #brideBanner .tx{position:relative}
 #brideBanner .tx::before{content:"";position:absolute;inset:-40px -60px;z-index:-1;background:radial-gradient(ellipse at 60% 50%,rgba(5,4,3,.82),rgba(5,4,3,.4) 60%,transparent 80%);pointer-events:none}
 @media(max-width:760px){#brideBanner .ttl{font-size:32px}#brideBanner .lead{font-size:14.5px}}
+/* opening pieces are clean cut-outs now: no fading mask, a soft shadow to sit them on the black */
+.hp img{-webkit-mask-image:none!important;mask-image:none!important}
+.hp{height:min(86svh,52vw,900px)}
+@media(max-width:760px){.hp{height:38svh}}
