@@ -130,7 +130,7 @@ class Server:
         if not p["show_online"]:
             return {"code": p["code"], "status": "hidden"}
         d = self.app.agent._public(p)
-        d.update({"photos": ["/media/" + f for f in json.loads(p["photos"] or "[]")],
+        d.update({"photos": [self.app.agent._murl(f) for f in json.loads(p["photos"] or "[]")],
                   "description": p["description"], "occasion": p["occasion"],
                   "breakdown": s.piece_price(p), "price_time": (s.current_prices() or {}).get("created_at")})
         return d

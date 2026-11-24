@@ -376,9 +376,17 @@ class SalesAgent:
         return {"code": p["code"], "title": (p["title"] if "title" in p.keys() else None) or p["type"],
                 "kind": p["type"], "karat": p["karat"], "weight": p["weight"],
                 "price": price if price is not None else self.store.piece_price(p)["total"],
-                "branch": None, "photo": ("/media/" + photos[0]) if photos else None,
+                "branch": None, "photo": self._murl(photos[0]) if photos else None,
                 "status": p["status"], "style": p["style"] if "style" in p.keys() else None,
                 "occasion": p["occasion"] if "occasion" in p.keys() else None}
+
+    def _murl(self, f):
+        """Photo address with a version stamp, so a phone never keeps showing an old picture."""
+        try:
+            v = int(os.path.getmtime(os.path.join(self.store.base_dir, "media", self.store.mode, f)))
+        except OSError:
+            v = 0
+        return "/media/" + f + "?v=" + str(v)
 
     def _brief(self, p):
         k = p.keys()

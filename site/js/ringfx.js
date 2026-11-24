@@ -8,8 +8,10 @@
   ScrollTrigger.config({ ignoreMobileResize: true });
 
   // final resting place of the ring: left side (desktop) or upper part (phone)
-  var endX = function () { return MOBILE ? 0 : -innerWidth * 0.27 };
-  var endY = function () { return MOBILE ? -innerHeight * 0.26 : 0 };
+  // final resting place: a macro close-up — the ring's centre sits on the left edge, so only half of it is in the frame
+  var endX = function () { return -innerWidth * 0.5 + (MOBILE ? innerWidth * 0.02 : innerWidth * 0.03) };
+  var endY = function () { return MOBILE ? -innerHeight * 0.2 : innerHeight * 0.06 };
+  var END_S = MOBILE ? 1.9 : 2.05;
 
   // alive at rest: a slow breath in depth — it comes a touch closer, then settles back (no side-to-side sway)
   var idle = gsap.timeline({ repeat: -1, yoyo: true, paused: true });
@@ -17,12 +19,12 @@
   gsap.set('#rspin', { rotationY: -16, rotationX: 6 });   // a fixed, calm three-quarter angle
 
   if (REDUCED) {
-    gsap.set('#robj', { x: endX, y: endY, opacity: 1 });
+    gsap.set('#robj', { x: endX, y: endY, scale: END_S, opacity: 1 });
     window.ringRefresh = function () { };
   }
 
   if (!REDUCED) {
-  gsap.set('#robj', { x: endX, y: endY, scale: 0.18, z: -600, opacity: 0, transformPerspective: 1400, transformOrigin: '50% 55%' });
+  gsap.set('#robj', { x: 0, y: 0, scale: 0.16, z: -600, opacity: 0, transformPerspective: 1400, transformOrigin: '50% 50%' });
   gsap.set('#rk, #rlead', { opacity: 0, y: 18 });
   gsap.set('#rt1, #rt2', { yPercent: 110 });
   gsap.set('#rcards .rc', { opacity: 0, y: 40 });
@@ -32,8 +34,10 @@
     scrollTrigger: { trigger: '#rfx', start: 'top top', end: '+=' + (MOBILE ? 230 : 260) + '%', pin: '.rstage', scrub: 1, anticipatePin: 1, invalidateOnRefresh: true }
   });
   // 1) enters from deep in the dark, straight toward you, in its place
-  tl.to('#robj', { opacity: 1, duration: 1.2, ease: 'power1.out' }, 0)
-    .to('#robj', { scale: 1, z: 0, duration: 3.6, ease: 'power3.out' }, 0)
+  tl.to('#robj', { opacity: 1, duration: 1, ease: 'power1.out' }, 0)
+    .to('#robj', { scale: 0.7, z: 0, duration: 1.6, ease: 'power2.out' }, 0)
+  // then glides in to the left edge and grows into a macro shot: half the ring, its texture filling the frame
+    .to('#robj', { x: endX, y: endY, scale: END_S, duration: 2.6, ease: 'power3.inOut' }, 1.3)
   // 4) the words beside it
     .to('#rk', { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out' }, 2.6)
     .to('#rt1', { yPercent: 0, duration: 1, ease: 'power3.out' }, 2.8)
