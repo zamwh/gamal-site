@@ -194,6 +194,68 @@ html.dark .pslot{background:rgba(30,24,14,.55)}html.dark .pslot b{color:#ecd29a}
 .phs{display:inline-flex;gap:4px}.phs i{font-style:normal;font-size:11px;padding:2px 7px;border-radius:999px;border:1px solid rgba(176,134,52,.35);color:#a8957a;opacity:.7}
 .phs i.on{background:linear-gradient(135deg,#e9cf8d,#c79b45);color:#3b2a0c;border-color:transparent;opacity:1}
 @media(max-width:640px){.pslots{grid-template-columns:1fr 1fr 1fr;gap:8px}.pslot b{font-size:11.5px}.pslot small{display:none}}
+/* ===== AuraTech-style shell (gold) ===== */
+#appv{grid-template-columns:96px 1fr;grid-template-rows:60px 1fr;gap:14px;padding:14px}
+.rail{padding:12px 0;gap:2px;overflow-y:auto;overflow-x:hidden}
+.rail a{width:76px;padding:7px 0 6px;border-radius:15px;font-size:12px;gap:4px}
+.rail a svg{width:23px;height:23px}
+.rail .av{width:46px;height:46px;border-radius:50%;background:var(--gg);color:var(--ggt);display:grid;place-items:center;font:700 18px Plex;box-shadow:var(--ggsh);cursor:pointer;margin:8px 0 4px;flex:none}
+.top{padding:0 16px;gap:10px;border-radius:20px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}.brand img{height:38px;width:auto}
+.brand b{font:700 16px Plex;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
+.tchip{display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:13px;background:var(--glass2);border:1px solid var(--brd);font-size:13.5px;white-space:nowrap}
+.tchip.mut{color:var(--mut)}
+#ticker .chip{padding:7px 12px;font-size:13.5px;border-radius:13px}
+.bell{position:relative;width:42px;height:42px;border-radius:13px;border:1px solid var(--brd);background:var(--glass2);display:grid;place-items:center;cursor:pointer}
+.bell svg{width:20px;stroke:var(--txt);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.bell i{position:absolute;top:-5px;left:-5px;min-width:20px;height:20px;border-radius:10px;background:#c0392b;color:#fff;font:700 11.5px Plex;font-style:normal;display:none;place-items:center;padding:0 5px}
+.bell i.on{display:grid}
+.vh{display:flex;align-items:center;gap:10px;margin-bottom:14px}.vh h2{margin:0}
+.tw{overflow:auto}
+/* cashier */
+#v-sale{grid-template-columns:440px 1fr;gap:14px;height:100%}
+.cart{padding:16px;gap:0}
+.scan2{display:flex;align-items:center;gap:10px;height:62px;padding:0 14px;border:2px solid var(--gold);border-radius:18px;background:var(--glass2);box-shadow:0 0 0 4px rgba(214,168,78,.14)}
+.scan2 svg{width:26px;stroke:var(--gold);fill:none;stroke-width:1.7;flex:none}
+.scan2 input{flex:1;border:0;background:transparent;font:600 18px Plex;outline:0;box-shadow:none;padding:0}
+.cchips{display:flex;align-items:center;gap:8px;margin:12px 0 8px}
+.cchip{display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:13px;border:1px solid var(--brd);background:var(--glass2);cursor:pointer;font-size:14px;font-weight:600}
+.cchip svg{width:18px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round}
+.cchip.on{border:2px solid var(--gold);color:var(--gold);padding:7px 11px}
+.cchip .kbd{padding:1px 6px;font-size:11px}
+.acts4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:4px 0 10px}
+.acts4 button{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:15px;border:1px solid var(--brd);background:var(--glass2);cursor:pointer;font-size:13px;font-weight:600}
+.acts4 button svg{width:20px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.acts4 button.red{color:var(--bad)}.acts4 .kbd{font-size:10.5px;padding:1px 6px}
+.acts4 i{position:absolute;top:4px;left:6px;font-style:normal;font-size:11px;font-weight:700;background:var(--gg);color:var(--ggt);border-radius:9px;padding:0 6px;display:none}.acts4 i.on{display:block}
+.sell{height:64px;gap:10px;justify-content:space-between;padding:0 22px}
+.sell svg{width:24px;stroke:currentColor;fill:none;stroke-width:1.8}
+.sell b{font:700 24px Plex;margin-inline-start:auto}
+.ctop{padding:8px;border-radius:18px;overflow-x:auto}
+.ctop .tabs{flex-wrap:nowrap}
+.ctop .tabs span{white-space:nowrap}
+.pgrid{grid-template-columns:repeat(auto-fill,minmax(190px,1fr));overflow:auto;padding:2px}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;flex:none}
+.kpi{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:18px}
+.kpi .ic{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:rgba(214,168,78,.16);flex:none}
+.kpi .ic svg{width:20px;stroke:var(--gold);fill:none;stroke-width:1.8;stroke-linecap:round}
+.kpi small{display:block;color:var(--mut);font-size:12.5px}.kpi b{font:700 19px Plex;font-feature-settings:"tnum"}
+/* settings */
+.setl{display:grid;grid-template-columns:260px 1fr;gap:14px;align-items:start}
+.snav{padding:10px;display:flex;flex-direction:column;gap:2px;position:sticky;top:0}
+.snav a{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:13px;cursor:pointer;font-weight:600;font-size:14.5px;color:var(--mut)}
+.snav a svg{width:19px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.snav a:hover{background:var(--glass2);color:var(--txt)}.snav a.on{background:var(--glass2);color:var(--gold);border:1px solid var(--gold)}
+.spane{min-height:60vh;padding:26px}.sp-p{display:none}.sp-p.on{display:block}.sp-p .sub{margin:-8px 0 18px}
+.logobox{display:flex;gap:16px;align-items:center;padding:14px;border:1px dashed var(--gold);border-radius:16px;margin-bottom:10px}
+.logobox img{width:90px;height:90px;object-fit:contain;background:#fff;border-radius:12px}
+/* notifications */
+.nt{display:flex;gap:12px;padding:12px 4px;border-bottom:1px solid var(--line)}
+.nt .k{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;flex:none;background:rgba(214,168,78,.16);font-weight:700;color:var(--gold)}
+.nt.new{background:rgba(214,168,78,.07)}.nt b{display:block}.nt p{margin:2px 0;white-space:pre-wrap;color:var(--mut);font-size:13.5px}.nt small{color:var(--mut);font-size:12px}
+.cnt{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
+@media(max-width:1250px){#v-sale{grid-template-columns:400px 1fr}.kpis{grid-template-columns:repeat(2,1fr)}.brand b{max-width:150px}#ticker{display:none!important}}
+#modeTop .badge{white-space:nowrap}
 </style>
 </head>
 <body>
@@ -224,154 +286,241 @@ html.dark .pslot{background:rgba(30,24,14,.55)}html.dark .pslot b{color:#ecd29a}
 
 <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="blob b4"></div>
 <div id="appv">
-  <aside class="rail glass"><img id="logoT" src="../assets/logo_mark.png" alt=""><div id="nav" style="display:contents"></div><div class="sp"></div>
-    <a onclick="toggleTheme()" title="الوضع الليلي"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg>الوضع</a>
-    <a onclick="doLogout()"><svg viewBox="0 0 24 24"><path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/></svg>خروج</a>
+  <aside class="rail glass">
+    <div id="nav" style="display:contents"></div><div class="sp"></div>
+    <a data-v="ai" onclick="go('ai')" id="navAI"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"/></svg>المساعد</a>
+    <a onclick="toggleTheme()" id="themeBtn"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/></svg><span id="themeLbl">ليلي</span></a>
+    <div class="av" id="avatar" onclick="userMenu()" title="الحساب"></div>
   </aside>
   <header class="top glass">
-    <div class="hi" id="who"></div><span id="modeTop"></span>
+    <div class="brand"><img id="topLogo" src="/assets/logo_mark.png" alt=""><b id="shopName">جمال المشرقي للذهب والمجوهرات</b></div>
+    <div class="tchip"><span class="dot"></span><span id="whoName"></span></div>
+    <div class="tchip" id="shiftChip" onclick="go('shifts')" style="cursor:pointer"></div>
+    <span id="modeTop"></span>
     <div class="sp"></div>
-    <div id="ticker" style="display:flex;gap:10px"></div>
-    <div class="chip" id="syncChip" onclick="go('set')" style="cursor:pointer"><span class="dot off"></span>…</div>
+    <div id="ticker" style="display:flex;gap:8px"></div>
+    <div class="tchip" id="syncChip" onclick="openSettings('link')" style="cursor:pointer"><span class="dot off"></span>…</div>
+    <div class="tchip mut" id="clock"></div>
+    <button class="bell" id="bell" onclick="openBell()" title="التنبيهات"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0112 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 004 0"/></svg><i id="bellN"></i></button>
   </header>
   <main id="mainv">
-      <!-- sale -->
-      <section class="view" id="v-sale">
-        <div class="sm-l">
-          <div class="seg glass" id="smode"><span data-m="code" class="on" onclick="setMode('code')">باركود / رقم القطعة</span><span data-m="weight" onclick="setMode('weight')">بالوزن · قطعة غير مسجلة</span></div>
-          <div id="modeCode" style="display:contents">
-            <div class="scan glass"><svg viewBox="0 0 24 24"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M7 8v8M10 8v8M13 8v8M16 8v8"/></svg>
-              <input id="scan" placeholder="امسح الباركود أو اكتب رقم القطعة…" autocomplete="off" oninput="renderGrid()" onkeydown="if(event.key==='Enter')addToCart()"><span class="kbd">F2</span></div>
-            <div class="sect"><h3>قطع جاهزة للبيع <span>· اضغط القطعة أو امسح الباركود</span></h3><div class="tabs" id="ptabs"></div></div>
-            <div class="pgrid" id="pgrid"></div>
+    <!-- cashier -->
+    <section class="view" id="v-sale">
+      <div class="cart glass">
+        <div class="scan2"><svg viewBox="0 0 24 24"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M7 8v8M10 8v8M13 8v8M16 8v8"/></svg>
+          <input id="scan" placeholder="امسح الباركود أو اكتب رقم القطعة..." autocomplete="off" oninput="renderGrid()" onkeydown="if(event.key==='Enter')addToCart()"><span class="kbd">F1</span></div>
+        <div class="cchips">
+          <button class="cchip" id="custChip" onclick="pickCustomer()"><svg viewBox="0 0 24 24"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0113 0M19 8v6M16 11h6"/></svg><span id="custLbl">عميل</span><span class="kbd">F3</span></button>
+          <button class="cchip" id="wChip" onclick="setMode(SMODE==='weight'?'code':'weight')"><svg viewBox="0 0 24 24"><path d="M5 20h14l-2-11H7zM9 9a3 3 0 016 0"/></svg><span>بيع بالوزن</span></button>
+          <span class="sp"></span><span class="mut" id="cartN" style="font-size:13px"></span>
+        </div>
+        <input type="hidden" id="cn"><input type="hidden" id="cp">
+        <div class="lines" id="cart"></div>
+        <div class="sum" id="csum"></div>
+        <div class="tot"><span>الإجمالي</span><div><b id="ctotal">0</b><small>ر.ي</small></div></div>
+        <div class="acts4">
+          <button onclick="discountAll()"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9 15l6-6M9.5 9.5h.01M14.5 14.5h.01"/></svg>خصم المصنعية <span class="kbd">F8</span></button>
+          <button onclick="holdCart()"><svg viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></svg>تعليق <span class="kbd">F4</span></button>
+          <button onclick="showHeld()"><svg viewBox="0 0 24 24"><path d="M4 8l8-4 8 4-8 4z"/><path d="M4 12l8 4 8-4M4 16l8 4 8-4"/></svg>المعلقة <span class="kbd">F5</span><i id="heldN"></i></button>
+          <button class="red" onclick="cancelCart()"><svg viewBox="0 0 24 24"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/></svg>إلغاء</button>
+        </div>
+        <button class="sell" id="sellBtn" onclick="payModal()"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h3"/></svg>دفع <span class="kbd">F2</span><b id="payAmt">0</b></button>
+      </div>
+      <div class="sm-l">
+        <div class="ctop glass">
+          <div class="tabs" id="ptabs"></div>
+        </div>
+        <div id="modeCode" style="display:contents">
+          <div class="pgrid" id="pgrid"></div>
+        </div>
+        <div id="modeWeight" style="display:none;flex-direction:column;gap:14px;min-height:0;overflow:auto">
+          <div class="wform glass">
+            <div class="fld"><label>نوع القطعة</label><div class="pills" id="wType"></div></div>
+            <div class="fld"><label>العيار</label><div class="pills"><span class="on">عيار 21</span></div></div>
+            <div class="fld" style="grid-column:1/3"><label>الوزن بالجرام (من الميزان)</label><input id="wW" class="wbig" type="number" step="0.001" placeholder="0.000" oninput="wCalc()"></div>
+            <div class="fld"><label>المصنعية</label><div class="row"><input id="wM" type="number" placeholder="0" oninput="wCalc()" style="height:50px"><div class="pills" id="wMode"><span data-v="gram" class="on" onclick="wSetMode('gram')">للجرام</span><span data-v="fixed" onclick="wSetMode('fixed')">للقطعة</span></div></div></div>
+            <div class="fld"><label>وصف مختصر (اختياري)</label><input id="wN" placeholder="مثل: خاتم نسائي ناعم" style="height:50px"></div>
           </div>
-          <div id="modeWeight" style="display:none;flex-direction:column;gap:14px">
-            <div class="wform glass">
-              <div class="fld"><label>نوع القطعة</label><div class="pills" id="wType"></div></div>
-              <div class="fld"><label>العيار</label><div class="pills"><span class="on">عيار 21</span></div></div>
-              <div class="fld" style="grid-column:1/3"><label>الوزن بالجرام (من الميزان)</label><input id="wW" class="wbig" type="number" step="0.001" placeholder="0.000" oninput="wCalc()"></div>
-              <div class="fld"><label>المصنعية</label><div class="row"><input id="wM" type="number" placeholder="0" oninput="wCalc()" style="height:50px"><div class="pills" id="wMode"><span data-v="gram" class="on" onclick="wSetMode('gram')">للجرام</span><span data-v="fixed" onclick="wSetMode('fixed')">للقطعة</span></div></div></div>
-              <div class="fld"><label>وصف مختصر (اختياري)</label><input id="wN" placeholder="مثل: خاتم نسائي ناعم" style="height:50px"></div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 270px;gap:16px">
-              <div class="calc glass" id="wCalcBox"></div>
-              <div style="display:flex;flex-direction:column;gap:12px"><button class="btn gold" style="flex:1;font-size:18px" onclick="wAdd(false)">أضف للفاتورة</button><button class="btn" style="flex:1;font-size:15.5px" onclick="wAdd(true)">أضف وسجّلها في المخزون</button></div>
-            </div>
-            <p class="mut" style="font-size:13.5px;margin:0 6px">القطعة غير المسجلة تُباع بوزنها مباشرة، وتنحفظ في السجل باسم البائع والوقت، وتظهر في تقرير آخر اليوم. «سجّلها في المخزون» تعطيها رقماً وملصقاً وتبقى في القطع.</p>
+          <div style="display:grid;grid-template-columns:1fr 270px;gap:16px">
+            <div class="calc glass" id="wCalcBox"></div>
+            <div style="display:flex;flex-direction:column;gap:12px"><button class="btn gold" style="flex:1;font-size:18px" onclick="wAdd(false)">أضف للفاتورة</button><button class="btn" style="flex:1;font-size:15.5px" onclick="wAdd(true)">أضف وسجّلها في المخزون</button></div>
           </div>
         </div>
-        <div class="cart glass">
-          <div class="ch"><h2>الفاتورة</h2><span class="mut" id="cartN"></span></div>
-          <div class="cust"><input id="cn" placeholder="اسم الزبون (اختياري)"><input id="cp" placeholder="الجوال" style="direction:ltr;text-align:right"></div>
-          <div class="lines" id="cart"></div>
-          <div class="sum" id="csum"></div>
-          <div class="tot"><span>الإجمالي</span><div><b id="ctotal">0</b><small>ر.ي</small></div></div>
-          <div class="pay" id="cpay"><span data-v="cash" class="on">نقداً</span><span data-v="transfer">تحويل</span><span data-v="mixed">نقد وتحويل</span></div>
-          <button class="sell" id="sellBtn" onclick="checkout()">بيع وطباعة <small>F9</small></button>
-        </div>
-      </section>
-      <!-- purchase -->
-      <section class="view" id="v-buy">
-        <h2>شراء ذهب مستعمل</h2>
+        <div class="kpis" id="kpis"></div>
+      </div>
+    </section>
+    <!-- pieces -->
+    <section class="view" id="v-pieces">
+      <div class="vh"><h2>القطع</h2><span class="sp"></span><button class="btn gold" onclick="openAddPiece()">+ قطعة جديدة</button></div>
+      <div class="glass card">
+        <div class="row"><input id="ps" placeholder="بحث بالرقم أو النوع أو الاسم" oninput="loadPieces()"><select id="pst" onchange="loadPieces()" style="width:170px"><option value="">كل الحالات</option><option value="available">متاحة</option><option value="reserved">محجوزة</option><option value="sold">مباعة</option><option value="inactive">موقوفة</option></select><select id="pbr" onchange="loadPieces()" style="width:170px"></select></div>
+        <div class="tw"><table id="piecesT" style="margin-top:10px"></table></div>
+      </div>
+    </section>
+    <!-- purchase -->
+    <section class="view" id="v-buy">
+      <div class="vh"><h2>شراء ذهب من زبون</h2></div>
+      <div class="glass card">
+        <div class="grid g3"><div><label>اسم البائع *</label><input id="bn"></div><div><label>جواله</label><input id="bp"></div><div><label>رقم الهوية / ملاحظة</label><input id="bi"></div></div>
+        <h3 style="margin-top:18px">القطع</h3>
+        <div id="buyLines"></div>
+        <button class="btn sm" onclick="addBuyLine()">+ قطعة</button>
+        <div class="row" style="margin-top:16px"><div class="sp"></div><div class="mut">الإجمالي:</div><b class="gold-t" style="font-size:24px" id="btotal">0</b></div>
+        <button class="btn gold" style="margin-top:10px" onclick="doBuy()">حفظ السند وطباعته</button>
+        <p class="mut" style="font-size:13px">"كسر" يدخل مخزون الكسر بالوزن. "قطعة نظيفة" تدخل كقطعة بملصق جديد بتصنيف كسر نظيف، وتكلفة الجرام تُحفظ لحماية هامش الربح.</p>
+      </div>
+    </section>
+    <!-- stocktake -->
+    <section class="view" id="v-count">
+      <div class="vh"><h2>الجرد</h2><span class="sp"></span><select id="stBr" style="width:200px"></select><button class="btn gold" onclick="startCount()">بدء جرد جديد</button></div>
+      <div id="countBox"></div>
+      <div class="glass card" style="margin-top:16px"><h3>الجرد السابق</h3><div class="tw"><table id="countT"></table></div></div>
+    </section>
+    <!-- suppliers -->
+    <section class="view" id="v-sup">
+      <div class="vh"><h2>الموردين</h2><span class="sp"></span><button class="btn gold" onclick="editSupplier()">+ مورد جديد</button></div>
+      <div class="glass card"><div class="tw"><table id="supT"></table></div></div>
+    </section>
+    <!-- customers -->
+    <section class="view" id="v-cust">
+      <div class="vh"><h2>العملاء</h2><span class="sp"></span><input id="cuq" placeholder="بحث بالاسم أو الجوال" style="width:260px" oninput="loadCustomers()"><button class="btn gold" onclick="editCustomer()">+ عميل</button></div>
+      <div class="glass card"><div class="tw"><table id="custT"></table></div></div>
+    </section>
+    <!-- invoices -->
+    <section class="view" id="v-inv">
+      <div class="vh"><h2>الفواتير والسندات</h2><span class="sp"></span><select id="ik" onchange="loadInvoices()" style="width:180px"><option value="">الكل</option><option value="sale">فواتير البيع</option><option value="purchase">سندات الشراء</option></select></div>
+      <div class="glass card"><div class="tw"><table id="invT"></table></div></div>
+    </section>
+    <!-- reservations -->
+    <section class="view" id="v-res">
+      <div class="vh"><h2>الحجوزات</h2></div>
+      <div class="glass card"><div class="tw"><table id="resT"></table></div></div>
+    </section>
+    <!-- shifts -->
+    <section class="view" id="v-shifts">
+      <div class="vh"><h2>الورديات</h2></div>
+      <div id="shiftBox"></div>
+      <div class="glass card" style="margin-top:16px"><h3>الورديات السابقة</h3><div class="tw"><table id="shiftT"></table></div></div>
+    </section>
+    <!-- reports -->
+    <section class="view" id="v-dash">
+      <div class="vh"><h2>التقارير</h2><span class="sp"></span><button class="btn" onclick="go('log')">سجل العمليات</button><button class="btn" onclick="go('prices')">أسعار اليوم</button></div>
+      <div class="grid g4" id="stats"></div>
+      <div class="grid g2" style="margin-top:16px">
+        <div class="glass card"><h3>تنبيه الشراء</h3><div id="restockBox"></div></div>
+        <div class="glass card"><h3>المبيعات حسب الفرع اليوم</h3><table id="byBranch"></table></div>
+        <div class="glass card"><h3>المخزون المتاح</h3><table id="stockT"></table></div>
+        <div class="glass card"><h3>الكسر</h3><table id="scrapT"></table></div>
+      </div>
+    </section>
+    <!-- prices -->
+    <section class="view" id="v-prices">
+      <div class="vh"><h2>أسعار اليوم</h2></div>
+      <div class="glass card" style="max-width:820px">
+        <div class="grid g2"><div><label>بيع جرام عيار 21</label><input id="p21s" type="number" oninput="derive()" style="font-size:20px;font-weight:700"></div><div><label>شراء جرام عيار 21</label><input id="p21b" type="number" oninput="derive()" style="font-size:20px;font-weight:700"></div></div>
+        <div class="grid g2"><div><label>بيع الجنيه (فاضي = يُحسب من سعر 21)</label><input id="pps" type="number"></div><div><label>شراء الجنيه</label><input id="ppb" type="number"></div></div>
+        <div class="grid g2"><div><label>سعر الدولار (اختياري)</label><input id="pusd" type="number"></div><div><label>سعر الريال السعودي (اختياري)</label><input id="psar" type="number"></div></div>
+        <div style="height:18px"></div><button class="btn gold" style="padding:14px 28px;font-size:16px" onclick="savePrices()">اعتماد أسعار اليوم</button>
+        <p class="mut" style="font-size:13.5px;margin-top:12px">بعد الاعتماد يتحدث السعر في كل الفروع وفي الموقع تلقائياً.</p>
+        <p class="mut" id="lastPrice" style="font-size:13.5px"></p>
+      </div>
+    </section>
+    <!-- assistant -->
+    <section class="view" id="v-ai">
+      <div class="vh"><h2>المساعد الذكي</h2></div>
+      <div class="grid g2">
         <div class="glass card">
-          <div class="grid g3"><div><label>اسم البائع *</label><input id="bn"></div><div><label>جواله</label><input id="bp"></div><div><label>رقم الهوية / ملاحظة</label><input id="bi"></div></div>
-          <h3 style="margin-top:18px">القطع</h3>
-          <div id="buyLines"></div>
-          <button class="btn sm" onclick="addBuyLine()">+ قطعة</button>
-          <div class="row" style="margin-top:16px"><div class="sp"></div><div class="mut">الإجمالي:</div><div class="total-box" id="btotal">0</div></div>
-          <button class="btn gold" style="margin-top:10px" onclick="doBuy()">حفظ السند وطباعته</button>
-          <p class="mut" style="font-size:13px">"كسر" يدخل مخزون الكسر بالوزن. "قطعة نظيفة" تدخل كقطعة بملصق جديد بتصنيف كسر نظيف، وتكلفة الجرام تُحفظ لحماية هامش الربح.</p>
+          <h3>جرّب المساعد كأنك زبون</h3>
+          <div class="chat" id="chat"></div>
+          <div class="row"><input id="cm" placeholder="اكتب رسالة..." onkeydown="if(event.key==='Enter')sendChat()"><button class="btn gold" onclick="sendChat()">إرسال</button></div>
+          <p class="mut" id="chatMeta" style="font-size:12px"></p>
         </div>
-      </section>
-      <!-- pieces -->
-      <section class="view" id="v-pieces">
-        <div class="row"><h2 class="sp">القطع</h2><button class="btn gold" onclick="openAddPiece()">+ قطعة جديدة</button></div>
-        <div class="glass card">
-          <div class="row"><input id="ps" placeholder="بحث بالرقم أو النوع" oninput="loadPieces()"><select id="pst" onchange="loadPieces()" style="width:170px"><option value="">كل الحالات</option><option value="available">متاحة</option><option value="reserved">محجوزة</option><option value="sold">مباعة</option><option value="inactive">موقوفة</option></select><select id="pbr" onchange="loadPieces()" style="width:190px"></select></div>
-          <table id="piecesT" style="margin-top:10px"></table>
-        </div>
-      </section>
-      <!-- prices -->
-      <section class="view" id="v-prices">
-        <h2>أسعار اليوم</h2>
-        <div class="glass card" style="max-width:820px">
-          <div class="grid g2"><div><label>بيع جرام عيار 21</label><input id="p21s" type="number" oninput="derive()" style="font-size:20px;font-weight:700"></div><div><label>شراء جرام عيار 21</label><input id="p21b" type="number" oninput="derive()" style="font-size:20px;font-weight:700"></div></div>
-          <div class="grid g2"><div><label>بيع الجنيه (فاضي = يُحسب من سعر 21)</label><input id="pps" type="number"></div><div><label>شراء الجنيه</label><input id="ppb" type="number"></div></div>
-          <div class="grid g2"><div><label>سعر الدولار (اختياري)</label><input id="pusd" type="number"></div><div><label>سعر الريال السعودي (اختياري)</label><input id="psar" type="number"></div></div>
-          <div style="height:18px"></div><button class="btn gold" style="padding:14px 28px;font-size:16px" onclick="savePrices()">اعتماد أسعار اليوم</button>
-          <p class="mut" style="font-size:13.5px;margin-top:12px">بعد الاعتماد يتحدث السعر في كل الفروع وفي الموقع تلقائياً.</p>
-          <p class="mut" id="lastPrice" style="font-size:13.5px"></p>
-        </div>
-      </section>
-      <!-- reservations -->
-      <section class="view" id="v-res">
-        <h2>الحجوزات</h2>
-        <div class="glass card"><table id="resT"></table></div>
-      </section>
-      <!-- invoices -->
-      <section class="view" id="v-inv">
-        <div class="row"><h2 class="sp">الفواتير والسندات</h2><select id="ik" onchange="loadInvoices()" style="width:180px"><option value="">الكل</option><option value="sale">فواتير البيع</option><option value="purchase">سندات الشراء</option></select></div>
-        <div class="glass card"><table id="invT"></table></div>
-      </section>
-      <!-- assistant -->
-      <section class="view" id="v-ai">
-        <h2>المساعد الذكي</h2>
-        <div class="grid g2">
-          <div class="glass card">
-            <h3>جرّب المساعد كأنك زبون</h3>
-            <div class="chat" id="chat"></div>
-            <div class="row"><input id="cm" placeholder="اكتب رسالة..." onkeydown="if(event.key==='Enter')sendChat()"><button class="btn gold" onclick="sendChat()">إرسال</button></div>
-            <p class="mut" id="chatMeta" style="font-size:12px"></p>
+        <div class="glass card"><h3>آخر محادثات الموقع</h3><div id="chatLogs" style="max-height:470px;overflow:auto"></div></div>
+      </div>
+    </section>
+    <!-- log -->
+    <section class="view" id="v-log"><div class="vh"><h2>سجل العمليات</h2></div><div class="glass card"><div class="tw"><table id="logT"></table></div></div></section>
+    <!-- settings -->
+    <section class="view" id="v-set">
+      <div class="setl">
+        <nav class="snav glass" id="snav"></nav>
+        <div class="glass card spane">
+          <div class="sp-p" data-p="shop">
+            <h2>بيانات المحل</h2><p class="mut sub">تظهر في أعلى البرنامج وعلى كل فاتورة.</p>
+            <div class="logobox"><img id="shopLogoPrev" alt=""><div><b>شعار المحل</b><p class="mut" style="margin:4px 0 10px;font-size:13px">PNG بخلفية شفافة يعطي أفضل نتيجة على الفاتورة</p><label class="btn sm" style="display:inline-block;margin:0">اختيار شعار<input type="file" accept="image/*" hidden onchange="uploadLogo(this)"></label></div></div>
+            <div class="grid g2"><div><label>اسم المحل</label><input id="shName"></div><div><label>جوال المحل</label><input id="shPhone"></div></div>
+            <label>العنوان</label><input id="shAddr">
+            <h3 style="margin-top:20px">الفروع</h3><table id="brT"></table>
+            <div style="height:14px"></div><button class="btn gold" onclick="saveShop()">حفظ</button>
           </div>
-          <div class="glass card"><h3>آخر محادثات الموقع</h3><div id="chatLogs" style="max-height:470px;overflow:auto"></div></div>
-        </div>
-      </section>
-      <!-- log -->
-      <section class="view" id="v-log"><h2>سجل العمليات</h2><div class="glass card"><table id="logT"></table></div></section>
-      <!-- settings -->
-      <section class="view" id="v-set">
-        <h2>الإعدادات</h2>
-        <div class="glass card" style="margin-bottom:16px">
-          <h3>الربط مع السيرفر والفروع</h3>
-          <p class="mut" style="font-size:13px">البرنامج يبيع حتى بدون نت. أول ما يرجع النت يرسل المبيعات والقطع الجديدة والسعر للسيرفر، ويستلم مخزون كل الفروع. المفتاح يطلع لصاحب المحل من لوحة الإدارة على الموقع.</p>
-          <div class="grid g2" style="gap:10px">
-            <input class="in" id="syUrl" placeholder="رابط الموقع مثل https://..." style="direction:ltr">
-            <input class="in" id="syKey" placeholder="مفتاح الفرع" style="direction:ltr">
-            <input class="in" id="syPre" placeholder="حرف الفرع: A أو B أو C" maxlength="3" style="direction:ltr">
-            <div style="display:flex;gap:8px"><button class="btn gold" onclick="saveSync()">حفظ الربط</button><button class="btn" onclick="syncNow()">مزامنة الآن</button></div>
+          <div class="sp-p" data-p="invoice">
+            <h2>تصميم الفاتورة والطباعة</h2><p class="mut sub">الفاتورة صفحة كاملة على طابعة المحل العادية.</p>
+            <div class="grid g2"><div><label>حجم الورق</label><select id="stPaper" onchange="PRINT_SIZE=this.value;try{localStorage.setItem('gm_paper',this.value)}catch(e){}"><option value="a4">A4</option><option value="a5">A5</option></select></div>
+            <div><label>الطباعة بعد البيع</label><select id="stAuto" onchange="AUTO_PRINT=this.value==='1';try{localStorage.setItem('gm_autoprint',this.value)}catch(e){}"><option value="1">تلقائية بدون نافذة</option><option value="0">أطبع بنفسي</option></select></div></div>
+            <p class="mut" style="font-size:13px;margin-top:12px">الطابعة المستخدمة هي الطابعة الافتراضية في ويندوز (الإعدادات ← الطابعات).</p>
           </div>
-          <div id="syState" class="mut" style="font-size:13px;margin-top:10px"></div>
-        </div>
-        <div class="grid g2">
-          <div class="glass card">
-            <h3>الموقع ورمز QR</h3>
-            <p class="mut" style="font-size:13px">الزبون المتصل بشبكة المحل يفتح هذا الرابط أو يمسح رمز القطعة.</p>
-            <div class="gold-t" id="siteUrl" style="direction:ltr;text-align:right"></div>
-            <h3 style="margin-top:18px">بيانات المحل</h3>
-            <label>جوال المحل</label><input id="shPhone"><label>العنوان</label><input id="shAddr">
-            <h3 style="margin-top:18px">سياسة الحجز</h3>
-            <div class="grid g3"><div><label>مدة "وصل حديثاً" لكل قطعة جديدة (يوم)</label><input id="nwD" type="number" min="0" max="90"></div></div><div class="grid g3"><div><label>مدة الحجز (ساعة)</label><input id="rH" type="number"></div><div><label>العربون %</label><input id="rD" type="number"></div><div><label>إلغاء مجاني (ساعة)</label><input id="rF" type="number"></div><div><label>خصم عدم الحضور % من العربون</label><input id="rN" type="number"></div><div><label>الحد الأدنى للخصم (ريال)</label><input id="rM" type="number"></div><div><label>أيام رد المبلغ</label><input id="rR" type="number"></div></div>
-            <h3 style="margin-top:18px">الذهب</h3>
-            <div class="grid g2"><div><label>وزن الجنيه (جرام)</label><input id="pw" type="number"></div><div><label>أقل ربح للكسر النظيف (ريال/جرام)</label><input id="mm" type="number"></div></div>
-            <div style="height:14px"></div><button class="btn gold" onclick="saveSettings()">حفظ</button>
-          </div>
-          <div class="glass card">
-            <h3>الذكاء الاصطناعي</h3>
+          <div class="sp-p" data-p="ai">
+            <h2>الذكاء الاصطناعي</h2><p class="mut sub">مساعد الموقع والوكيل الداخلي.</p>
             <label class="row" style="color:var(--txt)"><input type="checkbox" id="aiOn" style="width:auto"> تشغيل المساعد</label>
             <label>مفتاح OpenAI</label><input id="aiKey" placeholder="sk-..." style="direction:ltr">
             <div class="grid g2"><div><label>النموذج</label><input id="aiModel" style="direction:ltr"></div><div><label>سقف الصرف الشهري ($)</label><input id="aiCap" type="number" step="0.1"></div></div>
             <p class="mut" id="aiCost" style="font-size:13px"></p>
             <button class="btn gold" onclick="saveAI()">حفظ</button>
-            <h3 style="margin-top:22px">المستخدمين</h3>
+          </div>
+          <div class="sp-p" data-p="look">
+            <h2>المظهر والخط</h2><p class="mut sub">الوضع النهاري أو الليلي لهذا الجهاز.</p>
+            <div class="pills"><span id="lkDay" onclick="setTheme('light')">نهاري</span><span id="lkNight" onclick="setTheme('dark')">ليلي</span></div>
+          </div>
+          <div class="sp-p" data-p="users">
+            <h2>المستخدمين</h2><p class="mut sub">كل عملية تنسجل باسم الموظف.</p>
             <table id="usersT"></table>
-            <div class="grid g2" style="margin-top:8px"><input id="nuN" placeholder="الاسم"><input id="nuU" placeholder="اسم المستخدم"><input id="nuP" type="password" placeholder="كلمة السر"><select id="nuR"><option value="seller">بائع</option><option value="manager">مدير فرع</option><option value="accountant">محاسب</option><option value="owner">صاحب المحل</option></select><select id="nuB"></select><button class="btn" onclick="addUser()">+ إضافة مستخدم</button></div>
-            <h3 style="margin-top:22px">البيانات</h3>
-            <div class="row" style="flex-wrap:wrap"><button class="btn" onclick="backup()">نسخة احتياطية الآن</button><button class="btn red" id="resetBtn" onclick="resetDemo()">إعادة ضبط التجربة</button><button class="btn" onclick="toggleMode(true)" id="switchBtn"></button></div>
+            <div class="grid g2" style="margin-top:8px"><input id="nuN" placeholder="الاسم"><input id="nuU" placeholder="اسم المستخدم"><input id="nuP" type="password" placeholder="كلمة السر"><select id="nuR"><option value="seller">بائع</option><option value="manager">مدير فرع</option><option value="accountant">محاسب</option></select><select id="nuB"></select><button class="btn gold" onclick="addUser()">إضافة</button></div>
+          </div>
+          <div class="sp-p" data-p="site">
+            <h2>الموقع والعرض</h2><p class="mut sub">وصل حديثاً، والمميزة، ورابط الموقع.</p>
+            <div class="grid g2"><div><label>مدة "وصل حديثاً" لكل قطعة جديدة (يوم)</label><input id="nwD" type="number" min="0" max="90"></div></div>
+            <p class="mut" style="font-size:13px">بعد المدة ترجع القطعة لقسمها تلقائياً. لكل قطعة زر "العرض" في شاشة القطع لتمديدها أو جعلها مميزة.</p>
+            <h3 style="margin-top:18px">رابط الموقع على شبكة المحل</h3><div class="gold-t" id="siteUrl" style="direction:ltr;text-align:right"></div>
+            <div style="height:14px"></div><button class="btn gold" onclick="saveSettings()">حفظ</button>
+          </div>
+          <div class="sp-p" data-p="link">
+            <h2>الفروع والربط</h2><p class="mut sub">البرنامج يبيع حتى بدون نت. أول ما يرجع النت يرسل المبيعات والقطع والصور والسعر، ويستلم مخزون كل الفروع.</p>
+            <div class="grid g2" style="gap:10px">
+              <input id="syUrl" placeholder="رابط الموقع مثل https://..." style="direction:ltr">
+              <input id="syKey" placeholder="مفتاح الفرع" style="direction:ltr">
+              <input id="syPre" placeholder="حرف الفرع: A أو B أو C" maxlength="3" style="direction:ltr">
+              <div style="display:flex;gap:8px"><button class="btn gold" onclick="saveSync()">حفظ الربط</button><button class="btn" onclick="syncNow()">مزامنة الآن</button></div>
+            </div>
+            <div id="syState" class="mut" style="font-size:13px;margin-top:10px"></div>
+          </div>
+          <div class="sp-p" data-p="sale">
+            <h2>البيع والحجز</h2><p class="mut sub">سياسة الحجز وإعدادات الذهب.</p>
+            <div class="grid g3"><div><label>مدة الحجز (ساعة)</label><input id="rH" type="number"></div><div><label>العربون %</label><input id="rD" type="number"></div><div><label>إلغاء مجاني خلال (ساعة)</label><input id="rF" type="number"></div><div><label>خصم عدم الحضور %</label><input id="rN" type="number"></div><div><label>أقل خصم (ريال)</label><input id="rM" type="number"></div><div><label>رد المبلغ خلال (يوم)</label><input id="rR" type="number"></div></div>
+            <div class="grid g2"><div><label>وزن الجنيه (جرام)</label><input id="pw" type="number"></div><div><label>أقل ربح للكسر النظيف (ريال/جرام)</label><input id="mm" type="number"></div></div>
+            <div style="height:14px"></div><button class="btn gold" onclick="saveSettings()">حفظ</button>
+          </div>
+          <div class="sp-p" data-p="alerts">
+            <h2>التنبيهات</h2><p class="mut sub">كل بيع وكل طلب حجز يوصل لصاحب المحل فوراً، في البرنامج وعلى التليجرام.</p>
+            <div class="grid g2"><div><label>نبّهني للشراء كل ما انباع (جرام)</label><input id="rsTh" type="number" min="0"></div></div>
+            <p class="mut" style="font-size:13px">مثلاً 250: لما ينباع 250 جرام من آخر شراء يطلع تنبيه "وقت الشراء". تسجيل شراء من مورد يبدأ العد من جديد.</p>
+            <p class="mut" style="font-size:13px">التليجرام: من لوحة الإدارة في الموقع ← الإعدادات ← بوت التليجرام، وبعدها أرسل للبوت /admin مع كود الربط.</p>
+            <div style="height:10px"></div><button class="btn gold" onclick="saveRestock()">حفظ</button>
+          </div>
+          <div class="sp-p" data-p="backup">
+            <h2>النسخ الاحتياطي</h2><p class="mut sub">نسخة تلقائية كل يوم، وتقدر تاخذ نسخة الحين.</p>
+            <div class="row" style="flex-wrap:wrap"><button class="btn gold" onclick="backup()">نسخة احتياطية الآن</button><button class="btn red" id="resetBtn" onclick="resetDemo()">إعادة ضبط التجربة</button><button class="btn" onclick="toggleMode(true)" id="switchBtn"></button></div>
+          </div>
+          <div class="sp-p" data-p="about">
+            <h2>حول البرنامج</h2>
+            <p>نظام جمال المشرقي للذهب والمجوهرات: البيع، المخزون، الفروع، الموقع، والمساعد الذكي، كلها نظام واحد.</p>
+            <p class="mut" id="aboutInfo"></p>
           </div>
         </div>
-      </section>
+      </div>
+    </section>
   </main>
 </div>
+
 
 <div class="modal-bg" id="mbg" onclick="if(event.target===this)closeModal()"><div class="modal glass" id="modal"></div></div>
 <div id="toast" class="glass"></div>
@@ -652,7 +801,7 @@ async function loadSettings(){loadSync();const s=await api('get_settings');INFO=
   $('siteUrl').textContent=INFO.site_url||'الموقع غير شغال (المنفذ 8080 مستخدم)';$('shPhone').value=s.shop.phone||'';$('shAddr').value=s.shop.address||'';
   const r=s.reservation;$('rH').value=r.hours;$('rD').value=r.deposit_pct;$('rF').value=r.free_cancel_hours;$('rN').value=r.noshow_deduct_pct;$('rM').value=r.noshow_min;$('rR').value=r.refund_days;
   $('pw').value=s.pound_weight;api('showcase_settings').then(c=>{$('nwD').value=c.new_days}).catch(()=>{});$('mm').value=s.min_scrap_margin;
-  $('aiOn').checked=!!s.ai.enabled;$('aiKey').value=s.ai.api_key||'';$('aiModel').value=s.ai.model||'gpt-5-mini';$('aiCap').value=s.ai.monthly_cap_usd??1;$('aiCost').textContent='المصروف هذا الشهر: $'+s.ai_month_cost.toFixed(4);
+  $('aiOn').checked=!!s.ai.enabled;$('aiKey').value=s.ai.api_key||'';$('aiModel').value=s.ai.model||'gpt-5-mini';$('aiCap').value=s.ai.monthly_cap_usd??1;$('aiCost').textContent='المصروف هذا الشهر: $'+Number(s.ai_month_cost||0).toFixed(4);
   $('resetBtn').style.display=INFO.mode==='demo'?'':'none';$('switchBtn').textContent=INFO.mode==='demo'?'الانتقال للوضع الحقيقي':'الانتقال لوضع التجربة';
   const u=await api('users');$('usersT').innerHTML='<tr><th>الاسم</th><th>المستخدم</th><th>الرتبة</th><th>الفرع</th></tr>'+u.map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.username)}</td><td>${RL[x.role]}</td><td>${esc(x.branch_name||'الكل')}</td></tr>`).join('')}
 async function saveSettings(){try{await api('showcase_settings',{new_days:+$('nwD').value||0})}catch(e){}await api('save_settings',{shop:{phone:$('shPhone').value,address:$('shAddr').value},reservation:{hours:$('rH').value,deposit_pct:$('rD').value,free_cancel_hours:$('rF').value,noshow_deduct_pct:$('rN').value,noshow_min:$('rM').value,refund_days:$('rR').value},pound_weight:$('pw').value,min_scrap_margin:$('mm').value});toast('تم الحفظ')}
@@ -662,6 +811,160 @@ async function backup(){const p=await api('backup_now');toast('تم الحفظ: 
 async function resetDemo(){if(!confirm('مسح كل بيانات التجربة وإرجاعها لحالتها الأولى؟ البيانات الحقيقية لن تتأثر.'))return;await api('reset_demo');location.reload()}
 function modal(h){$('modal').innerHTML=h;$('mbg').style.display='flex'}
 function closeModal(){$('mbg').style.display='none'}
+/* ===== AuraTech-style shell ===== */
+Object.assign(IC,{
+ count:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 11l2 2 4-4M9 17h6"/>',
+ sup:'<path d="M3 7h11v10H3zM14 10h4l3 3v4h-7"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/>',
+ cust:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0"/><path d="M16 4.5a3.5 3.5 0 010 7M18.5 20a6.5 6.5 0 00-3-5.5"/>',
+ shifts:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+ res:'<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>'});
+const NAV2=[['sale','الكاشير'],['pieces','القطع'],['buy','شراء ذهب'],['count','الجرد',['owner','manager']],['sup','الموردين',['owner','manager','accountant']],['cust','العملاء'],['inv','الفواتير'],['res','الحجوزات'],['shifts','الورديات'],['dash','التقارير',['owner','manager','accountant']],['set','الإعدادات',['owner']]];
+const LOADERS={sale:()=>loadSale(),dash:()=>loadDash(),pieces:()=>loadPieces(),prices:()=>loadPrices(),res:()=>loadRes(),inv:()=>loadInvoices(),ai:()=>loadAI(),log:()=>loadLog(),set:()=>loadSettings(),
+  buy:()=>{if(!$('buyLines').children.length)addBuyLine()},count:()=>loadCount(),sup:()=>loadSuppliers(),cust:()=>loadCustomers(),shifts:()=>loadShifts()};
+enter=async function(){$('login').style.display='none';$('appv').style.display='grid';
+  const demo=INFO.mode==='demo';$('modeTop').innerHTML=demo?'<span class="badge demo">وضع التجربة</span>':'';
+  BR=await api('branches');
+  $('whoName').textContent=USER.name;$('avatar').textContent=(USER.name||'?').trim()[0];
+  $('nav').innerHTML=NAV2.filter(n=>!n[2]||n[2].includes(USER.role)).map(n=>`<a data-v="${n[0]}" onclick="go('${n[0]}')"><svg viewBox="0 0 24 24">${IC[n[0]]}</svg>${n[1]}</a>`).join('');
+  $('navAI').style.display=['owner','manager'].includes(USER.role)?'':'none';
+  const bo=BR.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
+  $('pbr').innerHTML='<option value="">كل الفروع</option>'+bo;$('nuB').innerHTML='<option value="">كل الفروع</option>'+bo;$('stBr').innerHTML=bo;
+  shopHeader();ticker();syncChip();setInterval(syncChip,20000);clock();setInterval(clock,20000);shiftChip();bellCount();setInterval(bellCount,30000);heldCount();themeLabel();go('sale')};
+go=function(v){document.querySelectorAll('.view').forEach(e=>e.classList.remove('on'));$('v-'+v).classList.add('on');
+  document.querySelectorAll('#nav a,#navAI').forEach(a=>a.classList.toggle('on',a.dataset.v===v));
+  $('mainv').classList.toggle('fit',v==='sale');(LOADERS[v]||(()=>{}))()};
+function shopHeader(){const s=INFO.shop||{};$('shopName').textContent=s.name||'جمال المشرقي للذهب والمجوهرات';
+  if(s.logo){$('topLogo').src=MB()+s.logo}}
+function clock(){const d=new Date();$('clock').textContent=d.toLocaleDateString('ar',{weekday:'long',day:'numeric',month:'long'})+' · '+d.toLocaleTimeString('ar',{hour:'numeric',minute:'2-digit'})}
+function themeLabel(){const d=document.documentElement.classList.contains('dark');$('themeLbl').textContent=d?'نهاري':'ليلي'}
+function setTheme(t){try{localStorage.setItem('theme',t)}catch(e){}applyTheme();themeLabel();lookPills()}
+const _tt=toggleTheme;toggleTheme=function(){_tt();themeLabel();lookPills()};
+function lookPills(){const d=document.documentElement.classList.contains('dark');if($('lkDay')){$('lkDay').classList.toggle('on',!d);$('lkNight').classList.toggle('on',d)}}
+function userMenu(){modal(`<h2>${esc(USER.name)}</h2><p class="mut">${RL[USER.role]||''}</p><div class="row"><button class="btn" onclick="closeModal();go('shifts')">ورديتي</button><button class="btn red" onclick="doLogout()">تسجيل خروج</button><button class="btn" onclick="closeModal()">إغلاق</button></div>`)}
+/* shift chip + KPIs */
+let SHIFT=null;
+async function shiftChip(){try{SHIFT=await api('shift_current')}catch(e){SHIFT=null}
+  $('shiftChip').innerHTML=SHIFT?'<span class="dot"></span>وردية مفتوحة':'<span class="dot w"></span>بدون وردية';kpis()}
+function kpis(){const s=SHIFT||{};const ic={a:'<path d="M3 17l6-6 4 4 8-8M15 7h6v6"/>',b:'<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',c:'<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>',d:'<path d="M5 20h14l-2-11H7zM9 9a3 3 0 016 0"/>'};
+  const k=[['a','مبيعات الوردية',fmt(s.sales_amount||0)],['b','عدد الفواتير',s.sales_n||0],['c','النقد في الدرج',fmt(s.expected_now||0)],['d','جرامات مباعة',fmt(s.grams||0)+' جم']];
+  $('kpis').innerHTML=k.map(x=>`<div class="kpi glass"><div class="ic"><svg viewBox="0 0 24 24">${ic[x[0]]}</svg></div><div><small>${x[1]}</small><b>${x[2]}</b></div></div>`).join('')}
+const _ls=loadSale;loadSale=async function(){await _ls();shiftChip();$('wChip').classList.toggle('on',SMODE==='weight')};
+const _sm=setMode;setMode=function(m){_sm(m);$('wChip').classList.toggle('on',m==='weight')};
+/* cart totals on the pay button */
+const _rc=renderCart;renderCart=function(k){_rc(k);$('payAmt').textContent=$('ctotal').textContent};
+/* customer F3 */
+async function pickCustomer(){let rows=[];try{rows=await api('customers','')}catch(e){}
+  modal(`<h2>العميل</h2><div class="grid g2"><div><label>الاسم</label><input id="pcN" value="${esc($('cn').value)}"></div><div><label>الجوال</label><input id="pcP" value="${esc($('cp').value)}" style="direction:ltr;text-align:right" oninput="pcFilter()"></div></div>
+  <div id="pcList" style="max-height:280px;overflow:auto;margin-top:10px"></div>
+  <div class="row" style="margin-top:14px"><button class="btn gold" onclick="setCust($('pcN').value,$('pcP').value)">اعتماد</button><button class="btn" onclick="setCust('','')">بدون عميل</button><button class="btn" onclick="closeModal()">إغلاق</button></div>`);
+  window._pcRows=rows;pcFilter();setTimeout(()=>$('pcP').focus(),30)}
+function pcFilter(){const q=($('pcP').value||'').replace(/\D/g,'');const rows=(window._pcRows||[]).filter(c=>!q||c.phone.includes(q.replace(/^0+/,''))).slice(0,30);
+  $('pcList').innerHTML=rows.map(c=>`<div class="nt" style="cursor:pointer" onclick="setCust('${esc(c.name).replace(/'/g,'')}','${c.phone}')"><div class="k">${esc((c.name||'?')[0])}</div><div><b>${esc(c.name||'بدون اسم')}</b><small>${c.phone} · ${c.invoices} فاتورة · ${fmt(c.amount)} ر.ي</small></div></div>`).join('')||'<p class="mut">اكتب الجوال، وينحفظ العميل تلقائياً مع أول فاتورة.</p>'}
+function setCust(n,p){$('cn').value=n||'';$('cp').value=p||'';$('custLbl').textContent=n||p||'عميل';$('custChip').classList.toggle('on',!!(n||p));closeModal()}
+/* discount F8: lower the making charge of every line by a percentage */
+function discountAll(){if(!CART.length)return toast('الفاتورة فاضية',true);
+  modal(`<h2>خصم المصنعية</h2><p class="mut">الخصم على المصنعية فقط، والذهب بسعر اليوم. تقدر تعدل كل قطعة لحالها من السطر نفسه.</p>
+  <div class="pills" style="margin:10px 0">${[5,10,15,20,25,30].map(p=>`<span onclick="applyDisc(${p})">${p}%</span>`).join('')}<span onclick="applyDisc(0)">بدون خصم</span></div><button class="btn" onclick="closeModal()">إغلاق</button>`)}
+function applyDisc(p){CART.forEach(c=>{if(!c.weighed)c.mv=Math.round(c.std*(100-p)/100)});closeModal();renderCart();toast(p?'خصم '+p+'% من المصنعية':'رجعت المصنعية كاملة')}
+/* hold F4 / held F5 */
+function heldGet(){try{return JSON.parse(localStorage.getItem('gm_held')||'[]')}catch(e){return []}}
+function heldSet(a){try{localStorage.setItem('gm_held',JSON.stringify(a))}catch(e){}heldCount()}
+function heldCount(){const n=heldGet().length;const e=$('heldN');if(e){e.textContent=n;e.classList.toggle('on',n>0)}}
+function holdCart(){if(!CART.length)return toast('الفاتورة فاضية',true);const a=heldGet();a.push({t:new Date().toLocaleTimeString('ar',{hour:'numeric',minute:'2-digit'}),cn:$('cn').value,cp:$('cp').value,cart:CART});heldSet(a);
+  CART=[];OPEN=-1;setCust('','');renderGrid();renderCart();toast('انعلقت الفاتورة')}
+function showHeld(){const a=heldGet();modal(`<h2>الفواتير المعلقة</h2>${a.length?a.map((h,i)=>`<div class="nt"><div class="k">${i+1}</div><div class="sp"><b>${esc(h.cn||'بدون عميل')} · ${h.cart.length} قطعة</b><small>${h.t}</small></div><button class="btn sm gold" onclick="resumeHeld(${i})">استرجاع</button><button class="btn sm red" onclick="dropHeld(${i})">حذف</button></div>`).join(''):'<p class="mut">ما فيه فواتير معلقة</p>'}<div style="margin-top:12px"><button class="btn" onclick="closeModal()">إغلاق</button></div>`)}
+function resumeHeld(i){const a=heldGet();const h=a.splice(i,1)[0];if(CART.length){a.push({t:new Date().toLocaleTimeString('ar',{hour:'numeric',minute:'2-digit'}),cn:$('cn').value,cp:$('cp').value,cart:CART})}heldSet(a);
+  CART=h.cart;OPEN=-1;$('cn').value=h.cn||'';$('cp').value=h.cp||'';$('custLbl').textContent=h.cn||h.cp||'عميل';$('custChip').classList.toggle('on',!!(h.cn||h.cp));closeModal();renderGrid();renderCart()}
+function dropHeld(i){const a=heldGet();a.splice(i,1);heldSet(a);showHeld()}
+function cancelCart(){if(!CART.length)return;if(!confirm('إلغاء الفاتورة الحالية؟'))return;CART=[];OPEN=-1;setCust('','');renderGrid();renderCart()}
+/* pay F2 */
+function payModal(){if(!CART.length)return toast('الفاتورة فاضية',true);
+  modal(`<h2>الدفع</h2><p class="mut">الإجمالي</p><div style="font:700 38px Plex;margin:-6px 0 16px" class="gold-t">${$('ctotal').textContent} <small style="font-size:15px">ر.ي</small></div>
+  <div class="grid g3">${[['cash','نقداً','1'],['transfer','تحويل','2'],['mixed','نقد وتحويل','3']].map(x=>`<button class="btn ${x[0]==='cash'?'gold':''}" style="padding:22px 0;font-size:18px" onclick="PAY='${x[0]}';closeModal();checkout()">${x[1]} <span class="kbd">${x[2]}</span></button>`).join('')}</div>
+  <p class="mut" style="font-size:13px;margin-top:12px">Enter = نقداً · بعد الدفع تنطبع الفاتورة تلقائياً.</p>`);window._payOpen=true}
+document.addEventListener('keydown',e=>{
+  if(window._payOpen&&$('mbg').style.display==='flex'&&$('modal').textContent.startsWith('الدفع')){const m={Enter:'cash','1':'cash','2':'transfer','3':'mixed'}[e.key];if(m){e.preventDefault();PAY=m;closeModal();window._payOpen=false;checkout();return}}
+  if(!$('v-sale').classList.contains('on')||$('mbg').style.display==='flex')return;
+  const k={F1:()=>{setMode('code');$('scan').focus()},F2:payModal,F3:pickCustomer,F4:holdCart,F5:showHeld,F8:discountAll,F9:payModal}[e.key];
+  if(k){e.preventDefault();e.stopImmediatePropagation();k()}},true);
+/* invoice logo from the shop settings */
+const _ih=invHTML;invHTML=function(inv){let h=_ih(inv);const lg=(inv.shop||{}).logo;return lg?h.replace('src="/assets/logo_light.png"',`src="${MB()+lg}"`):h};
+/* notifications */
+async function bellCount(){try{const n=await api('notifications');const e=$('bellN');e.textContent=n.unseen>99?'99+':n.unseen;e.classList.toggle('on',n.unseen>0)}catch(e){}}
+async function openBell(){const n=await api('notifications');let rs=null;try{rs=await api('restock')}catch(e){}
+  const KI={sale:'ب',reservation:'ح',restock:'!',shift:'و',stocktake:'ج'};
+  modal(`<h2>التنبيهات</h2>${rs&&rs.due?`<div class="nt new"><div class="k">!</div><div class="sp"><b>وقت الشراء: انباع ${fmt(rs.sold_g)} جرام من آخر شراء</b><small>الحد ${fmt(rs.threshold_g)} جرام</small></div><button class="btn sm gold" onclick="api('restock_done').then(()=>{toast('بدأ العد من جديد');openBell()})">اشتريت</button></div>`:''}
+  <div style="max-height:60vh;overflow:auto">${n.items.map(x=>`<div class="nt ${x.seen?'':'new'}"><div class="k">${KI[x.kind]||'•'}</div><div><b>${esc(x.title)}</b>${x.body?`<p>${esc(x.body)}</p>`:''}<small>${esc(x.ts)}</small></div></div>`).join('')||'<p class="mut">ما فيه تنبيهات</p>'}</div>
+  <div style="margin-top:12px"><button class="btn" onclick="closeModal()">إغلاق</button></div>`);
+  api('notifications_seen').then(bellCount).catch(()=>{})}
+/* reports */
+const _ld=loadDash;loadDash=async function(){const d=await api('dashboard');
+  $('stats').innerHTML=[['مبيعات اليوم',fmt(d.sales.amount)+' ر.ي'],['عدد الفواتير',d.sales.n],['جرامات مباعة',fmt(d.grams_sold)+' جم'],['شراء اليوم',fmt(d.bought.g)+' جم']].map(s=>`<div class="glass card stat"><div class="mut">${s[0]}</div><div class="v">${s[1]}</div></div>`).join('');
+  $('byBranch').innerHTML='<tr><th>الفرع</th><th>الفواتير</th><th>المبلغ</th></tr>'+d.by_branch.map(b=>`<tr><td>${esc(b.name)}</td><td>${b.n}</td><td>${fmt(b.amount)}</td></tr>`).join('');
+  $('stockT').innerHTML='<tr><th>العيار</th><th>القطع</th><th>الوزن</th></tr>'+d.stock.map(s=>`<tr><td>${s.karat}</td><td>${s.n}</td><td>${fmt(s.g)} جم</td></tr>`).join('');
+  $('scrapT').innerHTML='<tr><th>العيار</th><th>الوزن</th></tr>'+(d.scrap.map(s=>`<tr><td>${s.karat}</td><td>${fmt(s.g)} جم</td></tr>`).join('')||'<tr><td class="mut">لا يوجد</td></tr>');
+  const r=await api('restock');$('restockBox').innerHTML=`<div style="font:700 30px Plex" class="${r.due?'bad-t':'gold-t'}">${fmt(r.sold_g)} <small style="font-size:14px">جم من ${fmt(r.threshold_g)}</small></div><p class="mut">انباع من آخر شراء${r.since?' ('+esc(r.since)+')':''}</p>${r.due?'<p class="bad-t"><b>وصلنا الحد، وقت الشراء.</b></p>':''}<button class="btn" onclick="api('restock_done').then(loadDash)">اشتريت، ابدأ العد من جديد</button>`};
+/* stocktake */
+let COUNT=null;
+async function loadCount(){const rows=await api('stocktakes');const open=rows.find(r=>r.status==='open');
+  if(open&&(!COUNT||COUNT.id!==open.id))COUNT=await api('stocktake_get',open.id);if(!open)COUNT=null;drawCount();
+  $('countT').innerHTML='<tr><th>الفرع</th><th>بدأ</th><th>انتهى</th><th>المتوقع</th><th>الموجود</th><th>ناقص</th><th>زائد</th><th>الموظف</th></tr>'+rows.filter(r=>r.status==='closed').map(r=>`<tr><td>${esc(r.branch_name||'الكل')}</td><td class="mut">${esc(r.started_at)}</td><td class="mut">${esc(r.closed_at||'')}</td><td>${r.summary?r.summary.expected_n:''}</td><td>${r.summary?r.summary.found_n:''}</td><td class="bad-t">${r.summary?r.summary.missing:''}</td><td>${r.summary?r.summary.extra:''}</td><td>${esc(r.user_name)}</td></tr>`).join('')}
+function drawCount(){const t=COUNT;if(!t){$('countBox').innerHTML='<div class="glass card"><p class="mut" style="margin:0">ما فيه جرد مفتوح. اختر الفرع واضغط "بدء جرد جديد"، وبعدها امسح باركود كل قطعة موجودة فعلاً.</p></div>';return}
+  $('countBox').innerHTML=`<div class="glass card"><div class="scan2" style="margin-bottom:14px"><svg viewBox="0 0 24 24"><path d="M3 7V4h3M21 7V4h-3M3 17v3h3M21 17v3h-3M7 8v8M10 8v8M13 8v8M16 8v8"/></svg><input id="cscan" placeholder="امسح باركود القطعة..." onkeydown="if(event.key==='Enter')countScan()"></div>
+  <div class="cnt">${[['المتوقع',t.expected_n+' قطعة · '+fmt(t.expected_g)+' جم'],['تم مسحه',t.found_n+' قطعة · '+fmt(t.found_g)+' جم'],['ناقص',t.missing.length],['زائد / غير مسجل',t.extra.length]].map(x=>`<div class="kpi glass"><div><small>${x[0]}</small><b>${x[1]}</b></div></div>`).join('')}</div>
+  <div class="grid g2"><div><h3>ناقصة (ما انمسحت)</h3><div class="tw" style="max-height:300px"><table>${t.missing.map(m=>`<tr><td>${m.code}</td><td>${esc(m.title||m.type)}</td><td>${m.weight} جم</td></tr>`).join('')||'<tr><td class="ok-t">ما فيه</td></tr>'}</table></div></div>
+  <div><h3>زائدة / غير متوقعة</h3><table>${t.extra.map(m=>`<tr><td>${m.code}</td><td class="mut">${esc(m.why)}</td></tr>`).join('')||'<tr><td class="ok-t">ما فيه</td></tr>'}</table></div></div>
+  <div class="row" style="margin-top:14px"><span class="mut">${esc(t.branch_name||'')} · بدأ ${esc(t.started_at)}</span><span class="sp"></span><button class="btn gold" onclick="closeCount()">إنهاء الجرد وحفظ التقرير</button></div></div>`;setTimeout(()=>$('cscan')&&$('cscan').focus(),30)}
+async function startCount(){COUNT=await api('stocktake_start',$('stBr').value);drawCount();loadCount()}
+async function countScan(){const v=$('cscan').value.trim();if(!v)return;COUNT=await api('stocktake_scan',COUNT.id,v);const l=COUNT.last;drawCount();
+  toast(l.dup?'انمسحت قبل: '+l.code:(COUNT.extra.find(x=>x.code===l.code)?'غير متوقعة هنا: '+l.code:'تم: '+l.code),l.dup||!!COUNT.extra.find(x=>x.code===l.code))}
+async function closeCount(){if(!confirm('إنهاء الجرد؟ الناقص والزائد ينحفظ في التقرير ويوصل تنبيه لصاحب المحل.'))return;await api('stocktake_close',COUNT.id);COUNT=null;toast('تم حفظ تقرير الجرد');loadCount()}
+/* suppliers */
+async function loadSuppliers(){const rows=await api('suppliers');
+  $('supT').innerHTML='<tr><th>المورد</th><th>الجوال</th><th>ذهب مستلم (جم)</th><th>المتبقي له (ر.ي)</th><th></th></tr>'+rows.map(r=>`<tr><td><b>${esc(r.name)}</b></td><td>${esc(r.phone||'')}</td><td>${fmt(r.grams)}</td><td class="${r.due>0?'bad-t':''}">${fmt(r.due)}</td><td><button class="btn sm gold" onclick="supTx('${r.id}','buy')">استلام ذهب</button> <button class="btn sm" onclick="supTx('${r.id}','pay')">دفعة</button> <button class="btn sm" onclick="supTx('${r.id}','return')">مرتجع</button> <button class="btn sm" onclick="supStatement('${r.id}')">كشف حساب</button> <button class="btn sm" onclick="editSupplier('${r.id}')">تعديل</button></td></tr>`).join('');window._sups=rows}
+function editSupplier(id){const r=(window._sups||[]).find(x=>x.id===id)||{};
+  modal(`<h2>${id?'تعديل مورد':'مورد جديد'}</h2><label>الاسم</label><input id="suN" value="${esc(r.name||'')}"><label>الجوال</label><input id="suP" value="${esc(r.phone||'')}"><label>ملاحظات</label><input id="suO" value="${esc(r.notes||'')}">
+  <div class="row" style="margin-top:14px"><button class="btn gold" onclick="api('save_supplier',{id:'${id||''}',name:$('suN').value,phone:$('suP').value,notes:$('suO').value}).then(()=>{closeModal();loadSuppliers()})">حفظ</button><button class="btn" onclick="closeModal()">إلغاء</button></div>`)}
+function supTx(id,kind){const T={buy:'استلام ذهب من المورد',pay:'دفعة للمورد',return:'مرتجع للمورد'}[kind];
+  modal(`<h2>${T}</h2>${kind!=='pay'?'<div class="grid g2"><div><label>الوزن (جرام)</label><input id="stG" type="number" step="0.01"></div><div><label>العيار</label><select id="stK"><option>21</option><option>18</option><option>24</option></select></div></div>':''}
+  <label>${kind==='pay'?'المبلغ المدفوع (ر.ي)':'القيمة (ر.ي)'}</label><input id="stA" type="number"><label>ملاحظة</label><input id="stN">
+  ${kind==='buy'?'<p class="mut" style="font-size:13px">تسجيل الاستلام يبدأ عداد "تنبيه الشراء" من جديد.</p>':''}
+  <div class="row" style="margin-top:14px"><button class="btn gold" onclick="api('supplier_tx',{supplier_id:'${id}',kind:'${kind}',grams:+(($('stG')||{}).value||0),karat:+(($('stK')||{}).value||21),amount:+$('stA').value||0,note:$('stN').value}).then(()=>{closeModal();toast('تم التسجيل');loadSuppliers()})">حفظ</button><button class="btn" onclick="closeModal()">إلغاء</button></div>`)}
+async function supStatement(id){const d=await api('supplier_statement',id);const K={buy:'استلام ذهب',pay:'دفعة',return:'مرتجع'};
+  modal(`<h2>كشف حساب: ${esc(d.supplier.name)}</h2><div class="tw" style="max-height:60vh"><table><tr><th>التاريخ</th><th>الحركة</th><th>الوزن</th><th>المبلغ</th><th>رصيد الذهب</th><th>المتبقي له</th><th>ملاحظة</th></tr>${d.rows.map(r=>`<tr><td class="mut">${esc(r.ts)}</td><td>${K[r.kind]}</td><td>${r.grams?fmt(r.grams)+' جم':''}</td><td>${fmt(r.amount)}</td><td>${fmt(r.bal_grams)}</td><td>${fmt(r.bal_due)}</td><td class="mut">${esc(r.note||'')}</td></tr>`).join('')}</table></div>
+  <p><b>الإجمالي:</b> ${fmt(d.balance.grams)} جم مستلم · المتبقي له ${fmt(d.balance.due)} ر.ي</p><div class="row"><button class="btn" onclick="window.print()">طباعة</button><button class="btn" onclick="closeModal()">إغلاق</button></div>`)}
+/* customers */
+async function loadCustomers(){const rows=await api('customers',$('cuq').value||'');
+  $('custT').innerHTML='<tr><th>الاسم</th><th>الجوال</th><th>الفواتير</th><th>إجمالي المشتريات</th><th>آخر شراء</th><th></th></tr>'+rows.map(c=>`<tr><td><b>${esc(c.name||'—')}</b></td><td style="direction:ltr;text-align:right">${c.phone}</td><td>${c.invoices}</td><td class="gold-t">${fmt(c.amount)}</td><td class="mut">${esc(c.last||'')}</td><td><button class="btn sm" onclick="custInv('${c.phone}','${esc(c.name||'').replace(/'/g,'')}')">الفواتير</button> <button class="btn sm" onclick="editCustomer('${c.phone}','${esc(c.name||'').replace(/'/g,'')}')">تعديل</button></td></tr>`).join('')||'<tr><td class="mut">العملاء ينضافون تلقائياً لما يتكتب جوالهم في الفاتورة</td></tr>'}
+function editCustomer(p,n){modal(`<h2>${p?'تعديل عميل':'عميل جديد'}</h2><label>الاسم</label><input id="ecN" value="${esc(n||'')}"><label>الجوال</label><input id="ecP" value="${esc(p||'')}" style="direction:ltr;text-align:right"><label>ملاحظات</label><input id="ecO">
+  <div class="row" style="margin-top:14px"><button class="btn gold" onclick="api('save_customer',{name:$('ecN').value,phone:$('ecP').value,notes:$('ecO').value}).then(()=>{closeModal();loadCustomers()})">حفظ</button><button class="btn" onclick="closeModal()">إلغاء</button></div>`)}
+async function custInv(p,n){const rows=await api('customer_invoices',p);modal(`<h2>فواتير ${esc(n||p)}</h2><table><tr><th>الرقم</th><th>المبلغ</th><th>التاريخ</th><th></th></tr>${rows.map(r=>`<tr><td>${r.number}</td><td>${fmt(r.total)}</td><td class="mut">${esc(r.created_at)}</td><td><button class="btn sm" onclick="api('invoice','${r.number}').then(printInvoice)">عرض</button></td></tr>`).join('')}</table><div style="margin-top:12px"><button class="btn" onclick="closeModal()">إغلاق</button></div>`)}
+/* shifts */
+async function loadShifts(){await shiftChip();const s=SHIFT;
+  $('shiftBox').innerHTML=s?`<div class="glass card"><h3>ورديتك مفتوحة من ${esc(s.opened_at)}</h3><div class="cnt">${[['المبيعات',fmt(s.sales_amount)+' ر.ي'],['الفواتير',s.sales_n],['الجرامات',fmt(s.grams)+' جم'],['المتوقع في الدرج',fmt(s.expected_now)]].map(x=>`<div class="kpi glass"><div><small>${x[0]}</small><b>${x[1]}</b></div></div>`).join('')}</div>
+    <p class="mut" style="font-size:13px">المتوقع = افتتاح الدرج ${fmt(s.opening_cash)} + البيع النقدي ${fmt(s.sales_cash)} − شراء الذهب ${fmt(s.buys_amount)}</p>
+    <div class="row"><input id="shC" type="number" placeholder="النقد المعدود في الدرج" style="max-width:260px"><input id="shN" placeholder="ملاحظة (اختياري)"><button class="btn gold" onclick="closeShift()">إغلاق الوردية</button></div></div>`
+  :`<div class="glass card"><h3>ما عندك وردية مفتوحة</h3><div class="row"><input id="shO" type="number" placeholder="النقد في الدرج عند البداية" style="max-width:280px"><button class="btn gold" onclick="api('shift_open',+$('shO').value||0).then(()=>{toast('انفتحت الوردية');loadShifts()})">فتح وردية</button></div></div>`;
+  const rows=await api('shifts');$('shiftT').innerHTML='<tr><th>الموظف</th><th>الفرع</th><th>من</th><th>إلى</th><th>المبيعات</th><th>الفواتير</th><th>المتوقع</th><th>المعدود</th><th>الفرق</th></tr>'+rows.map(r=>{const d=r.closed_at?(r.counted_cash||0)-(r.expected_cash||0):null;
+    return `<tr><td>${esc(r.user_name)}</td><td>${esc(r.branch_name||'')}</td><td class="mut">${esc(r.opened_at)}</td><td class="mut">${esc(r.closed_at||'مفتوحة')}</td><td>${fmt(r.sales_amount)}</td><td>${r.sales_n}</td><td>${fmt(r.closed_at?r.expected_cash:r.expected_now)}</td><td>${r.closed_at?fmt(r.counted_cash):''}</td><td class="${d<0?'bad-t':d>0?'ok-t':''}">${d==null?'':(d>0?'+':'')+fmt(d)}</td></tr>`}).join('')}
+async function closeShift(){const c=$('shC').value;if(c===''){toast('اكتب النقد المعدود',true);return}const r=await api('shift_close',+c,$('shN').value);const d=(r.counted_cash||0)-(r.expected_cash||0);
+  toast(d===0?'الدرج مطابق':(d>0?'زيادة ':'عجز ')+fmt(Math.abs(d)),d<0);loadShifts()}
+/* settings with a side menu */
+const SNAV=[['shop','بيانات المحل','<path d="M4 10l2-6h12l2 6M4 10h16v10H4zM9 20v-5h6v5"/>'],['invoice','تصميم الفاتورة والطباعة','<path d="M6 9V3h12v6M6 17H4v-6h16v6h-2M7 14h10v7H7z"/>'],['ai','الذكاء الاصطناعي','<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/>'],['look','المظهر والخط','<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17"/>'],['users','المستخدمين','<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0113 0"/>'],['site','الموقع والعرض','<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c3 3.5 3 13.5 0 17M12 3.5c-3 3.5-3 13.5 0 17"/>'],['link','الفروع والربط','<path d="M10 14a4 4 0 005.6 0l3-3a4 4 0 00-5.6-5.6l-1 1M14 10a4 4 0 00-5.6 0l-3 3a4 4 0 005.6 5.6l1-1"/>'],['sale','البيع والحجز','<path d="M12 3v18M5 7h14M7 7l-3 7h6zM17 7l-3 7h6z"/>'],['alerts','التنبيهات','<path d="M6 16V11a6 6 0 0112 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 004 0"/>'],['backup','النسخ الاحتياطي','<ellipse cx="12" cy="6" rx="7" ry="2.5"/><path d="M5 6v12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V6M5 12c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5"/>'],['about','حول البرنامج','<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/>']];
+let SPANE='shop';
+function openSettings(p){SPANE=p||SPANE;go('set')}
+function showPane(p){SPANE=p;document.querySelectorAll('#snav a').forEach(a=>a.classList.toggle('on',a.dataset.p===p));document.querySelectorAll('.sp-p').forEach(x=>x.classList.toggle('on',x.dataset.p===p))}
+const _lset=loadSettings;loadSettings=async function(){$('snav').innerHTML=SNAV.map(n=>`<a data-p="${n[0]}" onclick="showPane('${n[0]}')"><svg viewBox="0 0 24 24">${n[2]}</svg>${n[1]}</a>`).join('');showPane(SPANE);
+  await _lset();const s=await api('get_settings');$('shName').value=(s.shop||{}).name||'';$('shopLogoPrev').src=(s.shop||{}).logo?MB()+s.shop.logo:'/assets/logo_light.png';
+  $('brT').innerHTML='<tr><th>الفرع</th><th>العنوان</th></tr>'+BR.map(b=>`<tr><td>${esc(b.name)}</td><td class="mut">${esc(b.address||'')}</td></tr>`).join('');
+  $('stPaper').value=PRINT_SIZE;$('stAuto').value=AUTO_PRINT?'1':'0';lookPills();
+  try{const r=await api('restock');$('rsTh').value=r.threshold_g}catch(e){}
+  $('aboutInfo').textContent=(INFO.mode==='demo'?'وضع التجربة':'الوضع الحقيقي')+' · '+(INFO.site_url||'')};
+async function saveShop(){await api('save_settings',{shop:{name:$('shName').value.trim(),phone:$('shPhone').value,address:$('shAddr').value}});INFO=await api('info');shopHeader();toast('تم حفظ بيانات المحل')}
+async function uploadLogo(inp){const f=inp.files&&inp.files[0];if(!f)return;const d=await new Promise((ok,bad)=>{const r=new FileReader();r.onload=()=>ok(r.result);r.onerror=bad;r.readAsDataURL(f)});await api('upload_logo',d);INFO=await api('info');shopHeader();$('shopLogoPrev').src=MB()+'shop_logo.png?'+Date.now();toast('تم حفظ الشعار')}
+async function saveRestock(){await api('restock_threshold',+$('rsTh').value||0);toast('تم الحفظ')}
+
+const _co=checkout;checkout=async function(){const had=CART.length;await _co();if(had&&!CART.length){setCust('','');shiftChip();bellCount()}};
 window.addEventListener('pywebviewready',boot);
 </script>
 </body>

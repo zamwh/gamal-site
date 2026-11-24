@@ -193,6 +193,99 @@ class Api:
             return media.save_piece_photo(data_url, media_dir(self._s), self._app.base_logo, enhance_it=role != "card")
         return self._run(f)
 
+    # ---- operations: notifications, customers, suppliers, shifts, stocktake
+    def _ops(self, fn, *a):
+        import ops
+        return self._run(lambda: (self._need_login(), getattr(ops, fn)(self._s, *a))[1])
+
+    def _opsu(self, fn, *a):
+        import ops
+        return self._run(lambda: getattr(ops, fn)(self._s, self._need_login(), *a))
+
+    def notifications(self):
+        return self._ops("notifications")
+
+    def notifications_seen(self):
+        return self._ops("mark_seen")
+
+    def restock(self):
+        return self._ops("restock_state")
+
+    def restock_done(self, threshold=None):
+        return self._opsu("restock_done", threshold)
+
+    def restock_threshold(self, g):
+        return self._opsu("set_restock_threshold", g)
+
+    def customers(self, search=""):
+        return self._ops("customers", search)
+
+    def save_customer(self, d):
+        return self._opsu("save_customer", d)
+
+    def customer_invoices(self, phone):
+        return self._ops("customer_invoices", phone)
+
+    def suppliers(self):
+        return self._ops("suppliers")
+
+    def save_supplier(self, d):
+        return self._opsu("save_supplier", d)
+
+    def supplier_tx(self, d):
+        return self._opsu("supplier_tx", d)
+
+    def supplier_statement(self, sid):
+        return self._ops("supplier_statement", sid)
+
+    def shift_current(self):
+        return self._opsu("current_shift")
+
+    def shift_open(self, cash=0):
+        return self._opsu("open_shift", cash)
+
+    def shift_close(self, counted, note=""):
+        return self._opsu("close_shift", counted, note)
+
+    def shifts(self):
+        return self._ops("shifts")
+
+    def stocktake_start(self, branch_id=None):
+        return self._opsu("stocktake_start", branch_id)
+
+    def stocktake_scan(self, tid, code):
+        return self._opsu("stocktake_scan", tid, code)
+
+    def stocktake_close(self, tid):
+        return self._opsu("stocktake_close", tid)
+
+    def stocktake_get(self, tid):
+        return self._ops("stocktake_get", tid)
+
+    def stocktakes(self):
+        return self._ops("stocktakes")
+
+    def upload_logo(self, data_url):
+        """Shop logo for invoices and the program's top bar (PNG with a clear background works best)."""
+        def f():
+            self._s.require(self._need_login(), "owner")
+            import base64, re as _re
+            m = _re.match(r"data:image/(png|jpeg|jpg|webp);base64,(.+)$", data_url or "", _re.S)
+            if not m:
+                raise GoldError("الشعار لازم يكون PNG أو JPG")
+            from web import media_dir
+            from PIL import Image
+            import io
+            im = Image.open(io.BytesIO(base64.b64decode(m.group(2))))
+            im.thumbnail((900, 900))
+            name = "shop_logo.png"
+            im.save(os.path.join(media_dir(self._s), name), "PNG")
+            sh = dict(self._s.setting("shop") or {})
+            sh["logo"] = name
+            self._s.set_setting("shop", sh)
+            return name
+        return self._run(f)
+
     def print_silent(self, paper="a4"):
         """Print the invoice straight to the default printer, no dialog (Windows WebView2).
         Returns False when not possible here, and the screen falls back to the normal print window."""

@@ -228,6 +228,8 @@ class Store:
         if self.one("SELECT 1 FROM branches WHERE address=?", ("خط السبل — مركز وان مول، الدور الأول، المحل رقم 3",)):
             self.db.execute("UPDATE branches SET name='الفرع الثالث', address='السبل — داخل ون مول' WHERE address=?", ("خط السبل — مركز وان مول، الدور الأول، المحل رقم 3",))
             self.db.execute("UPDATE branches SET name='الفرع الثاني' WHERE address='بجوار البوابة الرئيسية لمركز جرعان'")
+        import ops
+        ops.ensure(self)
         if self.one("SELECT 1 FROM settings WHERE key='secret'") and self.setting("payments") is None:
             self._init_web_settings()
         self.db.commit()
@@ -519,10 +521,13 @@ class Store:
 
     def create_sale(self, *a, **k):
         try:
-            return self._create_sale(*a, **k)
+            inv = self._create_sale(*a, **k)
         except Exception:
             self.db.rollback()          # nothing half-written: weighed pieces and lines go together or not at all
             raise
+        import ops
+        ops.on_sale(self, inv)          # owner notice, customer card, restock reminder (never blocks the sale)
+        return inv
 
     def _create_sale(self, uid, items, customer_name="", customer_phone="", adjust_amount=0,
                     adjust_reason="", deposit=0, pay_method=None):
@@ -769,7 +774,10 @@ class Store:
                          source[:10], (session or "")[:40], (pickup or "")[:40]))
         self.log(None, "reservation_request", "reservation", rid, {"number": number, "code": p["code"], "kind": kind})
         self.db.commit()
-        return {"number": number, "amount": amount, "price": price, "code": p["code"], "kind": kind}
+        out = {"number": number, "amount": amount, "price": price, "code": p["code"], "kind": kind}
+        import ops
+        ops.on_reservation(self, out)
+        return out
 
     def confirm_reservation(self, uid, number):
         self.require(uid, "owner", "accountant")

@@ -56,6 +56,22 @@ class Bot(threading.Thread):
             print("telegram photo:", e, flush=True)
             self.send(token, chat, caption, buttons)
 
+    def notify(self, text):
+        """Owner/staff notices (sales, reservations, restock). Sent in the background, never blocks a sale."""
+        def go():
+            try:
+                with self.app.lock:
+                    c = cfg(self.app.store)
+                token = (c.get("token") or "").strip()
+                if not token or not c.get("enabled", True):
+                    return
+                for chat in list((c.get("staff") or {}).keys()):
+                    if chat not in (c.get("muted") or []):
+                        self.send(token, chat, text)
+            except Exception as e:
+                print("telegram notify:", e, flush=True)
+        threading.Thread(target=go, daemon=True).start()
+
     # ---------- loop
     def run(self):
         while True:
