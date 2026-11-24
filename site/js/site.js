@@ -500,15 +500,25 @@
     var done = function (d) {
       var fix = function (u) { return u ? u.replace(/%7BBASE%7D/g, encodeURIComponent(location.origin)) : u };
       d.handoff = fix(d.handoff); if (d.offer) d.offer.wa = fix(d.offer.wa);
-      busy = false; ty.remove(); addMsg(d.text || '…', 'a'); cards(d.pieces);
-      if (d.handoff !== undefined) {
-        var a = document.createElement('a'); a.className = 'handoff'; a.target = '_blank'; a.rel = 'noopener';
-        a.innerHTML = '<svg class="b"><use href="#s-wa"/></svg>راسلنا على واتساب'; a.href = d.handoff || wa('السلام عليكم، أبغى أستفسر عن مجموعتكم') || '#';
-        a.onclick = function (e) { T('ai_handoff_click', null, null, 1); if (a.getAttribute('href') === '#') { e.preventDefault(); toast('رقم الواتساب يُضاف قريباً') } };
-        msgs.appendChild(a); msgs.scrollTop = 1e6;
-      }
-      if (d.offer) offerCard(d.offer);
-      chips(d.suggest);
+      // like a person typing: the reply arrives in short messages, one after another
+      var parts = String(d.text || '…').split(/\n\s*\n/).map(function (x) { return x.trim() }).filter(Boolean);
+      var i = 0;
+      (function next() {
+        if (i < parts.length) {
+          if (i) { ty = addMsg('', 'a'); ty.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>' }
+          setTimeout(function () { ty.remove(); addMsg(parts[i++], 'a'); next() }, i ? Math.min(1600, 350 + parts[i].length * 18) : 0);
+          return;
+        }
+        busy = false; cards(d.pieces);
+        if (d.handoff !== undefined) {
+          var a = document.createElement('a'); a.className = 'handoff'; a.target = '_blank'; a.rel = 'noopener';
+          a.innerHTML = '<svg class="b"><use href="#s-wa"/></svg>كلّم المبيعات على واتساب'; a.href = d.handoff || wa('السلام عليكم، أبغى أستفسر عن مجموعتكم') || '#';
+          a.onclick = function (e) { T('ai_handoff_click', null, null, 1); if (a.getAttribute('href') === '#') { e.preventDefault(); toast('رقم الواتساب يُضاف قريباً') } };
+          msgs.appendChild(a); msgs.scrollTop = 1e6;
+        }
+        if (d.offer) offerCard(d.offer);
+        chips(d.suggest);
+      })();
     };
     if (!ONLINE || !SITE.ai) { setTimeout(function () { done(localReply(t)) }, 700); return }
     fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session: CHAT_ID, message: t }) })

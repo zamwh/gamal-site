@@ -33,9 +33,9 @@ DEFAULT_AI = {"enabled": False, "api_key": "", "model": "gpt-6-luna", "price_in"
               "price_out": 0.50,
               # stronger model only for the moments that decide a sale (taste/sets, objections)
               "model_strong": "gpt-6.1-terra", "strong_price_in": 1.0, "strong_price_cached": 0.10,
-              "strong_price_out": 5.0, "strong_stages": ["interest", "taste", "objection", "ready"],
+              "strong_price_out": 5.0, "strong_stages": ["browse", "interest", "taste", "objection", "ready"],
               "daily_cap_usd": 4.5, "monthly_cap_usd": 133.0, "max_out_tokens": 1200,
-              "history_msgs": 6, "session_msg_limit": 40, "extra": {},
+              "history_msgs": 14, "session_msg_limit": 40, "extra": {},
               # used automatically if the configured model is rejected by the API (renamed/retired)
               "fallback_model": "gpt-5.4-mini", "fallback_price_in": 0.75, "fallback_price_cached": 0.075,
               "fallback_price_out": 4.5}
@@ -73,6 +73,15 @@ CORE_PROMPT = """أنت "مستشار جمال المشرقي": أمهر بائ�
 
 زبون: خلاص عجبني الأول
 أنت: [تستدعي offer_purchase برمز القطعة] اختيار موفق، هذا من أجمل اللي عندنا. اختر الطريقة اللي تريحك وأثبّتها لك:
+
+كيف تحس الزبون إنه يكلم بياع حقيقي:
+- اسمع وارجع له بكلامه هو ("عرس أختك؟ الله يتمم لها على خير").
+- قل رأيك كخبير بثقة: "لو تسألني أنا، للعرس هذا أقوى من ذاك لأن..." البياع الشاطر يرشّح، ما يرمي خيارات.
+- لاحظ التفاصيل: لو قال ميزانية، احترمها ولا تحرجه. لو تردد، طمّنه. لو استعجل، اختصر.
+- نوّع كلامك؛ لا تبدأ كل رد بنفس الكلمة، ولا تكرر نفس المدح.
+- كلمات دافئة طبيعية: أبشر، على راسي، تامر، حياك، الله يتمم بخير. باعتدال.
+- لا تقول "كمساعد" ولا "حسب البيانات". تكلم كبياع في المحل.
+- اسأل عن الزبون نفسه قبل القطعة: لمين؟ أي مناسبة؟ وش تحب العروس؟ الناس تشتري ممن فهمها.
 
 قواعد لا تُكسر:
 - بدون إيموجي نهائياً. الفخامة في الكلام.
@@ -471,6 +480,8 @@ class SalesAgent:
             c = self._ctx(session)
             self.update_facts(c, t)
             stage, canned, need = self.classify(c, t)
+            if cfg.get("enabled") and cfg.get("api_key"):
+                canned = None        # a real seller answers everything himself; ready-made lines only when the AI is off
             c["stage"] = stage
             c["msgs"] += 1
             if c["msgs"] > int(cfg["session_msg_limit"]):
@@ -482,7 +493,7 @@ class SalesAgent:
                 if day >= float(cfg["daily_cap_usd"]) or month >= float(cfg["monthly_cap_usd"]):
                     canned = "cap"
             if canned:
-                text = {"limit": "وصلنا للحد اليومي للمحادثة هنا تقدر تكمل مع فريق المبيعات على واتساب.",
+                text = {"limit": "وصلنا للحد اليومي للمحادثة هنا. تقدر تكمل مع فريق المبيعات على واتساب.",
                         "off": "المساعد غير مفعّل حالياً. تقدر تتصفح القطع أو تراسلنا على واتساب.",
                         "cap": "المساعد مشغول حالياً. تقدر تتصفح القطع أو تراسلنا على واتساب."
                         }.get(canned) or self.canned(canned)
@@ -609,7 +620,12 @@ class SalesAgent:
         parts.append(f"## ما نعرفه عن الزبون\n{known}\nالمرحلة: {stage}\nقطع عُرضت سابقاً: "
                      f"{', '.join(c['shown'][-6:]) or 'لا يوجد'}")
         if pr:
-            parts.append(f"سعر جرام 21 اليوم بيع {pr['k21_sell']:,.0f} ريال.")
+            parts.append(f"أسعار اليوم: جرام 21 بيع {pr['k21_sell']:,.0f} وشراء {pr['k21_buy']:,.0f} ريال يمني؛ "
+                         f"الجنيه بيع {pr['pound_sell']:,.0f} وشراء {pr['pound_buy']:,.0f}.")
+        try:
+            parts.append("الفروع: " + " | ".join(f"{b['name']}: {b['address']}" for b in s.branches()))
+        except Exception:
+            pass
         if stage == "ready":
             parts.append("الشراء: حجز بعربون (السعر يوم الاستلام) أو تحويل كامل (يثبت السعر وقت التحويل)، "
                          "والتأكيد بعد مراجعة المحاسب، والاستلام من الفرع. فريق المبيعات يكمل معه على واتساب.")
