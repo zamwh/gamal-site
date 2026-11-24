@@ -117,6 +117,17 @@
     { key: 'grand', t: 'الفخامة الكاملة', s: 'قطع تخطف الأنظار', f: function (p) { return p.style === 'فخم' } },
     { key: 'classic', t: 'الكلاسيكيات', s: 'أناقة هادئة لا تغيب', f: function (p) { return p.style === 'كلاسيكي' } },
     { key: 'engagement', t: 'للخطوبة', s: 'قطع أخف وأنعم', f: function (p) { return p.occasion === 'خطوبة' } }];
+  // shop by category: what a piece is, read from its own name and type (a set with a belt also counts as a belt)
+  var CATS = [['rings', 'خواتم', ['خاتم', 'خواتم']], ['chains', 'سلاسل', ['سلسل', 'سلاسل']], ['bracelets', 'أساور', ['أسورة', 'اسورة', 'أساور', 'اساور', 'بنجري', 'غوايش']],
+              ['belts', 'أحزمة', ['حزام', 'احزمة']], ['necklaces', 'عقود وكردانات', ['عقد', 'كردان']], ['sets', 'أطقم', ['طقم', 'أطقم']], ['earrings', 'حلق', ['حلق', 'أقراط']]];
+  CATS.forEach(function (c) { COLS.push({ key: 'cat-' + c[0], t: c[1], s: 'تسوّق حسب الفئة', f: function (p) { var h = (p.title || '') + ' ' + (p.kind || ''); return c[2].some(function (w) { return h.indexOf(w) >= 0 }) } }) });
+  function renderCats() {
+    var r = $('#catRow'); if (!r) return;
+    r.innerHTML = CATS.map(function (c, i) {
+      var n = colItems(COLS.filter(function (x) { return x.key === 'cat-' + c[0] })[0]).length;
+      return '<a class="cat rv' + (i % 3 ? ' d' + (i % 3) : '') + '" href="#collection-cat-' + c[0] + '"><span class="ca"><img loading="lazy" src="img/cat_' + c[0] + '.webp" alt=""></span><b>' + c[1] + '</b><small>' + (n ? n + (n > 2 ? ' قطع' : n === 2 ? ' قطعتين' : ' قطعة') : 'تصلنا قريباً') + '</small></a>';
+    }).join('');
+  }
   function colItems(c) { return SITE.pieces.filter(c.f) }
   function renderHomeCols() {
     if (!$('#homeCols')) return;
@@ -383,7 +394,7 @@
     }).join('');
     reveal();
   }
-  function renderAll() { renderEd(); renderHsc(); renderTicker(); renderHomeCols(); renderNew(); renderSpot(); renderBranches(); calc(); saveList(); bindLinks(); bindChatBtns() }
+  function renderAll() { renderCats(); renderEd(); renderHsc(); renderTicker(); renderHomeCols(); renderNew(); renderSpot(); renderBranches(); calc(); saveList(); bindLinks(); bindChatBtns() }
 
   /* ---------- checkout: terms first, accounts after, receipt, review ---------- */
   var CK = null;
