@@ -331,7 +331,9 @@ class Store:
 
     # ---- branches
     def branches(self):
-        return self.q("SELECT * FROM branches ORDER BY rowid")
+        rows = self.q("SELECT * FROM branches ORDER BY rowid")
+        order = ["الأول", "الثاني", "الثالث", "الرابع", "الخامس"]
+        return sorted(rows, key=lambda r: next((i for i, w in enumerate(order) if w in (r["name"] or "")), 99))
 
     # ---- pieces
     def _next_code(self):
