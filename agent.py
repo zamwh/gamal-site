@@ -711,6 +711,19 @@ class SalesAgent:
                 c["set_offered"] = 1
             clean = re.sub(r"\[\[[A-Za-z0-9]+\]\]", "", text)
             clean = clean.replace("**", "")          # the chat shows plain text
+            h = len(clean.strip()) // 2               # the model sometimes repeats its whole reply: keep one copy
+            st_ = clean.strip()
+            if h > 10 and st_[:h].strip() == st_[h:].strip():
+                clean = st_[:h]
+            parts_ = [x for x in re.split(r"(?<=[.؟!])\s+", clean.strip())]
+            seen_, keep_ = set(), []
+            for x in parts_:
+                k_ = x.strip()
+                if len(k_) > 15 and k_ in seen_:
+                    continue
+                seen_.add(k_)
+                keep_.append(x)
+            clean = " ".join(keep_) if len(keep_) < len(parts_) else clean
             clean = re.sub(r"[ \t]{2,}", " ", clean)
             clean = re.sub(r" +([،.؛:؟])", r"\1", clean)
             clean = re.sub(r"\n{3,}", "\n\n", clean).strip()
