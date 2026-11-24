@@ -284,6 +284,12 @@ class Server:
                         if app.analytics:
                             app.analytics.ingest(data)
                         return self._send(204, b"")
+                    if path == "/api/pos/sync":       # branch POS: queued offline sales in, live stock and price out
+                        if server.limited(ip, "api"):
+                            return self._send(429, {"error": "too many requests"})
+                        import pos_sync
+                        with app.lock:
+                            return self._send(200, pos_sync.sync(app.store, data))
                     if path == "/api/chat":
                         if server.limited(ip, "chat"):
                             return self._send(429, {"error": "رسائل كثيرة، انتظر دقيقة"})

@@ -74,6 +74,11 @@ def get(app, u, path, q):
                             "branch": p["branch_name"], "online": bool(p["show_online"]),
                             "price": p["price"] if p["status"] != "sold" else None})
             return out[:300]
+    if path == "/api/admin/pos_keys":
+        s.require(u["id"], "owner")
+        import pos_sync
+        with app.lock:
+            return pos_sync.keys(s, u["id"])
     if path == "/api/admin/me":
         return {"name": u["name"], "role": u["role"], "mode": s.mode}
     if path == "/api/admin/analytics":
