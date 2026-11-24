@@ -639,6 +639,7 @@ class SalesAgent:
                                        exclude_shown=not args.get("include_shown"))
             ctx.setdefault("reasons", {}).update({i["code"]: i.get("fits", "") for i in out.get("items", [])})
             ctx.setdefault("searches", []).append(out.get("params"))
+            ctx.setdefault("found", []).extend(i["code"] for i in out.get("items", []))
             return out
         if name == "price_breakdown":
             import shopstate
@@ -775,6 +776,28 @@ class SalesAgent:
         return ("https://wa.me/" + num + "?text=" + urllib.parse.quote(msg)) if num else ""
 
     # ---- main entry
+    GUARD_WORDS = ["ذوقك", "اختيارك", "اخترت", "قلت قبل", "ذكرت انك", "حضور", "تكوين", "متناظر", "طابع", "اللغه البصريه"]
+
+    def _guard(self, text, message, hist, ctx):
+        said = norm(" ".join([h["content"] for h in hist if h["role"] == "user"] + [message]))
+        t = norm(text)
+        bad = [w for w in self.GUARD_WORDS if w in t and w not in said]
+        stated = any((v or {}).get("src") == "stated" for v in ((ctx.get("profile") or {}).get("liked") or {}).values())
+        if stated:
+            bad = [w for w in bad if w not in ("ذوقك",)]
+        notes = []
+        if bad:
+            notes.append("ردك فيه كلمات ممنوعة: " + "، ".join(bad) + ". الزبون ما قال لك شي عن ذوقه ولا اختار شي، فلا تدّعي إنك تعرف ذوقه "
+                         "ولا تنسب له كلام ما قاله. وإذا سأل كيف عرفت، قل بصراحة إنك ما تعرف وكنت تقترح عليه خيارات. "
+                         "واستبدل كلمات التصنيف بكلام بيّاع (شغل ناعم، مليان، ثقيل، خفيف، طويل).")
+        found = [c for c in dict.fromkeys(ctx.get("found") or [])]
+        if found and not re.search(r"\[\[[A-Za-z0-9]+\]\]", text):
+            notes.append("البحث رجّع قطع متوفرة (" + "، ".join(f"[[{c}]]" for c in found[:3]) + ") وأنت ما عرضت شي. "
+                         "اعرضها بكتابة رمزها في سطر مستقل، وإذا ما تطابق طلبه تماماً قل الفرق بجملة صادقة، بدون رفض عرضها.")
+        if not notes:
+            return None
+        return "أعد كتابة ردك الأخير للزبون كاملاً بنفس الأسلوب القصير، مع التصحيح التالي:\n" + "\n".join(notes)
+
     @staticmethod
     def _kind_rules(st, t):
         """Deterministic: "مش طقم / بدون أطقم" excludes a kind until the customer asks for it again."""
@@ -902,6 +925,26 @@ class SalesAgent:
                                                    call["function"].get("arguments") or "{}", json.dumps(short, ensure_ascii=False)))
                     except Exception:
                         pass
+            # guard: one rewrite if the reply claims to know the customer's taste, uses internal words,
+            # or hides pieces the search found. Checked by rules, not by the model's own judgement.
+            fix = self._guard(text, message, hist, ctx)
+            if fix:
+                msgs.append({"role": "assistant", "content": text})
+                msgs.append({"role": "system", "content": fix})
+                cfg2 = dict(cfg, extra=dict(cfg.get("extra") or {}, tool_choice="none"))
+                resp, _ = self._call_any(cfg2, msgs)
+                u = resp.get("usage") or {}
+                t_in += u.get("prompt_tokens", 0)
+                t_out += u.get("completion_tokens", 0)
+                new = resp["choices"][0]["message"].get("content") or ""
+                if new.strip():
+                    text = new
+                try:
+                    with self.lock:
+                        self.store.db.execute("INSERT INTO ai_trace (ts,session,turn,tool,args,result) VALUES (?,?,?,?,?,?)",
+                                              (s_now(), session, st["turn"], "guard_rewrite", json.dumps({"why": fix}, ensure_ascii=False), "{}"))
+                except Exception:
+                    pass
         except urllib.error.HTTPError as e:
             return {"text": "تعذر الاتصال بالمساعد الآن. تقدر تراسلنا على واتساب مباشرة.", "pieces": [],
                     "handoff": self.whatsapp_link([]), "error": f"{e.code} {str(e.msg)[:200]}"}
