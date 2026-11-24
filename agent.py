@@ -55,7 +55,7 @@ CORE_PROMPT = """أنت "مستشار جمال المشرقي": أمهر بائ�
 3) القيمة: الذهب عيار 21 زينة ومدخرة، قيمته في وزنه. استخدمها فقط لما الزبون نفسه يتكلم عن السعر أو يتردد، بدون وعود بأرباح.
 4) البيع المكمّل: إذا أعجبه عقد اقترح الحلق أو الطقم المكمّل، وإذا عروس اقترح ترتيب باقة (build_set). خطوة وحدة كل مرة.
 5) الاعتراض: افهم السبب (سعر، تردد، مقارنة، ثقة). السعر: اعرض بديل أخف وزناً بنفس الروح. التردد: لخّص له ليش القطعة تناسبه. الثقة: محل معروف بثلاثة فروع، الاستلام من الفرع بفاتورة رسمية.
-6) الإغلاق اللطيف: إذا أبدى إعجاب واضح ("حلو"، "عجبني"، "كم سعره"، "متوفر؟")، اقترح الخطوة: "تحب أثبتها لك؟ تقدر تحجزها بعربون 10% أو تشتريها بتحويل ويثبت سعرها، وفريق المبيعات يكمل معك على واتساب." إذا قال نعم أو طلب حجز/شراء/تفاوض: استخدم handoff_to_owner فوراً مع ملخص ورموز القطع.
+6) الإغلاق: أول ما يبدي إعجاب بقطعة ("حلو"، "عجبني"، "هذا"، "متوفر؟"، "كم سعره"، "كيف أشتريه") استخدم offer_purchase برمزها، فتظهر له أزرار: احجزها بعربون 10% (والسعر النهائي يوم الاستلام)، أو اشترها بتحويل كامل (يثبت سعرها اليوم)، أو كلّم المبيعات على واتساب. اكتب معها سطر واثق: "اختيار موفق. اختر الطريقة اللي تريحك وأثبّتها لك:" بدون ادعاء ندرة. استخدم handoff_to_owner فقط إذا طلب التفاوض أو كلام مع شخص أو طلب خاص.
 
 أمثلة على مستواك (الرموز هنا للتوضيح فقط؛ استخدم رموز حقيقية من البحث):
 زبون: عندي عرس الشهر الجاي
@@ -72,7 +72,7 @@ CORE_PROMPT = """أنت "مستشار جمال المشرقي": أمهر بائ�
 نفس فخامة الشغل، وتنلبس بعد العرس في كل مناسبة. أيهم أقرب لك؟
 
 زبون: خلاص عجبني الأول
-أنت: اختيار موفق، هذا من أجمل اللي عندنا. تقدر تحجزه بعربون 10% أو تشتريه بتحويل ويثبت سعره اليوم. أوصلك بفريق المبيعات يكملون معك على واتساب؟
+أنت: [تستدعي offer_purchase برمز القطعة] اختيار موفق، هذا من أجمل اللي عندنا. اختر الطريقة اللي تريحك وأثبّتها لك:
 
 قواعد لا تُكسر:
 - بدون إيموجي نهائياً. الفخامة في الكلام.
@@ -100,6 +100,11 @@ TOOLS = [
             "style": {"type": "string", "enum": ["ناعم", "كلاسيكي", "فخم"]},
             "budget": {"type": "number"},
             "kinds": {"type": "array", "items": {"type": "string"}}}}}},
+    {"type": "function", "function": {
+        "name": "offer_purchase",
+        "description": "عند إعجاب الزبون بقطعة أو سؤاله عن توفرها أو كيف يشتريها: يعرض له تحت المحادثة أزرار (احجزها بعربون 10% / اشترها بتحويل كامل / كلّم المبيعات على واتساب) لهذه القطعة.",
+        "parameters": {"type": "object", "properties": {
+            "code": {"type": "string", "description": "رمز القطعة"}}, "required": ["code"]}}},
     {"type": "function", "function": {
         "name": "handoff_to_owner",
         "description": "يحوّل الزبون لصاحب المحل عندما تظهر نية شراء جدية أو تفاوض أو طلب خاص. يرجع رابط تواصل يظهر للزبون كزر.",
@@ -137,7 +142,7 @@ W_BRANCH = ["وين", "فروع", "فرعكم", "موقعكم", "عنوان", "�
 W_POLICY = ["كيف احجز", "شروط الحجز", "العربون", "كيف الحجز", "سياسه"]
 W_HUMAN = ["انت انسان", "انت بوت", "انت روبوت", "انت حقيقي", "ذكاء اصطناعي"]
 W_SELLGOLD = ["ابيع ذهب", "ابغى ابيع", "ابي ابيع", "ابيع ذهبي", "تشترون ذهب", "تشترون الذهب", "عندي ذهب ابيعه", "ابيع كسر"]
-W_READY = ["احجز", "ابغى احجزها", "اشتري", "ابغاها", "ابيها", "اخذها", "كيف ادفع", "كيف احول", "احول", "تحويل",
+W_READY = ["احجز", "عجبني", "عجبتني", "ابغاه", "ابيه", "اخذه", "متوفر", "كيف اشتري", "ابغى احجزها", "اشتري", "ابغاها", "ابيها", "اخذها", "كيف ادفع", "كيف احول", "احول", "تحويل",
            "اخر سعر", "خصم", "تنزلون", "كم اخر", "تخفيض", "متى استلم", "عربون"]
 W_OBJ = ["غالي", "غاليه", "ارخص", "ما معي", "ما عندي", "افكر", "بعدين", "محل ثاني", "كثير"]
 W_SETS = ["تنسيق", "طقم كامل", "اطقم", "مع بعض", "يتناسق", "لوك", "اطلاله"]
@@ -396,21 +401,39 @@ class SalesAgent:
                         total += p["price"]
                         break
             return {"items": chosen, "total": total, "complete": len(chosen) == len(kinds)}
+        if name == "offer_purchase":
+            code = str(args.get("code", "")).upper().strip("[] ")
+            p = self.store.piece(code)
+            if not p["show_online"] or p["status"] != "available":
+                return {"error": "القطعة غير متاحة للحجز الآن"}
+            ctx["offer"] = code
+            return {"ok": True, "note": "ظهرت للزبون أزرار الحجز بعربون والشراء الكامل والتواصل على واتساب. اكتب سطر قصير واثق يدعوه يختار، بدون تكرار الأزرار بالتفصيل."}
         if name == "handoff_to_owner":
             codes = [c.upper() for c in (args.get("codes") or [])][:5]
             self.store.db.execute("INSERT INTO handoffs (session,ts,reason,summary) VALUES (?,?,?,?)",
                                   (ctx["session"], s_now(), args.get("reason", "")[:200],
                                    (args.get("summary", "") + (" | " + ",".join(codes) if codes else ""))[:500]))
             self.store.db.commit()
-            ctx["handoff"] = self.whatsapp_link(codes)
+            ctx["handoff"] = self.whatsapp_link(codes, "buy")
             return {"ok": True, "note": "سيظهر للزبون زر تواصل مع فريق المبيعات على واتساب"}
         return {"error": "unknown tool"}
 
-    def whatsapp_link(self, codes):
+    def whatsapp_link(self, codes, intent="details"):
         num = re.sub(r"\D", "", (self.store.setting("links", {}) or {}).get("whatsapp", "") or "")
-        msg = "السلام عليكم، تواصلت معكم من الموقع"
-        if codes:
-            msg += " بخصوص القطع: " + "، ".join(codes)
+        names = []
+        for c in (codes or [])[:3]:
+            try:
+                p = self.store.piece(c)
+                names.append(f"«{(p['title'] if 'title' in p.keys() else None) or p['type']}» (رقم {c})")
+            except Exception:
+                pass
+        if names:
+            what = "، ".join(names)
+            msg = (f"السلام عليكم، شدّتني القطعة {what} في موقعكم، وأبغى مساعدة في شرائها."
+                   if intent == "buy" else
+                   f"السلام عليكم، شدّتني القطعة {what} في موقعكم، ويا ليت أعرف تفاصيل أكثر عنها.")
+        else:
+            msg = "السلام عليكم، أبغى أستفسر عن قطعة من مجموعتكم."
         return ("https://wa.me/" + num + "?text=" + urllib.parse.quote(msg)) if num else ""
 
     # ---- main entry
@@ -526,6 +549,14 @@ class SalesAgent:
         res = {"text": clean, "pieces": pieces, "stage": stage, "suggest": self._suggest(c)}
         if ctx.get("handoff") is not None:
             res["handoff"] = ctx["handoff"]
+        if ctx.get("offer"):
+            try:
+                with self.lock:
+                    op = self.store.piece(ctx["offer"])
+                    res["offer"] = self._public(op)
+                    res["offer"]["wa"] = self.whatsapp_link([ctx["offer"]], "buy")
+            except Exception:
+                pass
         return res
 
     def _suggest(self, c):

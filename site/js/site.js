@@ -53,7 +53,7 @@
   function wa(text) { var n = String((SITE.links || {}).whatsapp || '').replace(/\D/g, ''); return n ? 'https://wa.me/' + n + (text ? '?text=' + encodeURIComponent(text) : '') : '' }
   function bindLinks() {
     $$('[data-link]').forEach(function (a) {
-      var k = a.dataset.link, u = k === 'whatsapp' ? wa('السلام عليكم، تواصلت معكم من الموقع') : (SITE.links || {})[k];
+      var k = a.dataset.link, u = k === 'whatsapp' ? wa('السلام عليكم، أبغى أستفسر عن مجموعتكم') : (SITE.links || {})[k];
       if (u) { a.href = u; a.target = '_blank'; a.rel = 'noopener' }
       a.onclick = function (e) { if (!u) { e.preventDefault(); toast('الرابط يُضاف قريباً') } T(k === 'whatsapp' ? 'whatsapp_click' : 'social_click', null, k) };
     });
@@ -182,13 +182,14 @@
         '<div class="price">' + moneyH(p.price) + '</div><div class="pnote">شامل المصنعية · على سعر ذهب اليوم' + (CUR !== 'YER' ? ' · ' + esc(money(p.price, 'YER')) : '') + '</div>' +
         '<div class="acts">' + (p.status === 'available' ? '<button class="btn g" data-buy="full">اشترها بتحويل كامل</button><button class="btn" data-buy="deposit">احجزها بعربون ' + pct + '%</button>' : '') +
         '<button class="btn" data-fav2>' + (inList(p.code) ? 'في اختياراتي ♥' : 'أضف لاختياراتي ♡') + '</button><button class="btn" data-open-chat="أبغى أعرف أكثر عن ' + esc(p.title) + ' (' + p.code + ')"><svg class="b"><use href="#s-spark"/></svg>اسأل المستشار</button>' +
-        '<a class="btn wide" href="#" data-share><svg class="b"><use href="#s-wa"/></svg>شاركها على واتساب</a></div></div></div>' +
+        '<a class="btn wide" href="#" data-ask><svg class="b"><use href="#s-wa"/></svg>استفسر عنها على واتساب</a><a class="btn wide" href="#" data-share>شاركها مع أحد</a></div></div></div>' +
         (sim.length ? '<section class="band" style="padding-top:20px"><div class="sh"><div><span class="eyebrow">تنسجم معها</span><h2 class="ttl">قطع <em>مشابهة</em></h2></div></div><div class="grid" id="simGrid">' + sim.map(function (x) { return card(x) }).join('') + '</div></section>' : '');
       $$('[data-ph]').forEach(function (b) { b.onclick = function () { $('#gm img').src = b.dataset.ph; $$('[data-ph]').forEach(function (x) { x.classList.toggle('on', x === b) }) } });
       var gm = $('#gm'); gm.onclick = function () { gm.classList.toggle('zoom'); if (!gm.classList.contains('zoom')) $('#gm img').style.transform = '' };
       gm.onmousemove = function (e) { if (!gm.classList.contains('zoom')) return; var r = gm.getBoundingClientRect(); $('#gm img').style.transform = 'scale(2.2)'; $('#gm img').style.transformOrigin = ((e.clientX - r.left) / r.width * 100) + '% ' + ((e.clientY - r.top) / r.height * 100) + '%' };
       $$('[data-buy]').forEach(function (b) { b.onclick = function () { checkout(p, b.dataset.buy, via) } });
       $('[data-fav2]').onclick = function () { toggleList(p.code, via); this.textContent = inList(p.code) ? 'في اختياراتي ♥' : 'أضف لاختياراتي ♡' };
+      $('[data-ask]').onclick = function (e) { e.preventDefault(); var u = wa('السلام عليكم، شدّتني القطعة «' + p.title + '» (رقم ' + p.code + ') في موقعكم، ويا ليت أعرف تفاصيل أكثر عنها.\n' + location.origin + '/p/' + p.code); T('whatsapp_click', p.code, 'piece'); if (u) window.open(u, '_blank', 'noopener'); else toast('رقم الواتساب يُضاف قريباً') };
       $('[data-share]').onclick = function (e) { e.preventDefault(); window.open('https://wa.me/?text=' + encodeURIComponent(p.title + ' — جمال المشرقي للذهب\n' + location.origin + location.pathname + '#p-' + p.code), '_blank', 'noopener') };
       bindChatBtns($('#pieceWrap')); var sg = $('#simGrid'); if (sg) bindCards(sg);
     }
@@ -288,8 +289,10 @@
   var io = 'IntersectionObserver' in window ? new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target) } }) }, { threshold: .12 }) : null;
   function reveal() { $$('.page.on .rv:not(.in), .page.on .wipe:not(.in), footer .rv:not(.in)').forEach(function (e) { io ? io.observe(e) : e.classList.add('in') }) }
   var lastY = 0;
+  var sprog = document.createElement('div'); sprog.className = 'sprog'; document.body.appendChild(sprog);
   function scrollFx() {
     var y = scrollY, hdr = $('#hdr');
+    sprog.style.transform = 'scaleX(' + (y / Math.max(1, document.documentElement.scrollHeight - innerHeight)).toFixed(4) + ')';
     hdr.classList.toggle('solid', y > 40 || ROUTE !== 'home');
     hdr.classList.toggle('up', y > 400 && y > lastY + 4 && !$('#chat').classList.contains('open')); if (y < lastY - 4) hdr.classList.remove('up'); lastY = y;
     if (REDUCED || ROUTE !== 'home') return;
@@ -475,6 +478,21 @@
       };
     });
   }
+  // the closing moment: reserve / buy / WhatsApp, right inside the chat
+  function offerCard(o) {
+    var p = BY[o.code] || o, pct = SITE.deposit_pct || 10, el = document.createElement('div'); el.className = 'offer';
+    el.innerHTML = '<div class="oh">' + (p.photo ? '<img src="' + esc(p.photo) + '" alt="">' : '') + '<div><b>' + esc(p.title) + '</b><span>' + moneyH(p.price) + '</span></div></div>' +
+      '<button class="btn g full" data-k="deposit">احجزها بعربون ' + pct + '%</button><button class="btn full" data-k="full">اشترها بتحويل كامل · يثبت سعرها اليوم</button>' +
+      '<a class="btn full wa2" target="_blank" rel="noopener"><svg class="b"><use href="#s-wa"/></svg>كلّم المبيعات على واتساب</a>';
+    var a = el.querySelector('.wa2'); a.href = o.wa || wa('السلام عليكم، شدّتني القطعة «' + p.title + '» (رقم ' + o.code + ') في موقعكم، وأبغى مساعدة في شرائها.') || '#';
+    a.onclick = function (e) { T('ai_handoff_click', o.code, 'offer', 1); if (a.getAttribute('href') === '#') { e.preventDefault(); toast('رقم الواتساب يُضاف قريباً') } };
+    $$('[data-k]', el).forEach(function (b) { b.onclick = function () {
+      var piece = BY[o.code] || Object.assign({}, o, { title: p.title }); T('ai_offer_click', o.code, b.dataset.k, 1);
+      chatEl.classList.remove('open'); document.body.style.overflow = ''; openPiece(o.code, 'ai');
+      setTimeout(function () { checkout(piece, b.dataset.k, 'ai') }, 650);
+    } });
+    msgs.appendChild(el); msgs.scrollTop = 1e6;
+  }
   function send(t) {
     t = (t || '').trim(); if (!t || busy) return; busy = true;
     addMsg(t, 'u'); $('#chatIn').value = ''; chips([]); T('ai_message', null, null, 1);
@@ -483,10 +501,11 @@
       busy = false; ty.remove(); addMsg(d.text || '…', 'a'); cards(d.pieces);
       if (d.handoff !== undefined) {
         var a = document.createElement('a'); a.className = 'handoff'; a.target = '_blank'; a.rel = 'noopener';
-        a.innerHTML = '<svg class="b"><use href="#s-wa"/></svg>راسلنا على واتساب'; a.href = d.handoff || wa('السلام عليكم، تواصلت معكم من الموقع') || '#';
+        a.innerHTML = '<svg class="b"><use href="#s-wa"/></svg>راسلنا على واتساب'; a.href = d.handoff || wa('السلام عليكم، أبغى أستفسر عن مجموعتكم') || '#';
         a.onclick = function (e) { T('ai_handoff_click', null, null, 1); if (a.getAttribute('href') === '#') { e.preventDefault(); toast('رقم الواتساب يُضاف قريباً') } };
         msgs.appendChild(a); msgs.scrollTop = 1e6;
       }
+      if (d.offer) offerCard(d.offer);
       chips(d.suggest);
     };
     if (!ONLINE || !SITE.ai) { setTimeout(function () { done(localReply(t)) }, 700); return }
