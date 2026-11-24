@@ -155,6 +155,10 @@ def get(app, u, path, q):
             ai["api_key"] = ("••••" + ai["api_key"][-4:]) if ai.get("api_key") else ""
             return {"ai": ai, "links": s.setting("links", {}), "payments": s.setting("payments", []),
                     "prices": s.current_prices(), "reservation": s.setting("reservation"),
+                    "telegram": (lambda c: {"has_token": bool(c.get("token")), "token": ("••••" + c["token"][-4:]) if c.get("token") else "",
+                                 "enabled": c.get("enabled", True), "link_code": c.get("link_code"), "staff": len(c.get("staff") or {}),
+                                 "status": getattr(getattr(app, "bot", None), "status", "stopped"),
+                                 "username": getattr(getattr(app, "bot", None), "username", "")})(__import__("telegram_bot").cfg(s)),
                     "policy": dict(__import__("agent").DEFAULT_POLICY, **{k: v for k, v in (s.setting("policy", {}) or {}).items() if (v or "").strip()})}
     raise GoldError("غير موجود")
 
@@ -204,11 +208,28 @@ def post(app, u, path, d):
             if "payments" in d:
                 s.set_setting("payments", [{k: str(a.get(k, ""))[:80] for k in ("name", "holder", "account")}
                                            for a in d["payments"]][:8])
+            if "telegram" in d:
+                import telegram_bot
+                c = telegram_bot.cfg(s)
+                tok = str(d["telegram"].get("token") or "").strip()
+                if tok and not tok.startswith("••••"):
+                    c["token"] = tok
+                    if getattr(app, "bot", None):
+                        app.bot.username = ""
+                if "enabled" in d["telegram"]:
+                    c["enabled"] = bool(d["telegram"]["enabled"])
+                if d["telegram"].get("unlink_all"):
+                    c["staff"] = {}
+                s.set_setting("telegram", c)
             if "policy" in d:
                 s.set_setting("policy", {k: str(d["policy"].get(k, ""))[:800] for k in ("returns", "warranty", "branches_near", "hours", "custom_orders", "pounds", "other")})
             s.log(u["id"], "settings_change", "settings", None, {"keys": list(d.keys())})
             s.db.commit()
             return {"ok": True}
+        if path == "/api/admin/agent":
+            if u["role"] not in ("owner", "manager"):
+                raise GoldError("للمالك والمدير")
+            return {"text": app.staff.ask(f"web{u['id']}", str(d.get("message", ""))[:1500])}
         if path == "/api/admin/demand_resolve":
             s.db.execute("UPDATE demand_requests SET status='done', resolved_note=? WHERE id=?",
                          (str(d.get("note", ""))[:200], int(d.get("id", 0))))

@@ -23,6 +23,9 @@ class App:
         self.store = core.Store(mode, data)
         self.analytics = Analytics(os.path.join(data, f"analytics-{mode}.db"))
         self.agent = SalesAgent(self.store, self.lock, self.analytics)
+        from staff_agent import StaffAgent
+        self.staff = StaffAgent(self.store, self.lock, self.analytics, self.agent)
+        self.public_url = ""
         try:
             n = core.refresh_demo_photos(self.store)
             if n:
@@ -65,6 +68,9 @@ def main():
                 print("tagger:", e, flush=True)
             time.sleep(600)
     threading.Thread(target=tagger, daemon=True).start()
+    import telegram_bot
+    app.bot = telegram_bot.Bot(app)
+    app.bot.start()
     while True:
         time.sleep(3600)
         try:

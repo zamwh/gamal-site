@@ -185,6 +185,9 @@ class Server:
                 uu = urllib.parse.urlparse(self.path)
                 path, u_q = uu.path, uu.query
                 app = server.app
+                h = self.headers.get("Host", "")
+                if h and not h.startswith(("127.", "localhost", "0.0.0.0")) and "." in h:
+                    app.public_url = ("https://" if self.headers.get("X-Forwarded-Proto") == "https" or "trycloudflare" in h else "http://") + h
                 if path.startswith("/api/") and server.limited(self._ip(), "api"):
                     return self._send(429, {"error": "too many requests"})
                 try:
