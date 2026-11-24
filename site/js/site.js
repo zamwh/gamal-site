@@ -214,23 +214,14 @@
     bindChatBtns($('#bSum'));
   }
 
-  /* ---------- calculator & visit ---------- */
+  /* ---------- calculator ---------- */
   var calcSent = false;
   function calc() { var p = SITE.prices; if (!p) return; var w = parseFloat($('#cw').value) || 0; $('#ct').innerHTML = w ? moneyH(w * p.k21.sell) : '—'; if (w && !calcSent) { calcSent = true; T('calc_use') } }
   $('#cw').addEventListener('input', calc);
-  var vType = 'branch';
-  $$('#vType button').forEach(function (b) { b.onclick = function () { vType = b.dataset.v; $$('#vType button').forEach(function (x) { x.classList.toggle('on', x === b) }); $('#vBranchL').classList.toggle('hidden', vType === 'video') } });
-  $('#visitForm').onsubmit = function (e) {
-    e.preventDefault(); var name = $('#vName').value.trim(), ph = $('#vPhone').value.trim(); if (!name || ph.length < 7) return toast('اكتب الاسم ورقم الجوال');
-    var fav = LIST.map(function (c) { return BY[c] }).filter(Boolean).map(function (p) { return p.title + ' (' + p.code + ')' });
-    var msg = 'السلام عليكم، أبغى أحجز ' + (vType === 'video' ? 'عرض بالفيديو' : 'زيارة خاصة في ' + $('#vBranch').value) + '\nالاسم: ' + name + '\nالجوال: ' + ph + '\nاليوم: ' + $('#vDate').value + ' — ' + $('#vTime').value + ($('#vNote').value ? '\nملاحظة: ' + $('#vNote').value : '') + (fav.length ? '\nالقطع اللي تهمني: ' + fav.join('، ') : '');
-    var u = wa(msg); T('checkout_start', null, 'visit'); if (u) window.open(u, '_blank', 'noopener'); else toast('رقم الواتساب يُضاف قريباً');
-  };
 
   /* ---------- branches ---------- */
   function renderBranches() {
     $('#brs').innerHTML = SITE.branches.map(function (b, i) { var map = b.map || 'https://maps.google.com/?q=' + encodeURIComponent('جمال المشرقي للذهب ' + b.addr + ' إب'); return '<div class="br rv' + (i ? ' d' + i : '') + '"><span class="n num">0' + (i + 1) + '</span><h3>' + esc(b.n) + '</h3><p>إب — ' + esc(b.addr) + '</p><div class="r"><a class="btn s" href="' + esc(map) + '" target="_blank" rel="noopener">الخريطة</a><a class="btn g s" href="#" data-link="whatsapp">راسلنا</a></div></div>' }).join('');
-    $('#vBranch').innerHTML = SITE.branches.map(function (b) { return '<option>' + esc(b.n) + '</option>' }).join('');
   }
 
   /* ---------- shortlist ---------- */
@@ -248,7 +239,7 @@
     var items = LIST.map(function (c) { return BY[c] }).filter(Boolean), tot = items.reduce(function (a, p) { return a + p.price }, 0);
     d.innerHTML = '<div class="hd"><h3>اختياراتي</h3><button class="ibtn" data-close>' + X + '</button></div><div class="list">' +
       (items.length ? items.map(function (p) { return '<div class="li"><img src="' + esc(p.photo || '') + '" data-open="' + p.code + '" alt=""><div class="t"><b>' + esc(p.title) + '</b><span class="num">' + p.weight.toFixed(2) + ' جم</span></div><div class="p num">' + fmt(conv(p.price)) + '</div><button data-rm="' + p.code + '" aria-label="حذف" style="color:var(--faint)">' + X + '</button></div>' }).join('') : '<div class="empty" style="margin-top:20px">ما أضفت قطع بعد. اضغط ♡ على أي قطعة تعجبك.</div>') + '</div>' +
-      (items.length ? '<div class="ft2"><div class="tot"><span>المجموع على سعر اليوم</span><b>' + moneyH(tot) + '</b></div><a class="btn g full" id="sendList" href="#"><svg class="b"><use href="#s-wa"/></svg>أرسل اختياراتي على واتساب</a><a class="btn full" href="#visit" data-close>احجز زيارة لمشاهدتها</a></div>' : '');
+      (items.length ? '<div class="ft2"><div class="tot"><span>المجموع على سعر اليوم</span><b>' + moneyH(tot) + '</b></div><a class="btn g full" id="sendList" href="#"><svg class="b"><use href="#s-wa"/></svg>أرسل اختياراتي على واتساب</a></div>' : '');
     $$('[data-close]', d).forEach(function (b) { b.addEventListener('click', closeDrawer) });
     $$('[data-rm]', d).forEach(function (b) { b.onclick = function () { toggleList(b.dataset.rm) } });
     $$('[data-open]', d).forEach(function (b) { b.onclick = function () { closeDrawer(); location.hash = 'p-' + b.dataset.open } });
@@ -269,7 +260,7 @@
     var pm = location.pathname.match(/^\/p\/([A-Za-z0-9]+)/); if (pm && !location.hash) { h = 'p-' + pm[1].toUpperCase() }
     if (h.indexOf('p-') === 0) { pg = 'piece'; arg = h.slice(2) }
     else if (h.indexOf('collection-') === 0) { pg = 'collections'; arg = h.slice(11) }
-    else if (['collections', 'bride', 'gold', 'visit'].indexOf(h) >= 0) pg = h;
+    else if (['collections', 'bride', 'gold'].indexOf(h) >= 0) pg = h;
     else if (h === 'branches' || h === 'home') pg = 'home';
     var changed = pg !== ROUTE || pg === 'piece' || pg === 'collections'; ROUTE = pg;
     $$('.page').forEach(function (p) { p.classList.toggle('on', p.id === 'pg-' + pg) });
@@ -280,6 +271,7 @@
     if (pg === 'gold') { renderTicker(); calc() }
     if (changed) { if (h === 'branches') setTimeout(function () { $('#branches').scrollIntoView() }, 60); else window.scrollTo(0, 0) }
     T('page_view', null, pg); reveal(); scrollFx();
+    if (pg === 'home' && window.ringRefresh) setTimeout(window.ringRefresh, 80);
   }
   var PENDING_VIA = null;
   window.openPiece = function (code, via) { PENDING_VIA = via; location.hash = 'p-' + code };
@@ -296,7 +288,7 @@
     hdr.classList.toggle('solid', y > 40 || ROUTE !== 'home');
     hdr.classList.toggle('up', y > 400 && y > lastY + 4 && !$('#chat').classList.contains('open')); if (y < lastY - 4) hdr.classList.remove('up'); lastY = y;
     if (REDUCED || ROUTE !== 'home') return;
-    var vh = innerHeight; sceneFx(vh); hscFx(vh);
+    var vh = innerHeight; hscFx(vh);
     // hero: the image sinks and dims as you leave
     var hr = $('#hero').getBoundingClientRect(), hp = clamp(-hr.top / vh, 0, 1);
     $('#slides').style.transform = 'translate3d(0,' + (hp * 22).toFixed(1) + '%,0) scale(' + (1 + hp * .08).toFixed(3) + ')';
@@ -362,7 +354,7 @@
     its.forEach(function (el, i) { var q = el.getBoundingClientRect(), d = (q.left + q.width / 2 - mid) / innerWidth; el.querySelector('img').style.transform = 'scale(1.15) translate3d(' + (d * -12).toFixed(2) + '%,0,0)'; el.style.transform = 'rotate(' + (d * 3).toFixed(2) + 'deg) translateY(' + (Math.abs(d) * 40).toFixed(1) + 'px)'; if (Math.abs(d) < .3) n = i });
     $('#hCount').textContent = ('0' + (n + 1)).slice(-2) + ' / ' + ('0' + its.length).slice(-2);
   }
-  function renderAll() { renderScene(); renderHsc(); renderTicker(); renderHomeCols(); renderNew(); renderSpot(); renderBranches(); calc(); saveList(); bindLinks(); bindChatBtns() }
+  function renderAll() { renderHsc(); renderTicker(); renderHomeCols(); renderNew(); renderSpot(); renderBranches(); calc(); saveList(); bindLinks(); bindChatBtns() }
 
   /* ---------- checkout: terms first, accounts after, receipt, review ---------- */
   var CK = null;
@@ -563,7 +555,7 @@
     $$('#cur button').forEach(function (b) { b.classList.toggle('on', b.dataset.c === CUR) });
     renderHero(); renderAll();
     var bp = SITE.pieces.filter(function (p) { return p.kind === 'طقم' && p.photo && p.style === 'فخم' }).pop() || SITE.pieces[0];
-    if (bp) { $('#brideBg').style.backgroundImage = "url('" + bp.photo + "')"; $('#brideHeadBg').style.backgroundImage = "url('" + bp.photo + "')"; $('#visitBg').style.backgroundImage = "url('" + (SITE.pieces[1] || bp).photo + "')" }
+    if (bp) { $('#brideBg').style.backgroundImage = "url('" + bp.photo + "')"; $('#brideHeadBg').style.backgroundImage = "url('" + bp.photo + "')" }
     $('#yr').textContent = new Date().getFullYear(); route();
   }
   (ONLINE ? fetch('/api/site').then(function (r) { if (!r.ok) throw 0; return r.json() }) : Promise.reject())
