@@ -172,7 +172,7 @@
    "gate": "arithmetic",
    "test": "currency answer carries the rate and its date",
    "pass": true,
-   "info": "{'currency': 'SAR', 'yer_per_unit': 140.0, 'as_of': '2026-11-24 17:08:12'}"
+   "info": "{'currency': 'SAR', 'yer_per_unit': 140.0, 'as_of': '2026-11-24 17:20:00'}"
   },
   {
    "gate": "demand",

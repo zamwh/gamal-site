@@ -223,6 +223,12 @@ class Server:
                     if path == "/api/site":
                         with app.lock:
                             return self._send(200, server.site_payload())
+                    if path == "/api/eval/trace":   # evaluation sessions only: what the model asked the backend, step by step
+                        sess = (urllib.parse.parse_qs(u_q).get("session") or [""])[0]
+                        if not sess.startswith("evaltest"):
+                            return self._send(404, {"error": "not found"})
+                        with app.lock:
+                            return self._send(200, {"rows": app.store.q("SELECT turn, tool, args, result FROM ai_trace WHERE session=? ORDER BY id", (sess,))})
                     if path == "/api/avail":      # live stock: what the page may still offer right now
                         with app.lock:
                             rows = app.store.q("SELECT code, status FROM pieces WHERE show_online=1 AND status IN ('available','reserved')")

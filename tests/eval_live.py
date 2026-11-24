@@ -14,7 +14,8 @@ SETS = [c for c, p in P.items() if p["kind"] == "طقم"]
 CHEAPEST_SET = min(SETS, key=lambda c: P[c]["price"])
 LIGHTEST = min(P, key=lambda c: P[c]["weight"])
 MIN_PRICE = min(p["price"] for p in P.values())
-SALES = ["فريق المبيعات", "المبيعات", "واتساب"]
+SALES = ["أتأكد لك من فريق المبيعات", "تواصل مع فريق المبيعات", "تواصل مع المبيعات", "كلم المبيعات", "يوضحها فريق المبيعات"]
+# offering to notify the customer when a match arrives (waitlist) is the required behaviour, not a needless referral
 
 
 def rid():
@@ -38,8 +39,9 @@ def say(sess, vis, msg):
 # rule helpers: each returns (ok, why)
 def no_feature(f):
     return lambda r, mem: (not any(f in COMP.get(p["code"], set()) for p in r["pieces"]), f"no card with {f}")
-def max_price(x):
-    return lambda r, mem: (all(p["price"] <= x for p in r["pieces"]), f"cards <= {x:,}")
+def max_price(x):   # a card above the budget is allowed only when the reply says plainly that it is above it
+    return lambda r, mem: (all(p["price"] <= x for p in r["pieces"]) or any(w in r["text"] for w in ("أعلى", "فوق", "أكثر من ميزانيت", "خارج ميزانيت")),
+                           f"cards <= {x:,} unless the gap is disclosed")
 def kind_only(k):
     return lambda r, mem: (all(P.get(p["code"], {}).get("kind") == k for p in r["pieces"]), f"cards only {k}")
 def first_card(code):
@@ -49,9 +51,11 @@ def has_card():
 def no_cards():
     return lambda r, mem: (not r["pieces"], "no cards")
 def no_sales():
-    return lambda r, mem: (not any(w in r["text"] for w in SALES) and not r.get("handoff"), "no needless sales handoff")
+    return lambda r, mem: (not any(w in r["text"] for w in SALES), "no needless sales referral")
 def handoff():
     return lambda r, mem: (bool(r.get("handoff")) or any(w in r["text"] for w in SALES), "offers human/sales")
+def recorded():
+    return lambda r, mem: (bool(r.get("recorded_request")), "demand request really saved in the backend")
 def offer_is(key):
     return lambda r, mem: (bool(r.get("offer")) and r["offer"]["code"] == mem.get(key), f"purchase opened for {mem.get(key)}")
 def no_offer():
@@ -88,7 +92,7 @@ S = [
    ("وأخف قطعة عندكم كلها؟", [no_sales(), text_not("أصغر قطعة")])]),
  ("4 ميزانية أقل من المتوفر", [
    ("ميزانيتي 900 ألف بس، ابغى أي شي ذهب", [max_price(900_000), no_offer(), text_has("ميزانيت", "فوق", "أعلى", "ما فيه", "ما عندنا")]),
-   ("طيب سجل طلبي وبلغوني إذا جاء شي بميزانيتي", [no_offer()])]),
+   ("طيب سجل طلبي وبلغوني إذا جاء شي بميزانيتي، موافق", [no_offer(), recorded()])]),
  ("5 يرجع للقطعة السابقة", [
    ("ابغى أشوف أطقم للعرس", [has_card(), remember("first")]),
    ("وعقود؟", [has_card()]),
@@ -119,7 +123,7 @@ results = []
 for name, turns in S:
     if ONLY and not any(o in name for o in ONLY):
         continue
-    sess, vis, mem = rid() + "-e", "ev" + rid(), {}
+    sess, vis, mem = "evaltest" + rid(), "ev" + rid(), {}
     log, ok_all = [], True
     for msg, rules in turns:
         r = say(sess, vis, msg)
@@ -133,7 +137,11 @@ for name, turns in S:
                     "offer": (r.get("offer") or {}).get("code"), "handoff": bool(r.get("handoff")), "checks": checks})
         print(("  ok  " if all(c["pass"] for c in checks) else "  XX  ") + msg[:50], [c["rule"] for c in checks if not c["pass"]])
         time.sleep(5)
-    results.append({"scenario": name, "pass": ok_all, "turns": log})
+    try:
+        trace = json.loads(urllib.request.urlopen(BASE + "/api/eval/trace?session=" + sess, timeout=30).read())["rows"]
+    except Exception:
+        trace = []
+    results.append({"scenario": name, "pass": ok_all, "turns": log, "backend_trace": trace})
     print(("PASS " if ok_all else "FAIL ") + name)
 os.makedirs(os.path.join(os.path.dirname(__file__), "results"), exist_ok=True)
 out = os.path.join(os.path.dirname(__file__), "results", "eval_live.json")

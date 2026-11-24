@@ -132,6 +132,13 @@ def get(app, u, path, q):
             return {"chats": s.q("SELECT session, ts, role, content, skills, tokens_in, tokens_out, cost FROM chat_logs "
                                  "ORDER BY id DESC LIMIT 300"),
                     "handoffs": s.q("SELECT * FROM handoffs ORDER BY id DESC LIMIT 50")}
+    if path == "/api/admin/trace":
+        if u["role"] not in ("owner", "manager"):
+            raise GoldError("غير مصرح")
+        sess = q.get("session") or ""
+        with app.lock:
+            return {"rows": s.q("SELECT * FROM ai_trace WHERE session=? ORDER BY id", (sess,)) if sess else
+                    s.q("SELECT * FROM ai_trace ORDER BY id DESC LIMIT 200")}
     if path == "/api/admin/demand":
         if u["role"] not in ("owner", "manager"):
             raise GoldError("غير مصرح")

@@ -340,6 +340,8 @@ class SalesAgent:
             have = {r[1] for r in store.db.execute("PRAGMA table_info(ai_sessions)")}
             if "state" not in have:
                 store.db.execute("ALTER TABLE ai_sessions ADD COLUMN state TEXT")
+            store.db.execute("""CREATE TABLE IF NOT EXISTS ai_trace (
+                id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, session TEXT, turn INTEGER, tool TEXT, args TEXT, result TEXT)""")
             store.db.execute("""CREATE TABLE IF NOT EXISTS demand_requests (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, session TEXT, visitor TEXT, category TEXT,
                 description TEXT, budget REAL, excluded TEXT, ref_code TEXT, contact TEXT, consent INTEGER,
@@ -846,6 +848,19 @@ class SalesAgent:
                         result = {"error": str(e)[:200]}
                     msgs.append({"role": "tool", "tool_call_id": call["id"],
                                  "content": json.dumps(result, ensure_ascii=False)})
+                    try:      # evidence: what the model asked the backend and what the backend answered
+                        short = {k: result.get(k) for k in ("params", "sorted_by", "eligible_total", "within_budget_total", "note",
+                                                            "code", "ok", "error") if isinstance(result, dict) and k in result}
+                        if isinstance(result, dict) and result.get("items"):
+                            short["items"] = [(i.get("code"), i.get("price") or i.get("total_yer")) for i in result["items"]]
+                        if isinstance(result, dict) and result.get("outside_budget"):
+                            short["outside_budget"] = [(i["code"], i["price"]) for i in result["outside_budget"]]
+                        with self.lock:
+                            self.store.db.execute("INSERT INTO ai_trace (ts,session,turn,tool,args,result) VALUES (?,?,?,?,?,?)",
+                                                  (s_now(), session, st["turn"], call["function"]["name"],
+                                                   call["function"].get("arguments") or "{}", json.dumps(short, ensure_ascii=False)))
+                    except Exception:
+                        pass
         except urllib.error.HTTPError as e:
             return {"text": "تعذر الاتصال بالمساعد الآن. تقدر تراسلنا على واتساب مباشرة.", "pieces": [],
                     "handoff": self.whatsapp_link([]), "error": f"{e.code} {str(e.msg)[:200]}"}
@@ -904,6 +919,8 @@ class SalesAgent:
             self.analytics.log_ai(session, cfg["model"], "ai", stage, ",".join(cards), t_in, t_cached, t_out, cost,
                                   int((time.time() - t0) * 1000), need)
         res = {"text": clean, "pieces": pieces, "stage": stage, "suggest": self._suggest(c)}
+        if ctx.get("recorded_request"):
+            res["recorded_request"] = True
         if ctx.get("handoff") is not None:
             res["handoff"] = ctx["handoff"]
         if ctx.get("offer"):
