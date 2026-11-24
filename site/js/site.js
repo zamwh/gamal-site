@@ -446,7 +446,7 @@
   var chatEl = $('#chat'), msgs = $('#msgs'), busy = false;
   function openChat(text) {
     chatEl.classList.add('open'); T('ai_open'); chatUsed = true; hideHint(); document.body.classList.remove('has-hint'); if (innerWidth < 760) document.body.style.overflow = 'hidden';
-    if (!msgs.children.length) { addMsg('حياك الله في جمال المشرقي ✨ أنا مستشارك الخاص، أعرف كل قطعة متوفرة وسعرها اليوم. تجهّز لمناسبة، ولا تدور على شيء معيّن؟', 'a'); chips(['أطقم العرايس', 'عقود', 'سعر الذهب اليوم', 'وين فروعكم؟']) }
+    if (!msgs.children.length) { addMsg('حياك الله في جمال المشرقي أنا مستشارك الخاص، أعرف كل قطعة متوفرة وسعرها اليوم. تجهّز لمناسبة، ولا تدور على شيء معيّن؟', 'a'); chips(['أطقم العرايس', 'عقود', 'سعر الذهب اليوم', 'وين فروعكم؟']) }
     if (text) send(text); else setTimeout(function () { $('#chatIn').focus() }, 400);
   }
   window.openChat = openChat;
@@ -507,12 +507,12 @@
 
   /* ---------- assistant hint: short messages popping from the button, rotating, then quiet ---------- */
   var HINTS = [
-    { t: 'محتار وش تختار؟ أنا هنا أساعدك ✨', q: '' },
+    { t: 'محتار وش تختار؟ أنا هنا أساعدك', q: '' },
     { t: 'قل لي المناسبة، وأرشّح لك الأنسب من قطع اليوم', q: '' },
     { t: 'تبي تعرف سعر قطعة على ذهب اليوم؟ اسألني', q: '' },
     { t: 'عندي أفكار تنسيقات تليق بك 💫', q: 'أبغى أفكار تنسيقات' },
     { t: 'تجهّز لعرس؟ خلني أرتب لك باقة متكاملة', q: 'أبغى أجهز باقة عروس' },
-    { t: 'تدور هدية تفرّح؟ أقترح لك على ميزانيتك 🎁', q: 'أبغى هدية' },
+    { t: 'تدور هدية تفرّح؟ أقترح لك على ميزانيتك', q: 'أبغى هدية' },
     { t: 'تفضّل الناعم ولا الفخم؟ قل لي وأطلع لك الأقرب لذوقك', q: '' }], hintN = 0, chatUsed = false, hintHide;
   function hint() {
     if (chatUsed || chatEl.classList.contains('open') || $('#modal').classList.contains('open') || hintN >= HINTS.length) return;
