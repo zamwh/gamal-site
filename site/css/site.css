@@ -707,3 +707,8 @@ html.day .rfx{background:#0d0b08}
 .hp img{-webkit-mask-image:none!important;mask-image:none!important}
 .hp{height:min(86svh,52vw,900px)}
 @media(max-width:760px){.hp{height:38svh}}
+/* discovery: a quiet second row — order + price band (bands follow the real prices in stock) */
+.refine{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:0 0 34px}
+.refine select{height:42px;border-radius:99px;border:1px solid var(--line);background:transparent;color:var(--ink);padding:0 16px;font:inherit;font-size:14px}
+.pband{display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:760px){.refine{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}.refine::-webkit-scrollbar{display:none}.pband{flex-wrap:nowrap}.pband .chip{white-space:nowrap}}

@@ -61,6 +61,19 @@ def _range(q):
 
 def get(app, u, path, q):
     s, an = app.store, app.analytics
+    if path == "/api/admin/stock":
+        if u["role"] not in ("owner", "manager"):
+            raise GoldError("غير مصرح")
+        with app.lock:
+            out = []
+            for p in s.list_pieces(search=(q.get("q") or "").strip()):
+                if p["status"] == "sold" and not q.get("sold"):
+                    continue
+                out.append({"code": p["code"], "title": (p["title"] if "title" in p.keys() else None) or p["type"],
+                            "type": p["type"], "karat": p["karat"], "weight": p["weight"], "status": p["status"],
+                            "branch": p["branch_name"], "online": bool(p["show_online"]),
+                            "price": p["price"] if p["status"] != "sold" else None})
+            return out[:300]
     if path == "/api/admin/me":
         return {"name": u["name"], "role": u["role"], "mode": s.mode}
     if path == "/api/admin/analytics":
@@ -131,6 +144,15 @@ def post(app, u, path, d):
         s.require(u["id"], "owner")
         return app.agent.test()
     with app.lock:
+        if path == "/api/admin/sell":
+            # one sale from any branch: recorded in the same sales system the shop uses; the piece turns SOLD at once
+            s.require(u["id"], "owner", "manager")
+            code = str(d.get("code", "")).strip().upper()
+            r = s.create_sale(u["id"], [{"code": code}], str(d.get("name", ""))[:80], str(d.get("phone", ""))[:20])
+            return {"ok": True, "invoice": (r.get("number") if isinstance(r, dict) else None)}
+        if path == "/api/admin/piece_status":
+            s.set_piece_status(u["id"], str(d.get("code", "")).upper(), str(d.get("status", "")), str(d.get("reason", ""))[:120])
+            return {"ok": True}
         if path == "/api/admin/confirm":
             s.confirm_reservation(u["id"], str(d.get("number", "")))
             return {"ok": True}

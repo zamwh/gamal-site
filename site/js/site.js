@@ -69,7 +69,11 @@
     var q = function (l, o) { return '<div class="q"><small>' + l + (o.chg ? ' · <span class="chg">' + (o.chg > 0 ? '▲ ' : '▼ ') + fmt(Math.abs(o.chg)) + ' عن أمس</span>' : '') + '</small><div class="sell"><span class="lb">بيع</span>' + moneyH(o.sell) + '</div><div class="buy">شراء <b class="num">' + fmt(conv(o.buy)) + '</b> ' + curLbl() + '</div></div>' };
     var html = q('جرام عيار 21', p.k21) + q('الجنيه الذهب', p.pound);
     $('#quotesHome').innerHTML = html; $('#quotesGold').innerHTML = html;
-    if (p.updated) { $('#upd').textContent = 'آخر تحديث ' + p.updated.slice(0, 16); $('#upd2').textContent = 'أسعار المحل — آخر تحديث ' + p.updated.slice(0, 16) }
+    if (p.updated) {   // prices are set by the shop by hand: say when, and say plainly if they are not from today
+      var day = p.updated.slice(0, 10), today = new Date().toISOString().slice(0, 10), when = p.updated.slice(0, 16).replace('T', ' ');
+      var note = day === today ? 'يحدّثها المحل يدوياً، آخر تحديث ' + when + '، وقد تتغير خلال اليوم.' : 'آخر سعر سجّله المحل بتاريخ ' + when + '، وقد يختلف سعر اليوم. تأكد على واتساب.';
+      $('#upd').textContent = note; $('#upd2').textContent = note;
+    }
     spark($('#sparkHome')); spark($('#sparkGold'));
   }
   function spark(svg) {
@@ -87,7 +91,7 @@
     $('#slides').innerHTML = HL.map(function (p, i) { return '<div class="slide' + (i ? '' : ' on') + '"><div class="im" style="background-image:url(\'' + esc(p.photo) + '\')"></div></div>' }).join('');
     $('#sTot').textContent = ('0' + HL.length).slice(-2); go(0);
     // the opening: two grand necklaces, each half hidden beyond the edge of the screen
-    [['#hpL', 'img/scene_medallion.webp'], ['#hpR', 'img/scene_tassel.webp']].forEach(function (x) { var a = $(x[0]); if (a) { a.querySelector('img').src = x[1]; a.href = '#collection-necklaces' } });
+    [['#hpL', 'img/scene_medallion.webp'], ['#hpR', 'img/scene_tassel.webp']].forEach(function (x) { var a = $(x[0]); if (a) { a.querySelector('img').src = x[1]; a.href = '#collections'; a.setAttribute('aria-label', 'المجموعات') } });
   }
   function go(n) {
     var s = $$('#slides .slide'); if (!s.length) return;
@@ -154,7 +158,9 @@
   }
 
   /* ---------- collection page ---------- */
-  var curCol = null, term = '';
+  var curCol = null, term = '', PB = 'all';
+  function fmtShort(yer) { var v = conv(yer); return (v >= 1e6 ? (v / 1e6).toFixed(1).replace(/\.0$/, '') + ' مليون' : fmt(v)) + ' ' + curLbl() }
+  $('#sort').onchange = function () { T('filter_sort', null, this.value); renderCollection(curCol ? curCol.key : '') };
   function renderCollection(key) {
     curCol = COLS.filter(function (c) { return c.key === key })[0] || null;
     var items = curCol ? colItems(curCol) : SITE.pieces;
@@ -163,6 +169,15 @@
     $('#colLead').textContent = curCol ? curCol.s + ' — الأسعار على سعر الذهب اليوم.' : 'الأسعار على سعر الذهب اليوم.';
     $('#colBg').style.backgroundImage = '';   // no piece fills the screen here
     $('#chips').innerHTML = '<a class="chip' + (curCol ? '' : ' on') + '" href="#collections">الكل</a>' + COLS.filter(function (c) { return colItems(c).length }).map(function (c) { return '<a class="chip' + (curCol === c ? ' on' : '') + '" href="#collection-' + c.key + '">' + c.t + '</a>' }).join('');
+    // price band and order: bands come from the real prices on display, so they always fit the stock
+    var ps = SITE.pieces.map(function (p) { return p.price }).sort(function (a, b) { return a - b }), q1 = ps[Math.floor(ps.length / 3)] || 0, q2 = ps[Math.floor(ps.length * 2 / 3)] || 0;
+    var bands = [['all', 'كل الأسعار'], ['lo', 'حتى ' + fmtShort(q1)], ['mid', fmtShort(q1) + ' – ' + fmtShort(q2)], ['hi', 'أكثر من ' + fmtShort(q2)]];
+    $('#pband').innerHTML = bands.map(function (b) { return '<button class="chip' + (PB === b[0] ? ' on' : '') + '" data-b="' + b[0] + '">' + b[1] + '</button>' }).join('');
+    $$('#pband [data-b]').forEach(function (b) { b.onclick = function () { PB = b.dataset.b; T('filter_price', null, PB); renderCollection(curCol ? curCol.key : '') } });
+    if (PB === 'lo') items = items.filter(function (p) { return p.price <= q1 });
+    if (PB === 'mid') items = items.filter(function (p) { return p.price > q1 && p.price <= q2 });
+    if (PB === 'hi') items = items.filter(function (p) { return p.price > q2 });
+    var so = $('#sort').value; items = items.slice().sort(function (a, b) { return so === 'pa' ? a.price - b.price : so === 'pd' ? b.price - a.price : so === 'wa' ? a.weight - b.weight : so === 'wd' ? b.weight - a.weight : (a.code < b.code ? 1 : -1) });
     var t = term.trim(); if (t) items = items.filter(function (p) { return (p.title + ' ' + p.kind + ' ' + (p.style || '') + ' ' + (p.occasion || '')).indexOf(t) >= 0 });
     $('#grid').innerHTML = items.length ? items.map(function (p, i) { return card(p, 'rv' + (i % 4 ? ' d' + (i % 4) : '')) }).join('') : '<div class="empty" style="grid-column:1/-1">ما لقينا قطع بهذا البحث. اسأل المستشار يساعدك.</div>';
     bindCards($('#grid')); reveal();
@@ -172,7 +187,7 @@
   /* ---------- piece page ---------- */
   var openCode = null;
   function renderPiece(code, via) {
-    var base = BY[code]; if (!base) { $('#pieceWrap').innerHTML = '<div class="empty" style="margin:160px 0">القطعة غير متاحة حالياً. <a class="link" href="#collections">شاهد القطع المتوفرة</a></div>'; return }
+    var base = BY[code]; if (!base) { $('#pieceWrap').innerHTML = '<div class="empty" style="margin:160px 0">هذه القطعة بيعت أو لم تعد متاحة. <a class="link" href="#collections">شاهد القطع المتوفرة</a></div>'; return }
     openCode = code; T('piece_view', code, null, via === 'ai');
     function draw(p) {
       var photos = (p.photos && p.photos.length ? p.photos : [p.photo]).filter(Boolean), pct = SITE.deposit_pct || 10;
@@ -198,7 +213,7 @@
       bindChatBtns($('#pieceWrap')); var sg = $('#simGrid'); if (sg) bindCards(sg);
     }
     draw(base);
-    if (ONLINE) fetch('/api/piece/' + encodeURIComponent(code)).then(function (r) { return r.ok ? r.json() : null }).then(function (d) { if (d && d.code === openCode && d.status !== 'hidden') draw(Object.assign({}, base, d)) }).catch(function () { });
+    if (ONLINE) fetch('/api/piece/' + encodeURIComponent(code)).then(function (r) { return r.ok ? r.json() : null }).then(function (d) { if (!d || d.code !== openCode) return; if (d.status === 'sold' || d.status === 'hidden' || d.status === 'inactive') { $('#pieceWrap').innerHTML = '<div class="empty" style="margin:160px 0">هذه القطعة بيعت أو لم تعد متاحة. <a class="link" href="#collections">شاهد القطع المتوفرة</a></div>'; return } draw(Object.assign({}, base, d)) }).catch(function () { });
   }
 
   /* ---------- bride builder ---------- */
@@ -550,6 +565,24 @@
   $('#aib').onclick = function () { var q = this.dataset.q; hideHint(); openChat(q || undefined) };
   [7000, 28000, 55000, 90000, 140000].forEach(function (ms) { setTimeout(hint, ms) });
 
+
+  /* ---------- live stock: a piece sold in any branch leaves this page within seconds ---------- */
+  var AV = '';
+  function syncStock() {
+    if (!ONLINE || document.hidden) return;
+    fetch('/api/avail', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null }).then(function (d) {
+      if (!d || d.v === AV) return; var first = !AV; AV = d.v;
+      var live = {}; d.available.forEach(function (c) { live[c] = 'available' }); d.reserved.forEach(function (c) { live[c] = 'reserved' });
+      var before = SITE.pieces.length, changed = false;
+      SITE.pieces = SITE.pieces.filter(function (p) { if (!live[p.code]) { changed = true; return false } if (p.status !== live[p.code]) { p.status = live[p.code]; changed = true } return true });
+      if (first && !changed) return;
+      BY = {}; SITE.pieces.forEach(function (p) { BY[p.code] = p });
+      if (changed) { renderAll(); if (ROUTE === 'collections' || ROUTE === 'piece' || ROUTE === 'bride') route() }
+    }).catch(function () { /* offline for a moment: keep what we have, try again next round */ });
+  }
+  setInterval(syncStock, 20000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) syncStock() });
+  addEventListener('online', syncStock);
 
   /* ---------- boot ---------- */
   function boot() {

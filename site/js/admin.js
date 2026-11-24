@@ -11,7 +11,7 @@
     return fetch(p, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), credentials: 'same-origin' } : { credentials: 'same-origin' })
       .then(function (r) { return r.json().then(function (d) { if (r.status === 401) { loginView(); throw d } if (!r.ok) throw d; return d }) });
   }
-  var ME = null, TAB = 'overview', RANGE = 7;
+  var ME = null, TAB = 'stock', RANGE = 7;
   function iso(d) { return d.toISOString().slice(0, 10) }
   function range() { var b = new Date(), a = new Date(); a.setDate(b.getDate() - (RANGE - 1)); return 'a=' + iso(a) + '&b=' + iso(b) }
 
@@ -21,7 +21,7 @@
       '<button class="btn g full">دخول</button><div class="err" id="le"></div></form></div>';
     $('#lf').onsubmit = function (e) { e.preventDefault(); api('/api/admin/login', { username: $('#lu').value, password: $('#lp').value }).then(boot).catch(function (x) { $('#le').textContent = (x && x.error) || 'تعذر الدخول' }) };
   }
-  var TABS = [['overview', 'نظرة عامة'], ['journey', 'رحلة العميل'], ['products', 'تفاعل القطع'], ['ai', 'أداء المساعد والتكلفة'], ['requests', 'الطلبات والتحويلات'], ['chats', 'محادثات المساعد'], ['settings', 'الإعدادات']];
+  var TABS = [['stock', 'المخزون والبيع'], ['overview', 'نظرة عامة'], ['journey', 'رحلة العميل'], ['products', 'تفاعل القطع'], ['ai', 'أداء المساعد والتكلفة'], ['requests', 'الطلبات والتحويلات'], ['chats', 'محادثات المساعد'], ['settings', 'الإعدادات']];
   function shell() {
     $('#app').innerHTML = '<div class="lay"><aside><img src="/img/logo_night.png" class="lg-night" alt=""><img src="/img/logo_day.png" class="lg-day" alt="" style="display:none">' +
       TABS.filter(function (t) { return ME.role !== 'accountant' || t[0] === 'requests' }).map(function (t) { return '<button data-t="' + t[0] + '"' + (t[0] === TAB ? ' class="on"' : '') + '>' + t[1] + '</button>' }).join('') +
@@ -65,8 +65,28 @@
 
   function load() {
     var mp = $('#mp'); mp.innerHTML = '<div class="sub">جاري التحميل…</div>';
-    var go = ({ overview: overview, journey: journey, products: products, ai: ai, requests: requests, chats: chats, settings: settings })[TAB];
+    var go = ({ stock: stock, overview: overview, journey: journey, products: products, ai: ai, requests: requests, chats: chats, settings: settings })[TAB];
     go(mp);
+  }
+  // one stock for the shop and the website: sell a piece from any branch and it leaves the site at once
+  var STQ = '';
+  var STN = { available: ['متاحة', 'ok'], reserved: ['محجوزة', 'w'], sold: ['مباعة', 'x'], inactive: ['موقوفة', 'x'], transfer: ['تحويل', 'w'] };
+  function stock(mp) {
+    if (ME.role === 'accountant') { TAB = 'requests'; return load() }
+    api('/api/admin/stock?q=' + encodeURIComponent(STQ)).then(function (rows) {
+      mp.innerHTML = head('المخزون والبيع') + '<div class="sub" style="margin:-6px 0 16px">نفس مخزون المحل. القطعة اللي تُباع هنا تختفي من الموقع خلال ثوانٍ، ولا يقدر أحد يحجزها.</div>' +
+        '<div class="box"><input class="inp" id="stq" placeholder="ابحث برقم القطعة أو نوعها" value="' + esc(STQ) + '" style="width:100%;margin-bottom:14px">' +
+        '<table class="tbl"><thead><tr><th>القطعة</th><th>الوزن</th><th>الفرع</th><th>الحالة</th><th>السعر الآن</th><th></th></tr></thead><tbody>' +
+        (rows.length ? rows.map(function (r) { var s = STN[r.status] || [r.status, '']; return '<tr><td>' + esc(r.title) + ' <span class="sub" style="margin:0">' + esc(r.code) + '</span></td><td class="n">' + Number(r.weight).toFixed(2) + '</td><td>' + esc(r.branch) + '</td><td><span class="tag ' + s[1] + '">' + s[0] + '</span>' + (r.online ? '' : ' <span class="sub" style="margin:0">مخفية من الموقع</span>') + '</td><td class="n">' + (r.price ? fmt(r.price) : '—') + '</td><td>' +
+          (r.status === 'available' || r.status === 'reserved' ? '<button class="btn s g" data-sell="' + esc(r.code) + '">تسجيل بيع</button> ' : '') +
+          (r.status === 'available' ? '<button class="btn s" data-st="inactive" data-c="' + esc(r.code) + '">إيقاف</button>' : r.status === 'inactive' ? '<button class="btn s" data-st="available" data-c="' + esc(r.code) + '">تفعيل</button>' : '') + '</td></tr>' }).join('') : '<tr><td colspan="6" class="sub">لا توجد قطع</td></tr>') + '</tbody></table></div>';
+      var t; $('#stq').oninput = function (e) { clearTimeout(t); t = setTimeout(function () { STQ = e.target.value; load() }, 400) };
+      mp.querySelectorAll('[data-sell]').forEach(function (b) { b.onclick = function () {
+        var code = b.dataset.sell, name = prompt('تسجيل بيع القطعة ' + code + '\nاسم العميل (اختياري):', ''); if (name === null) return;
+        b.disabled = true; api('/api/admin/sell', { code: code, name: name }).then(function (r) { toast('تم البيع — فاتورة ' + (r.invoice || '')); load() }).catch(function (e) { b.disabled = false; toast(e.error || 'خطأ') });
+      } });
+      mp.querySelectorAll('[data-st]').forEach(function (b) { b.onclick = function () { api('/api/admin/piece_status', { code: b.dataset.c, status: b.dataset.st }).then(function () { toast('تم'); load() }).catch(function (e) { toast(e.error || 'خطأ') }) } });
+    }).catch(function (e) { mp.innerHTML = '<div class="sub">' + esc(e.error || 'خطأ') + '</div>' });
   }
   function overview(mp) {
     api('/api/admin/analytics?s=overview&' + range()).then(function (d) {

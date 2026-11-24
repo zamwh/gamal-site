@@ -223,6 +223,12 @@ class Server:
                     if path == "/api/site":
                         with app.lock:
                             return self._send(200, server.site_payload())
+                    if path == "/api/avail":      # live stock: what the page may still offer right now
+                        with app.lock:
+                            rows = app.store.q("SELECT code, status FROM pieces WHERE show_online=1 AND status IN ('available','reserved')")
+                            v = app.store.one("SELECT COALESCE(MAX(updated_at),'') AS v, COUNT(*) AS n FROM pieces")
+                        return self._send(200, {"v": f"{v['v']}|{v['n']}", "available": [r["code"] for r in rows if r["status"] == "available"],
+                                                "reserved": [r["code"] for r in rows if r["status"] == "reserved"]})
                     m = re.fullmatch(r"/api/piece/([A-Za-z0-9]{1,20})", path)
                     if m:
                         with app.lock:
@@ -231,6 +237,7 @@ class Server:
                 except GoldError as e:
                     return self._send(404, {"error": str(e)})
                 except Exception:
+                    import traceback; traceback.print_exc()     # never hide an error: it goes to the server log
                     return self._send(500, {"error": "server error"})
 
             def do_POST(self):
@@ -324,6 +331,7 @@ class Server:
                 except GoldError as e:
                     return self._send(400, {"error": str(e)})
                 except Exception:
+                    import traceback; traceback.print_exc()     # never hide an error: it goes to the server log
                     return self._send(500, {"error": "server error"})
 
         return H
