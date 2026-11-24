@@ -7,7 +7,7 @@
 <meta name="description" content="جمال المشرقي للذهب والمجوهرات — إب. أطقم العرايس والعقود والكردانات بعيار 21.">
 <meta name="theme-color" content="#070605">
 <link rel="icon" href="img/logo_night.png">
-<link rel="stylesheet" href="css/site.css?v=11241340">
+<link rel="stylesheet" href="css/site.css?v=11241346">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -24,7 +24,7 @@
 <div class="glow" id="glow"></div>
 
 <header class="hdr" id="hdr"><div class="w">
-  <nav class="lft" id="nav"><a href="#home" data-r="home" class="on">الرئيسية</a><a href="#collections" data-r="collections">المجموعات</a><a href="#bride" data-r="bride">باقة العروس</a><a href="#gold" data-r="gold">بورصة الذهب</a></nav>
+  <nav class="lft" id="nav"><a href="#home" data-r="home" class="on">الرئيسية</a><a href="#collections" data-r="collections">المجموعات</a><button type="button" class="navcat" data-cats>الفئات</button><a href="#bride" data-r="bride">باقة العروس</a><a href="#gold" data-r="gold">بورصة الذهب</a></nav>
   <button class="ibtn menu-btn" id="menuBtn" aria-label="القائمة"><svg class="i" viewBox="0 0 24 24"><path d="M4 8h16M4 16h10"/></svg></button>
   <a href="#home" class="logo" aria-label="جمال المشرقي"><img class="lg-night" src="img/logo_night.png" alt="جمال المشرقي للذهب والمجوهرات"><img class="lg-day" src="img/logo_day.png" alt=""></a>
   <div class="rgt">
@@ -34,7 +34,8 @@
   </div>
 </div></header>
 <div class="mnav" id="mnav"><button class="ibtn x" id="menuX" aria-label="إغلاق"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-  <a href="#home">الرئيسية</a><a href="#collections">المجموعات</a><a href="#bride">باقة العروس</a><a href="#gold">بورصة الذهب</a><a href="#branches">الفروع</a></div>
+  <a href="#home">الرئيسية</a><a href="#collections">المجموعات</a><a href="#" data-cats>الفئات</a><a href="#bride">باقة العروس</a><a href="#gold">بورصة الذهب</a><a href="#branches">الفروع</a></div>
+<div class="catp" id="catp" role="dialog" aria-label="الفئات"><div class="catp-in"><div class="catp-h"><span class="eyebrow">تسوّق حسب الفئة</span><button class="ibtn" id="catX" aria-label="إغلاق"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div><div class="catp-l" id="catRow"></div><div class="catp-pv" aria-hidden="true"><img id="catPv" alt=""></div></div></div>
 
 <main>
 <!-- ================= HOME ================= -->
@@ -77,11 +78,6 @@
     </div>
   </div></section>
 
-  <section class="cats" id="cats"><div class="w">
-    <div class="sh"><div class="rv"><span class="eyebrow">تسوّق حسب الفئة</span><h2 class="ttl">ابدأ من <em>القطعة</em></h2></div></div>
-    <div class="catrow" id="catRow"></div>
-  </div></section>
-
   <section class="disc" id="disc"><div class="w">
     <div class="sh"><div class="rv"><span class="eyebrow">من المحل</span><h2 class="ttl">اكتشف <em>تشكيلتنا</em></h2></div><a class="link rv" href="#collections">كل القطع <svg class="i" style="width:16px"><use href="#s-arr"/></svg></a></div>
     <div class="ed" id="edGrid"></div>
@@ -120,8 +116,10 @@
     <h1 class="ttl" id="colTitle">كل <em>القطع</em></h1><p class="lead" id="colLead" style="margin-top:10px">الأسعار على سعر الذهب اليوم.</p>
   </div></div>
   <div class="w" style="padding-bottom:100px">
-    <div class="sh" style="margin-bottom:18px"><div class="tools" id="chips"></div><label class="search"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" placeholder="ابحث عن قطعة…" autocomplete="off"></label></div>
-    <div class="refine" id="refine"><select id="sort" aria-label="الترتيب"><option value="new">الأحدث</option><option value="pa">السعر: من الأقل</option><option value="pd">السعر: من الأعلى</option><option value="wa">الوزن: الأخف</option><option value="wd">الوزن: الأثقل</option></select><div class="pband" id="pband"></div></div>
+    <div class="cbar"><label class="search"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" placeholder="ابحث عن قطعة…" autocomplete="off"></label><button type="button" class="btn s fbtn" id="fltBtn"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M7 12h10M10 17h4"/></svg>تصفية<span class="fcnt hidden" id="fltCnt"></span></button></div>
+    <div class="catp fltp" id="fltp" role="dialog" aria-label="تصفية"><div class="catp-in"><div class="catp-h"><span class="eyebrow">تصفية القطع</span><button class="ibtn" id="fltX" aria-label="إغلاق"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+      <div class="fcols"><div><small class="fl">الفئة</small><div class="flist" id="chips"></div></div><div><small class="fl">السعر</small><div class="flist" id="pband"></div><small class="fl" style="margin-top:22px">الترتيب</small><div class="flist" id="sortl"></div><select id="sort" hidden><option value="new">الأحدث</option><option value="pa">السعر: من الأقل</option><option value="pd">السعر: من الأعلى</option><option value="wa">الوزن: الأخف</option><option value="wd">الوزن: الأثقل</option></select></div></div>
+    </div></div>
     <div class="grid" id="grid"></div>
   </div>
 </div>
@@ -193,10 +191,10 @@
 </nav>
 <div class="toast" id="toast"></div>
 
-<script src="js/track.js?v=11241340"></script>
-<script src="js/gsap.min.js?v=11241340"></script>
-<script src="js/ScrollTrigger.min.js?v=11241340"></script>
-<script src="js/site.js?v=11241340"></script>
-<script src="js/ringfx.js?v=11241340"></script>
+<script src="js/track.js?v=11241346"></script>
+<script src="js/gsap.min.js?v=11241346"></script>
+<script src="js/ScrollTrigger.min.js?v=11241346"></script>
+<script src="js/site.js?v=11241346"></script>
+<script src="js/ringfx.js?v=11241346"></script>
 </body>
 </html>

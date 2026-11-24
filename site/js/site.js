@@ -123,11 +123,20 @@
   CATS.forEach(function (c) { COLS.push({ key: 'cat-' + c[0], t: c[1], s: 'تسوّق حسب الفئة', f: function (p) { var h = (p.title || '') + ' ' + (p.kind || ''); return c[2].some(function (w) { return h.indexOf(w) >= 0 }) } }) });
   function renderCats() {
     var r = $('#catRow'); if (!r) return;
-    r.innerHTML = CATS.map(function (c, i) {
+    r.innerHTML = CATS.map(function (c) {
       var n = colItems(COLS.filter(function (x) { return x.key === 'cat-' + c[0] })[0]).length;
-      return '<a class="cat rv' + (i % 3 ? ' d' + (i % 3) : '') + '" href="#collection-cat-' + c[0] + '"><span class="ca"><img loading="lazy" src="img/cat_' + c[0] + '.webp" alt=""></span><b>' + c[1] + '</b><small>' + (n ? n + (n > 2 ? ' قطع' : n === 2 ? ' قطعتين' : ' قطعة') : 'تصلنا قريباً') + '</small></a>';
+      return '<a href="#collection-cat-' + c[0] + '" data-img="img/cat_' + c[0] + '.webp"><b>' + c[1] + '</b><small>' + (n ? n + (n > 2 ? ' قطع' : n === 2 ? ' قطعتين' : ' قطعة') : 'قريباً') + '</small></a>';
     }).join('');
+    $$('a', r).forEach(function (a) {
+      a.addEventListener('mouseenter', function () { var im = $('#catPv'); im.src = a.dataset.img; im.classList.add('on') });
+      a.addEventListener('click', function () { closeCats() });
+    });
   }
+  function openCats(e) { if (e) e.preventDefault(); $('#mnav').classList.remove('open'); $('#catp').classList.add('open'); var f = $('#catRow a'); if (f) { $('#catPv').src = f.dataset.img; $('#catPv').classList.add('on') } }
+  function closeCats() { $('#catp').classList.remove('open') }
+  $$('[data-cats]').forEach(function (b) { b.addEventListener('click', openCats) });
+  $('#catX').onclick = closeCats; $('#catp').addEventListener('click', function (e) { if (e.target.id === 'catp') closeCats() });
+  addEventListener('keydown', function (e) { if (e.key === 'Escape') closeCats() });
   function colItems(c) { return SITE.pieces.filter(c.f) }
   function renderHomeCols() {
     if (!$('#homeCols')) return;
@@ -171,7 +180,10 @@
   /* ---------- collection page ---------- */
   var curCol = null, term = '', PB = 'all';
   function fmtShort(yer) { var v = conv(yer); return (v >= 1e6 ? (v / 1e6).toFixed(1).replace(/\.0$/, '') + ' مليون' : fmt(v)) + ' ' + curLbl() }
-  $('#sort').onchange = function () { T('filter_sort', null, this.value); renderCollection(curCol ? curCol.key : '') };
+  function openFlt() { $('#fltp').classList.add('open') }
+  function closeFlt() { $('#fltp').classList.remove('open') }
+  $('#fltBtn').onclick = openFlt; $('#fltX').onclick = closeFlt;
+  $('#fltp').addEventListener('click', function (e) { if (e.target.id === 'fltp') closeFlt(); if (e.target.closest('#chips a')) closeFlt() });
   function renderCollection(key) {
     curCol = COLS.filter(function (c) { return c.key === key })[0] || null;
     var items = curCol ? colItems(curCol) : SITE.pieces;
@@ -179,15 +191,20 @@
     $('#colCrumb').textContent = curCol ? curCol.t : 'المجموعات';
     $('#colLead').textContent = curCol ? curCol.s + ' — الأسعار على سعر الذهب اليوم.' : 'الأسعار على سعر الذهب اليوم.';
     $('#colBg').style.backgroundImage = '';   // no piece fills the screen here
-    $('#chips').innerHTML = '<a class="chip' + (curCol ? '' : ' on') + '" href="#collections">الكل</a>' + COLS.filter(function (c) { return colItems(c).length }).map(function (c) { return '<a class="chip' + (curCol === c ? ' on' : '') + '" href="#collection-' + c.key + '">' + c.t + '</a>' }).join('');
+    $('#chips').innerHTML = '<a class="chip' + (curCol ? '' : ' on') + '" href="#collections">الكل</a>' + COLS.filter(function (c) { return c.key.indexOf('cat-') === 0 && colItems(c).length }).map(function (c) { return '<a class="chip' + (curCol === c ? ' on' : '') + '" href="#collection-' + c.key + '">' + c.t + '<small style="color:var(--faint);font-size:12px">' + colItems(c).length + '</small></a>' }).join('');
     // price band and order: bands come from the real prices on display, so they always fit the stock
     var ps = SITE.pieces.map(function (p) { return p.price }).sort(function (a, b) { return a - b }), q1 = ps[Math.floor(ps.length / 3)] || 0, q2 = ps[Math.floor(ps.length * 2 / 3)] || 0;
     var bands = [['all', 'كل الأسعار'], ['lo', 'حتى ' + fmtShort(q1)], ['mid', fmtShort(q1) + ' – ' + fmtShort(q2)], ['hi', 'أكثر من ' + fmtShort(q2)]];
     $('#pband').innerHTML = bands.map(function (b) { return '<button class="chip' + (PB === b[0] ? ' on' : '') + '" data-b="' + b[0] + '">' + b[1] + '</button>' }).join('');
-    $$('#pband [data-b]').forEach(function (b) { b.onclick = function () { PB = b.dataset.b; T('filter_price', null, PB); renderCollection(curCol ? curCol.key : '') } });
+    $$('#pband [data-b]').forEach(function (b) { b.onclick = function () { PB = b.dataset.b; T('filter_price', null, PB); renderCollection(curCol ? curCol.key : ''); closeFlt() } });
     if (PB === 'lo') items = items.filter(function (p) { return p.price <= q1 });
     if (PB === 'mid') items = items.filter(function (p) { return p.price > q1 && p.price <= q2 });
     if (PB === 'hi') items = items.filter(function (p) { return p.price > q2 });
+    var SORTS = [['new', 'الأحدث'], ['pa', 'السعر: من الأقل'], ['pd', 'السعر: من الأعلى'], ['wa', 'الوزن: الأخف'], ['wd', 'الوزن: الأثقل']];
+    $('#sortl').innerHTML = SORTS.map(function (o) { return '<button class="chip' + ($('#sort').value === o[0] ? ' on' : '') + '" data-s="' + o[0] + '">' + o[1] + '</button>' }).join('');
+    $$('#sortl [data-s]').forEach(function (b) { b.onclick = function () { $('#sort').value = b.dataset.s; T('filter_sort', null, b.dataset.s); renderCollection(curCol ? curCol.key : ''); closeFlt() } });
+    var nf = (curCol ? 1 : 0) + (PB !== 'all' ? 1 : 0) + ($('#sort').value !== 'new' ? 1 : 0);
+    $('#fltCnt').textContent = nf; $('#fltCnt').classList.toggle('hidden', !nf);
     var so = $('#sort').value; items = items.slice().sort(function (a, b) { return so === 'pa' ? a.price - b.price : so === 'pd' ? b.price - a.price : so === 'wa' ? a.weight - b.weight : so === 'wd' ? b.weight - a.weight : (a.code < b.code ? 1 : -1) });
     var t = term.trim(); if (t) items = items.filter(function (p) { return (p.title + ' ' + p.kind + ' ' + (p.style || '') + ' ' + (p.occasion || '')).indexOf(t) >= 0 });
     $('#grid').innerHTML = items.length ? items.map(function (p, i) { return card(p, 'rv' + (i % 4 ? ' d' + (i % 4) : '')) }).join('') : '<div class="empty" style="grid-column:1/-1">ما لقينا قطع بهذا البحث. اسأل المستشار يساعدك.</div>';
