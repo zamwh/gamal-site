@@ -61,6 +61,7 @@ CORE_PROMPT = """أنت "مستشار جمال المشرقي" في موقع "ج
 - لا تسأل عن شيء عرفته من قبل (المناسبة، النوع، الميزانية، الذوق) — هو مكتوب لك في "ما نعرفه عن الزبون".
 
 العرض:
+- التحية، سؤال الفروع، السياسات، والأسعار العامة: جاوب عليها بس، بدون ما تعرض قطع. اعرض قطع لما يسأل عن قطع أو يذكر نوع أو مناسبة أو يقول "وريني".
 - اعرض قطعة أو قطعتين غالباً. ثلاث فقط إذا فيه سبب واضح (طلب يقارن، أو خيارات متقاربة جداً).
 - استخدم search_pieces للبحث؛ هي ترتّب القطع حسب ذوق الزبون ومناسبته وميزانيته وتستبعد اللي رفضه والمباع. اعتمد ترتيبها، ولا تعرض كل اللي رجع.
 - ممنوع تقول "ذوقك" أو "يناسب ذوقك" أو "اخترت" أو "اختيارك" أو "عجبك" إلا إذا الزبون نفسه قالها بكلامه في هذي المحادثة (مثلاً "عجبني الأول"، "أحب الناعم"). القطع اللي أنت عرضتها مو اختياره، والتصفح مو اختيار.
@@ -637,6 +638,15 @@ class SalesAgent:
         if name == "search_pieces":
             out = self.search_products(args, ctx.get("state"), ctx.get("profile"), ctx.get("facts") or {},
                                        exclude_shown=not args.get("include_shown"))
+            if not out.get("items") and out.get("other_categories_available") is not None and out.get("within_budget_total") \
+                    and not has(ctx.get("msg") or "", ["غيره", "غيرها", "غير هذا", "غير هذي", "ثاني", "ثانيه"]):
+                # he asked for this kind again (not "anything else"): show what we have, saying he saw it before
+                again = self.search_products(dict(args, count=args.get("count") or 2), ctx.get("state"), ctx.get("profile"),
+                                             ctx.get("facts") or {}, exclude_shown=False)
+                if again.get("items"):
+                    out["items"] = again["items"]
+                    out["note"] = ("هذي اللي عندنا من طلبه، وشاف بعضها قبل. اعرضها وقل بصراحة إن هذا اللي متوفر من هذا النوع الآن، "
+                                   "وإذا يبغى نوع ثاني اذكر other_categories_available.")
             ctx.setdefault("reasons", {}).update({i["code"]: i.get("fits", "") for i in out.get("items", [])})
             ctx.setdefault("searches", []).append(out.get("params"))
             ctx.setdefault("found", []).extend(i["code"] for i in out.get("items", []))
@@ -791,7 +801,8 @@ class SalesAgent:
                          "ولا تنسب له كلام ما قاله. وإذا سأل كيف عرفت، قل بصراحة إنك ما تعرف وكنت تقترح عليه خيارات. "
                          "واستبدل كلمات التصنيف بكلام بيّاع (شغل ناعم، مليان، ثقيل، خفيف، طويل).")
         found = [c for c in dict.fromkeys(ctx.get("found") or [])]
-        if found and not re.search(r"\[\[[A-Za-z0-9]+\]\]", text):
+        asking = not has(norm(message), W_BRANCH + W_POLICY + W_PRICE + ["كيف عرفت", "ليش"]) and len(norm(message).split()) > 1
+        if found and asking and not re.search(r"\[\[[A-Za-z0-9]+\]\]", text):
             notes.append("البحث رجّع قطع متوفرة (" + "، ".join(f"[[{c}]]" for c in found[:3]) + ") وأنت ما عرضت شي. "
                          "اعرضها بكتابة رمزها في سطر مستقل، وإذا ما تطابق طلبه تماماً قل الفرق بجملة صادقة، بدون رفض عرضها.")
         if not notes:
@@ -882,7 +893,7 @@ class SalesAgent:
             cfg = dict(cfg, model=cfg["model_strong"], price_in=cfg["strong_price_in"],
                        price_cached=cfg["strong_price_cached"], price_out=cfg["strong_price_out"])
         t_in = t_cached = t_out = 0
-        ctx = {"session": session, "visitor": visitor, "profile": prof, "facts": c["facts"], "shown": list(c["shown"]), "state": st}
+        ctx = {"msg": t, "session": session, "visitor": visitor, "profile": prof, "facts": c["facts"], "shown": list(c["shown"]), "state": st}
         text = ""
         try:
             for rnd in range(5):
