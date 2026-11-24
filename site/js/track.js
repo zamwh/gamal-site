@@ -23,7 +23,7 @@
       clearTimeout(timer); timer = setTimeout(flush, 4000);
     } catch (e) { }
   };
-  window.T.session = S;
+  window.T.session = S; window.T.visitor = V;
   document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') flush(true) });
   addEventListener('pagehide', function () { flush(true) });
 })();

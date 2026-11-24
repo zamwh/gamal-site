@@ -53,6 +53,18 @@ def main():
     srv = Server(app, a.port, a.host)
     srv.start()
     print(f"site: http://{a.host}:{a.port}/   admin: /admin   mode: {a.mode}", flush=True)
+
+    def tagger():                       # reads the look of new pieces from their photo, a few at a time
+        time.sleep(20)
+        while True:
+            try:
+                n = app.agent.tag_traits(6)
+                if n:
+                    print(f"read the look of {n} pieces", flush=True)
+            except Exception as e:
+                print("tagger:", e, flush=True)
+            time.sleep(600)
+    threading.Thread(target=tagger, daemon=True).start()
     while True:
         time.sleep(3600)
         try:

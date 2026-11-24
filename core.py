@@ -208,7 +208,7 @@ class Store:
 
     MIGRATIONS = {
         "pieces": [("title", "TEXT"), ("photos", "TEXT NOT NULL DEFAULT '[]'"), ("style", "TEXT"),
-                   ("occasion", "TEXT"), ("description", "TEXT")],
+                   ("occasion", "TEXT"), ("description", "TEXT"), ("traits", "TEXT")],
         "reservations": [("kind", "TEXT NOT NULL DEFAULT 'deposit'"), ("payer_name", "TEXT"),
                          ("receipt", "TEXT"), ("amount", "REAL"), ("source", "TEXT"), ("session", "TEXT"),
                          ("pickup", "TEXT")],
@@ -377,6 +377,8 @@ class Store:
                 self.db.execute(f"UPDATE pieces SET {k}=? WHERE id=?", (v.strip() or None, p["id"]))
         if photos is not None:
             self.db.execute("UPDATE pieces SET photos=? WHERE id=?", (json.dumps(list(photos)), p["id"]))
+            if '"src": "vision"' in (p.get("traits") or "") or '"src":"vision"' in (p.get("traits") or ""):
+                self.db.execute("UPDATE pieces SET traits=NULL WHERE id=?", (p["id"],))   # new photo: read its look again
         if show_online is not None:
             self.db.execute("UPDATE pieces SET show_online=? WHERE id=?", (1 if show_online else 0, p["id"]))
         self.db.execute("UPDATE pieces SET updated_at=? WHERE id=?", (now(), p["id"]))
@@ -900,6 +902,11 @@ def refresh_demo_photos(s):
         if os.path.exists(b) and os.path.getsize(a) != os.path.getsize(b):
             shutil.copyfile(a, b)
             n += 1
+    try:
+        from taste import seed_demo_traits
+        seed_demo_traits(s)
+    except Exception:
+        pass
     return n
 
 

@@ -584,7 +584,7 @@
       })();
     };
     if (!ONLINE || !SITE.ai) { setTimeout(function () { done(localReply(t)) }, 700); return }
-    fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session: CHAT_ID, message: t }) })
+    fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session: CHAT_ID, visitor: (window.T && window.T.visitor) || '', message: t }) })
       .then(function (r) { return r.json() }).then(done).catch(function () { done(localReply(t)) });
   }
   $('#chatForm').onsubmit = function (e) { e.preventDefault(); send($('#chatIn').value) };

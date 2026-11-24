@@ -293,7 +293,7 @@ class Server:
                     if path == "/api/chat":
                         if server.limited(ip, "chat"):
                             return self._send(429, {"error": "رسائل كثيرة، انتظر دقيقة"})
-                        return self._send(200, app.agent.chat(str(data.get("session", "")), str(data.get("message", ""))))
+                        return self._send(200, app.agent.chat(str(data.get("session", "")), str(data.get("message", "")), str(data.get("visitor", "") or "")))
                     if path == "/api/terms":
                         if server.limited(ip, "terms"):
                             return self._send(429, {"error": "محاولات كثيرة"})
