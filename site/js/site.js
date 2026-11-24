@@ -128,7 +128,7 @@
     return '<article class="card ' + (extra || '') + '" data-code="' + esc(p.code) + '"><div class="ph">' + (p.photo ? '<img loading="lazy" src="' + esc(p.photo) + '" alt="' + esc(p.title) + '">' : '') +
       '<span class="tag">' + p.karat + 'K</span>' + (p.status === 'reserved' ? '<span class="tag l">محجوزة</span>' : '') +
       '<button class="fav' + (fav ? ' on' : '') + '" data-fav="' + esc(p.code) + '" aria-label="اختياراتي"><svg class="i"><use href="#s-heart"/></svg></button><span class="qv">شاهد القطعة</span></div>' +
-      '<div class="bd"><h3>' + esc(p.title) + '</h3><div class="m"><span class="num">' + p.weight.toFixed(2) + '</span> جم · ' + esc(p.branch) + '</div><div class="pr">' + moneyH(p.price) + '</div></div></article>';
+      '<div class="bd"><h3>' + esc(p.title) + '</h3><div class="m"><span class="num">' + p.weight.toFixed(2) + '</span> جم · عيار 21</div><div class="pr">' + moneyH(p.price) + '</div></div></article>';
   }
   function bindCards(root, via) {
     $$('.card', root).forEach(function (c) { c.onclick = function (e) { if (e.target.closest('[data-fav]')) return; if (via === 'ai') T('ai_detail_open', c.dataset.code, null, 1); location.hash = 'p-' + c.dataset.code } });
@@ -144,7 +144,7 @@
   function renderSpot() {
     var p = SITE.pieces.filter(function (x) { return x.style === 'فخم' && x.photo })[1] || SITE.pieces[0]; if (!p) return;
     $('#spot').innerHTML = '<div class="ph wipe" id="spotPh"><img src="' + esc(p.photo) + '" alt="' + esc(p.title) + '"></div><div><span class="eyebrow rv">قطعة الأسبوع</span><h2 class="ttl rv d1">' + esc(p.title) + '</h2><p class="lead rv d2">' + esc(p.description || '') + '</p>' +
-      '<div class="meta2 rv d2"><div><small>الوزن</small><b class="num">' + p.weight.toFixed(2) + '</b> جم</div><div><small>العيار</small><b class="num">21K</b></div><div><small>الفرع</small><b>' + esc(p.branch) + '</b></div></div>' +
+      '<div class="meta2 rv d2"><div><small>الوزن</small><b class="num">' + p.weight.toFixed(2) + '</b> جم</div><div><small>العيار</small><b class="num">21K</b></div><div><small>الاستلام</small><b>من أي فرع</b></div></div>' +
       '<div class="pr rv d3">' + moneyH(p.price) + '</div><div class="rv d3" style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn g" href="#p-' + p.code + '">تفاصيل القطعة <svg class="i ar"><use href="#s-arr"/></svg></a><button class="btn" data-open-chat="أبغى أعرف أكثر عن ' + esc(p.title) + '">اسأل المستشار</button></div></div>';
     bindChatBtns($('#spot'));
   }
@@ -176,7 +176,7 @@
       $('#pieceWrap').innerHTML = '<div class="pd"><div class="gal"><div class="main" id="gm"><img src="' + esc(photos[0] || '') + '" alt="' + esc(p.title) + '"></div>' +
         (photos.length > 1 ? '<div class="th">' + photos.map(function (u, i) { return '<button' + (i ? '' : ' class="on"') + ' data-ph="' + esc(u) + '"><img src="' + esc(u) + '" alt=""></button>' }).join('') + '</div>' : '') + '</div>' +
         '<div class="pi"><div class="crumbs"><a href="#home">الرئيسية</a><span>/</span><a href="#collections">المجموعات</a><span>/</span><span>' + esc(p.kind) + '</span></div>' +
-        '<h1>' + esc(p.title) + '</h1>' + (p.status === 'reserved' ? '<span class="avail" style="color:var(--warn)"><i></i>محجوزة حالياً</span>' : '<span class="avail"><i></i>متوفرة · ' + esc(p.branch) + '</span>') +
+        '<h1>' + esc(p.title) + '</h1>' + (p.status === 'reserved' ? '<span class="avail" style="color:var(--warn)"><i></i>محجوزة حالياً</span>' : '<span class="avail"><i></i>متوفرة · تستلمها من الفرع اللي يريحك</span>') +
         '<div class="specs"><div><small>الوزن</small><b class="num">' + p.weight.toFixed(2) + '</b> جم</div><div><small>العيار</small><b class="num">21K</b></div><div><small>رقم القطعة</small><b class="num">' + esc(p.code) + '</b></div></div>' +
         (p.description ? '<p class="desc">' + esc(p.description) + '</p>' : '') +
         '<div class="price">' + moneyH(p.price) + '</div><div class="pnote">شامل المصنعية · على سعر ذهب اليوم' + (CUR !== 'YER' ? ' · ' + esc(money(p.price, 'YER')) : '') + '</div>' +
@@ -395,6 +395,7 @@
         '<div class="note">حوّل المبلغ ثم اضغط التالي لإرفاق صورة الإيصال.</div><button class="btn g full" id="toForm" style="margin-top:12px">حوّلت — التالي</button>';
     } else if (CK.step === 4) {
       body = '<label class="fld"><span>الاسم</span><input class="inp" id="fName" maxlength="80" autocomplete="name"></label><label class="fld"><span>رقم الجوال (واتساب)</span><input class="inp num" id="fPhone" maxlength="20" inputmode="tel" autocomplete="tel"></label>' +
+        '<label class="fld"><span>من أي فرع يريحك تستلمها؟</span><select class="inp" id="fPick">' + SITE.branches.map(function (b) { return '<option>' + esc(b.n + ' — ' + b.addr) + '</option>' }).join('') + '</select></label>' +
         '<label class="fld"><span>اسم المحوِّل كما في الإيصال</span><input class="inp" id="fPayer" maxlength="80"></label><label class="drop" id="drop"><input type="file" id="fRec" accept="image/*" hidden><span id="dropTx">اضغط لإرفاق صورة إيصال التحويل</span><img id="recPrev" class="hidden" alt=""></label>' +
         '<button class="btn g full" id="submit" style="margin-top:14px">أرسل الطلب للمراجعة</button><div class="err" id="ckErr"></div>';
     } else {
@@ -418,7 +419,7 @@
     var tf = $('#toForm', m); if (tf) tf.onclick = function () { CK.step = 4; ckDraw() };
     var fr = $('#fRec', m); if (fr) fr.onchange = function () { var f = fr.files[0]; if (!f) return; shrink(f, function (url) { CK.receipt = url; $('#recPrev').src = url; $('#recPrev').classList.remove('hidden'); $('#dropTx').textContent = 'تم إرفاق الإيصال' }) };
     var sb = $('#submit', m); if (sb) sb.onclick = function () {
-      var d = { code: p.code, kind: CK.kind, token: CK.token, name: $('#fName').value.trim(), phone: $('#fPhone').value.trim(), payer: $('#fPayer').value.trim(), receipt: CK.receipt, session: window.T.session };
+      var d = { code: p.code, kind: CK.kind, token: CK.token, name: $('#fName').value.trim(), phone: $('#fPhone').value.trim(), payer: $('#fPayer').value.trim(), pickup: ($('#fPick') || {}).value || '', receipt: CK.receipt, session: window.T.session };
       if (!d.name || d.phone.length < 7) return $('#ckErr').textContent = 'اكتب الاسم ورقم الجوال';
       if (!d.payer || !d.receipt) return $('#ckErr').textContent = 'اكتب اسم المحوِّل وأرفق صورة الإيصال';
       if (!ONLINE) { CK.number = 'DEMO'; CK.done = true; CK.step = 5; return ckDraw() }
@@ -465,7 +466,7 @@
     var row = document.createElement('div'); row.className = 'pcs';
     row.innerHTML = items.map(function (p, i) {
       var photo = p.photo || (BY[p.code] || {}).photo || '';
-      return '<div class="pc" style="animation-delay:' + (i * .12) + 's" data-code="' + esc(p.code) + '"><div class="im">' + (photo ? '<img src="' + esc(photo) + '" alt="">' : '') + '</div><div class="tx"><b>' + esc(p.title) + '</b><div class="mt num">' + p.karat + 'K · ' + Number(p.weight).toFixed(2) + ' جم</div><div class="pp">' + esc(money(p.price)) + '</div><div class="avl">' + (p.status === 'reserved' ? 'محجوزة حالياً' : 'متوفرة · ' + esc(p.branch)) + '</div><div class="row"><button data-d>التفاصيل</button><button data-l>♡ أضف</button></div></div></div>';
+      return '<div class="pc" style="animation-delay:' + (i * .12) + 's" data-code="' + esc(p.code) + '"><div class="im">' + (photo ? '<img src="' + esc(photo) + '" alt="">' : '') + '</div><div class="tx"><b>' + esc(p.title) + '</b><div class="mt num">' + p.karat + 'K · ' + Number(p.weight).toFixed(2) + ' جم</div><div class="pp">' + esc(money(p.price)) + '</div><div class="avl">' + (p.status === 'reserved' ? 'محجوزة حالياً' : 'متوفرة · الاستلام من أي فرع') + '</div><div class="row"><button data-d>التفاصيل</button><button data-l>♡ أضف</button></div></div></div>';
     }).join('');
     msgs.appendChild(row); msgs.scrollTop = 1e6;
     items.forEach(function (p) { T('ai_card_shown', p.code, null, 1) });

@@ -106,7 +106,7 @@ def get(app, u, path, q):
             rows = s.list_reservations()
             return [{k: r[k] for k in ("number", "kind", "status", "customer_name", "customer_phone", "payer_name",
                                        "quoted_price", "amount", "deposit", "created_at", "expires_at", "code", "type",
-                                       "weight", "branch_name", "receipt") if k in r.keys()} for r in rows]
+                                       "weight", "branch_name", "receipt", "pickup") if k in r.keys()} for r in rows]
     if path == "/api/admin/chats":
         if u["role"] not in ("owner", "manager"):
             raise GoldError("غير مصرح")

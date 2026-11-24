@@ -315,7 +315,7 @@ class Server:
                                 f.write(blob)
                             r = app.store.request_reservation(code, str(data.get("name", "")), str(data.get("phone", "")),
                                                               True, kind, str(data.get("payer", "")), name, "web",
-                                                              str(data.get("session", "")))
+                                                              str(data.get("session", "")), str(data.get("pickup", "")))
                         return self._send(200, r)
                     return self._send(404, {"error": "not found"})
                 except GoldError as e:

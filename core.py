@@ -210,7 +210,8 @@ class Store:
         "pieces": [("title", "TEXT"), ("photos", "TEXT NOT NULL DEFAULT '[]'"), ("style", "TEXT"),
                    ("occasion", "TEXT"), ("description", "TEXT")],
         "reservations": [("kind", "TEXT NOT NULL DEFAULT 'deposit'"), ("payer_name", "TEXT"),
-                         ("receipt", "TEXT"), ("amount", "REAL"), ("source", "TEXT"), ("session", "TEXT")],
+                         ("receipt", "TEXT"), ("amount", "REAL"), ("source", "TEXT"), ("session", "TEXT"),
+                         ("pickup", "TEXT")],
     }
 
     def _migrate(self):
@@ -618,7 +619,7 @@ class Store:
                 f"الاستلام في الفرع فقط بفاتورة موقعة من الطرفين.")
 
     def request_reservation(self, code, customer_name, customer_phone, accepted, kind="deposit",
-                            payer_name="", receipt="", source="web", session=""):
+                            payer_name="", receipt="", source="web", session="", pickup=""):
         if kind not in ("deposit", "full"):
             raise GoldError("نوع الطلب غير معروف")
         if not accepted:
@@ -642,10 +643,10 @@ class Store:
         number = f"{'D' if self.mode == 'demo' else ''}{'P' if kind == 'full' else 'R'}{seq:05d}"
         self.db.execute("""INSERT INTO reservations (id, number, piece_id, customer_name, customer_phone, quoted_price,
                            deposit, status, policy_text, accepted_at, created_at, kind, payer_name, receipt, amount,
-                           source, session) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                           source, session, pickup) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                         (rid, number, p["id"], customer_name.strip()[:80], customer_phone.strip()[:20], price, amount,
                          "pending", self.policy_text(kind), ts, ts, kind, payer_name.strip()[:80], receipt, amount,
-                         source[:10], (session or "")[:40]))
+                         source[:10], (session or "")[:40], (pickup or "")[:40]))
         self.log(None, "reservation_request", "reservation", rid, {"number": number, "code": p["code"], "kind": kind})
         self.db.commit()
         return {"number": number, "amount": amount, "price": price, "code": p["code"], "kind": kind}
