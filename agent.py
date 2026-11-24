@@ -57,6 +57,10 @@ CORE_PROMPT = """أنت "مستشار جمال المشرقي" في موقع "ج
 - إذا ذوقه معروف ("مؤكد" في ملفه)، اختر على أساسه وقل بجملة طبيعية ليش هذي قريبة منه، بدون ما تحسسه إنك تراقبه.
 - إذا ذوقه مو واضح، اعرض قطعتين مختلفتين في الطابع (وحدة أهدأ ووحدة أوضح حضوراً) وخل اختياره يوضح ذوقه، بدل سلسلة أسئلة.
 - اعرض القطعة بكتابة رمزها [[CODE]] في سطر مستقل (تظهر بطاقة بصورتها وسعرها)، ولا تكرر السعر والوزن في الكلام.
+- "الأرخص"، "أخف"، "أصغر"، "أكبر": استخدم sort في search_pieces (price_asc / weight_asc ...). لا تقول "هذا الأرخص" إلا من نتيجة مرتبة بالسعر.
+- إذا رفض شيئاً ("بدون شراشيب"، "لا ورد"، "أرخص من هذا"، "أخف من هذا"): مرّره شرطاً في البحث (exclude_features / cheaper_than / max_weight) ولا تعرض أبداً قطعة تخالفه.
+- الهدية: ابدأ بالقطع الأخف والأقل سعراً، إلا إذا طلب غير كذا.
+- إذا رجع البحث قطعاً، اعرض الأقرب دائماً. ممنوع تقول "ما عندي" أو "ما ظهر لي" والقطع موجودة؛ إذا ما تطابق تماماً قلها بصراحة واعرضها.
 
 فهم الذوق (مهم):
 - افهم اللغة البصرية للقطعة، مو اسمها: انتظام الوحدات المتكررة، تكوين في الوسط، تدرّج، طبقات، تناظر، شراشيب، تخريم، كثافة التفاصيل، وقوة الحضور. لا تحوّل ذوقه لتصنيف حرفي (مثلاً لا تفهم "يحب المرتب" على إنه يبغى مربعات).
@@ -69,6 +73,8 @@ CORE_PROMPT = """أنت "مستشار جمال المشرقي" في موقع "ج
 - أول إعجاب: أكّد بجملة صادقة من شكل القطعة، وإذا يناسب اسأله سؤال واحد خفيف.
 - offer_purchase فقط إذا قال يبغاها، أو سأل كيف يشتري أو يحجز أو يحوّل.
 - handoff_to_owner فقط إذا طلب التفاوض أو الكلام مع شخص أو طلب خاص (قطعة مو موجودة، تعديل، مقاس). لا تحوّل الزبون لواتساب وهو للحين يسأل.
+- جملة "أتأكد لك من فريق المبيعات" فقط للخصم والتفاوض والطلبات الخاصة، أو معلومة مو موجودة عندك فعلاً. الفروع وطرق الشراء والعربون والمصنعية والأسعار والأوزان كلها مكتوبة لك؛ جاوب منها بثقة ولا ترجع عن معلومة صحيحة.
+- القطع اللي عرضتها مكتوبة لك برموزها وأسعارها في "القطع اللي عرضتها له". إذا قال "أبغاه" أو "الأول" ارجع لها برمزها واستدعِ offer_purchase مباشرة.
 - إذا طلب قطعة مو موجودة: قل بصراحة إنها مو متوفرة الحين، واعرض أقرب قطعة فعلية إذا فيه.
 
 أمثلة على المستوى المطلوب (الرموز للتوضيح؛ استخدم رموز حقيقية من البحث، ولا تنسخ هذه العبارات حرفياً):
@@ -115,7 +121,13 @@ TOOLS = [
             "max_price": {"type": "number", "description": "فقط إذا ذكر الزبون ميزانية"},
             "occasion": {"type": "string", "description": "عرس، خطوبة، يومي، هدية"},
             "count": {"type": "integer", "description": "كم قطعة تحتاج: 2 عادةً، 1 إذا ذوقه واضح جداً، 3 فقط لسبب واضح"},
-            "include_shown": {"type": "boolean", "description": "true فقط إذا طلب يرجع لقطع شافها"}}}}},
+            "include_shown": {"type": "boolean", "description": "true فقط إذا طلب يرجع لقطع شافها"},
+            "sort": {"type": "string", "enum": ["taste", "price_asc", "price_desc", "weight_asc", "weight_desc"],
+                     "description": "taste افتراضياً. price_asc للأرخص، weight_asc للأخف/الأصغر، price_desc أو weight_desc للأكبر"},
+            "exclude_features": {"type": "array", "items": {"type": "string", "enum": ["وحدات متكررة", "تكوين مركزي", "متدرج", "طبقات", "متناظر", "شراشيب", "ورود", "تخريم"]},
+                                 "description": "أشياء قال الزبون ما يبغاها (شرط إجباري، مو تفضيل)"},
+            "max_weight": {"type": "number", "description": "إذا طلب شي خفيف أو أصغر من قطعة عرضتها"},
+            "cheaper_than": {"type": "number", "description": "سعر قطعة سابقة؛ يرجع فقط الأرخص منها"}}}}},
     {"type": "function", "function": {
         "name": "note_taste",
         "description": "يسجّل ما فهمته عن ذوق الزبون من كلامه أو ردّة فعله. استدعه بنفس الرد كل ما عبّر عن تفضيل أو أعجبته قطعة أو رفضها أو ذكر ميزانية أو مناسبة. سجّل فقط الواضح.",
@@ -420,6 +432,7 @@ class SalesAgent:
         return {"code": p["code"], "name": p["title"] or p["type"], "kind": p["type"], "w": p["weight"],
                 "k": p["karat"], "price": p["price"], "style": p["style"] if "style" in k else None,
                 "occasion": p["occasion"] if "occasion" in k else None,
+                "making": (f"{p['making_value']:,.0f} للجرام" if p["making_mode"] == "gram" else f"{p['making_value']:,.0f} للقطعة"),
                 "desc": ((p["description"] if "description" in k else "") or "")[:180]}
 
     def _available(self):
@@ -438,16 +451,35 @@ class SalesAgent:
 
     def _tool(self, name, args, ctx):
         if name == "search_pieces":
-            from taste import describe
+            from taste import describe, traits_of
             prof = ctx.get("profile") or self.taste.load(None)
             kind = args.get("kind")
             facts = ctx.get("facts") or {}
             budget = args.get("max_price") or (prof.get("budget") or {}).get("max")
             occ = args.get("occasion") or facts.get("occasion") or (prof.get("occasion") or {}).get("v")
             excl = () if args.get("include_shown") else set(ctx.get("shown") or [])
-            avail = self._available()
-            chosen, over = self.taste.rank(prof, avail, lambda p: self._match_kind(p, kind), float(budget) if budget else None,
-                                          occ, excl, args.get("count") or 2)
+            nofeat = set(args.get("exclude_features") or [])
+            def hard_ok(p):            # what the customer refused is a rule, not a preference
+                if nofeat & set(traits_of(p).get("composition") or []):
+                    return False
+                if args.get("cheaper_than") and p["price"] >= float(args["cheaper_than"]):
+                    return False
+                if args.get("max_weight") and p["weight"] > float(args["max_weight"]):
+                    return False
+                return True
+            avail = [p for p in self._available() if hard_ok(p)]
+            sort = args.get("sort") or "taste"
+            n = max(1, min(5, int(args.get("count") or 2)))
+            if sort != "taste":
+                key = {"price_asc": lambda p: p["price"], "price_desc": lambda p: -p["price"],
+                       "weight_asc": lambda p: p["weight"], "weight_desc": lambda p: -p["weight"]}[sort]
+                pool = [p for p in avail if self._match_kind(p, kind) and p["code"] not in prof["rejected"]]
+                if budget:
+                    pool = [p for p in pool if p["price"] <= float(budget) * 1.08] or pool
+                chosen, over = [(0, p, []) for p in sorted(pool, key=key)[:n]], False
+            else:
+                chosen, over = self.taste.rank(prof, avail, lambda p: self._match_kind(p, kind), float(budget) if budget else None,
+                                              occ, excl, n)
             exact = bool(chosen) and all(self._match_kind(r[1], kind) for r in chosen)
             if not chosen and kind:      # nothing of that kind: say so, and offer the closest real pieces
                 chosen, over = self.taste.rank(prof, avail, lambda p: True, float(budget) if budget else None, occ, excl, 2)
@@ -459,8 +491,11 @@ class SalesAgent:
                 if why:
                     it["fits"] = "قريبة من ذوقه: " + "، ".join(why)
                 items.append(it)
-            ctx.setdefault("ranked", []).extend(i["code"] for i in items)
-            out = {"items": items, "exact_kind": exact, "profile_known": self.taste.evidence(prof) >= 1.5}
+            out = {"items": items, "exact_kind": exact, "sorted_by": sort, "in_stock_total": len(avail),
+                   "profile_known": self.taste.evidence(prof) >= 1.5}
+            if sort != "taste" and items:
+                out["note"] = "الترتيب حقيقي من كل المخزون المتاح؛ الأول هو " + {"price_asc": "الأرخص", "price_desc": "الأغلى",
+                              "weight_asc": "الأخف", "weight_desc": "الأثقل"}[sort] + " فعلاً."
             if over:
                 out["note"] = "ما فيه قطع ضمن الميزانية المذكورة؛ هذه أقرب الأسعار. قلها بصراحة."
             if not items:
@@ -781,9 +816,27 @@ class SalesAgent:
             parts.append("فروع المحل (للاستلام فقط): " + " | ".join(f"{b['name']}: {b['address']}" for b in s.branches()))
         except Exception:
             pass
-        if stage == "ready":
-            parts.append("الشراء: حجز بعربون (السعر يوم الاستلام) أو تحويل كامل (يثبت السعر وقت التحويل)، "
-                         "والتأكيد بعد مراجعة المحاسب، والاستلام من الفرع. فريق المبيعات يكمل معه على واتساب.")
+        try:
+            r = s.setting("reservation") or {}
+            parts.append(f"طرق الشراء (معلومات مؤكدة، قلها بثقة): حجز بعربون {r.get('deposit_pct', 10)}% من السعر "
+                         f"ومدة الحجز {r.get('hours', 24)} ساعة، والسعر النهائي بسعر الذهب يوم الاستلام؛ أو تحويل كامل "
+                         "القيمة فيثبت السعر وقت وصول التحويل. التأكيد بعد مراجعة المحاسب، والاستلام من أي فرع يختاره. "
+                         "المصنعية تُحسب على الجرام وتختلف حسب شغل القطعة، وهي مكتوبة لكل قطعة (making). السعر في البطاقة شامل الذهب والمصنعية.")
+        except Exception:
+            pass
+        shown = list(dict.fromkeys(c["shown"]))[-8:]
+        if shown:
+            rows = []
+            for i, code in enumerate(shown, 1):
+                try:
+                    p = s.piece(code)
+                    pp = s.piece_price(p)
+                    st = "متاحة" if p["status"] in ("available", "reserved") else "بيعت"
+                    rows.append(f"{i}) [[{code}]] {p['title'] or p['type']} — {p['weight']} جم — {pp['total']:,} ريال "
+                                f"(مصنعية {p['making_value']:,.0f}{' للجرام' if p['making_mode'] == 'gram' else ' للقطعة'}) — {st}")
+                except Exception:
+                    pass
+            parts.append("## القطع اللي عرضتها له في هذه المحادثة (بالترتيب؛ ارجع لها برمزها، مثلاً offer_purchase)\n" + "\n".join(rows))
         return "\n\n".join(parts)
 
     def _log(self, session, user, assistant, skills, t_in, t_out, cost):

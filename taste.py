@@ -280,6 +280,8 @@ class Taste:
             s += 0.6
         if piece["code"] in p["liked"]:
             s += 0.8
+        if occasion == "هدية":                        # a gift leans lighter
+            s -= min(2.0, piece["weight"] / 50)
         for code in p["rejected"]:                     # stay away from what looks like a refused piece
             try:
                 rv = set(piece_values(self.store.piece(code)))
@@ -293,6 +295,10 @@ class Taste:
              contrast=True):
         """Pieces must already be the live available list. Returns (chosen, over_budget_used)."""
         pool = [x for x in pieces if kind_ok(x) and x["code"] not in p["rejected"] and x["code"] not in exclude]
+        refused = {v for v in DIMS["composition"] if self.w(p, "composition", v) <= -1.0}
+        if refused:
+            clean = [x for x in pool if not (refused & set(traits_of(x).get("composition") or []))]
+            pool = clean or pool
         over = False
         max_price = max_price or (p.get("budget") or {}).get("max")
         if max_price:
