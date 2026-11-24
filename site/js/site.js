@@ -113,6 +113,7 @@
     { key: 'engagement', t: 'للخطوبة', s: 'قطع أخف وأنعم', f: function (p) { return p.occasion === 'خطوبة' } }];
   function colItems(c) { return SITE.pieces.filter(c.f) }
   function renderHomeCols() {
+    if (!$('#homeCols')) return;
     var used = {}, html = '';
     COLS.forEach(function (c, i) {
       var items = colItems(c); if (!items.length) return;
@@ -142,6 +143,7 @@
 
   /* ---------- spotlight: piece of the week ---------- */
   function renderSpot() {
+    if (!$('#spot')) return;
     var p = SITE.pieces.filter(function (x) { return x.style === 'فخم' && x.photo })[1] || SITE.pieces[0]; if (!p) return;
     $('#spot').innerHTML = '<div class="ph wipe" id="spotPh"><img src="' + esc(p.photo) + '" alt="' + esc(p.title) + '"></div><div><span class="eyebrow rv">قطعة الأسبوع</span><h2 class="ttl rv d1">' + esc(p.title) + '</h2><p class="lead rv d2">' + esc(p.description || '') + '</p>' +
       '<div class="meta2 rv d2"><div><small>الوزن</small><b class="num">' + p.weight.toFixed(2) + '</b> جم</div><div><small>العيار</small><b class="num">21K</b></div><div><small>الاستلام</small><b>من أي فرع</b></div></div>' +
@@ -291,10 +293,9 @@
     var vh = innerHeight; hscFx(vh);
     // hero: the image sinks and dims as you leave
     var hr = $('#hero').getBoundingClientRect(), hp = clamp(-hr.top / vh, 0, 1);
-    $('.hero .inner').style.opacity = (1 - hp * 1.4).toFixed(3); $('.hero .inner').style.transform = 'translate3d(0,' + (hp * -60).toFixed(1) + 'px,0)';
     // spotlight + banner parallax
     var sp = $('#spotPh img'); if (sp) { var r = sp.parentNode.getBoundingClientRect(), t = (r.top + r.height / 2 - vh / 2) / vh; sp.style.transform = 'translate3d(0,' + (t * -8).toFixed(2) + '%,0) scale(1.04)' }
-    var bb = $('#brideBg'); if (bb) { var r2 = bb.parentNode.getBoundingClientRect(), t2 = (r2.top + r2.height / 2 - vh / 2) / vh; bb.style.transform = 'translate3d(0,' + (t2 * -10).toFixed(2) + '%,0) scale(1.08)' }
+    var bb = null; if (bb) { var r2 = bb.parentNode.getBoundingClientRect(), t2 = (r2.top + r2.height / 2 - vh / 2) / vh; bb.style.transform = 'translate3d(0,' + (t2 * -10).toFixed(2) + '%,0) scale(1.08)' }
   }
   addEventListener('scroll', function () { requestAnimationFrame(scrollFx) }, { passive: true });
   if (!TOUCH && !REDUCED) {
@@ -350,7 +351,7 @@
     var p = clamp(-r.top / (r.height - vh), 0, 1);
     tr.style.transform = 'translate3d(' + (p * max).toFixed(1) + 'px,0,0)';
     var its = $$('.hit', tr), mid = innerWidth / 2, n = 0;
-    its.forEach(function (el, i) { var q = el.getBoundingClientRect(), d = (q.left + q.width / 2 - mid) / innerWidth; el.querySelector('img').style.transform = 'scale(1.15) translate3d(' + (d * -12).toFixed(2) + '%,0,0)'; el.style.transform = 'rotate(' + (d * 3).toFixed(2) + 'deg) translateY(' + (Math.abs(d) * 40).toFixed(1) + 'px)'; if (Math.abs(d) < .3) n = i });
+    its.forEach(function (el, i) { var q = el.getBoundingClientRect(), d = (q.left + q.width / 2 - mid) / innerWidth; el.querySelector('img').style.transform = 'scale(1.08)'; var k = Math.min(1, Math.abs(d) * 1.6); el.style.transform = 'scale(' + (1 - k * 0.12).toFixed(3) + ')'; el.style.opacity = (1 - k * 0.45).toFixed(3); if (Math.abs(d) < .3) n = i });
     $('#hCount').textContent = ('0' + (n + 1)).slice(-2) + ' / ' + ('0' + its.length).slice(-2);
   }
   function renderAll() { renderHsc(); renderTicker(); renderHomeCols(); renderNew(); renderSpot(); renderBranches(); calc(); saveList(); bindLinks(); bindChatBtns() }
@@ -557,6 +558,7 @@
     var bp = SITE.pieces.filter(function (p) { return p.photo && (p.title.indexOf('الوردة') >= 0 || p.title.indexOf('الحزام') >= 0) })[0] || SITE.pieces.filter(function (p) { return p.kind === 'طقم' && p.photo && p.style === 'فخم' }).pop() || SITE.pieces[0];
     if (bp) { $('#brideBg').style.backgroundImage = "url('" + bp.photo + "')"; $('#brideHeadBg').style.backgroundImage = "url('" + bp.photo + "')" }
     $('#yr').textContent = new Date().getFullYear(); route();
+    window.GM_SITE = SITE; window.GM_money = moneyH; document.dispatchEvent(new Event('gm:ready'));
   }
   (ONLINE ? fetch('/api/site').then(function (r) { if (!r.ok) throw 0; return r.json() }) : Promise.reject())
     .then(function (d) { if (d && d.v === 2) SITE = d; else throw 0 }).catch(function () { ONLINE = false; window.GM_OFFLINE = true }).then(boot);
