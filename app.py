@@ -93,6 +93,7 @@ class Api:
             return {"mode": s.mode, "shop": s.setting("shop"), "prices": s.current_prices(),
                     "needs_setup": not s.q("SELECT id FROM users LIMIT 1"),
                     "site_url": self._app.server.url() if self._app.server else "",
+                    "media_base": f"http://127.0.0.1:{self._app.server.port}/media/" if self._app.server else "",
                     "user": s.user(self._uid) if self._uid else None}
         return self._run(f)
 
@@ -223,7 +224,7 @@ class Api:
     def create_sale(self, d):
         return self._run(lambda: self._s.create_sale(
             self._need_login(), d["items"], d.get("customer_name", ""), d.get("customer_phone", ""),
-            d.get("adjust_amount", 0), d.get("adjust_reason", "")))
+            d.get("adjust_amount", 0), d.get("adjust_reason", ""), 0, d.get("pay_method")))
 
     def create_purchase(self, d):
         return self._run(lambda: self._s.create_purchase(

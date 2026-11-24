@@ -73,13 +73,18 @@ def run_once(s, timeout=25):
     c = _cfg(s)
     if not (c.get("url") and c.get("key")):
         return {"skipped": "not linked"}
-    pieces = _pending_pieces(s, c)[:3]                       # photos are heavy: a few per round
-    sales = []
+    pend = _pending_pieces(s, c)
+    waiting = {p["code"] for p in pend}
+    sales, need = [], []
     for inv in _pending_sales(s, c)[:50]:
         codes = [r["code"] for r in s.q("""SELECT p.code FROM invoice_items ii JOIN invoices i ON i.id=ii.invoice_id
                                             JOIN pieces p ON p.id=ii.piece_id WHERE i.number=?""", (inv["number"],))]
+        if waiting & set(codes):            # a piece of this sale is not on the server yet: send it first, the sale next round
+            need += [x for x in codes if x in waiting]
+            continue
         sales.append({"ref": (c.get("prefix") or "") + "-" + inv["number"], "codes": codes,
                       "customer": inv["customer_name"] or "", "phone": inv["customer_phone"] or "", "_n": inv["number"]})
+    pieces = sorted(pend, key=lambda p: p["code"] not in need)[:3]     # photos are heavy: a few per round
     body = {"key": c["key"], "sales": [{k: v for k, v in x.items() if k != "_n"} for x in sales],
             "pieces": [{"code": p["code"], "type": p["type"], "karat": p["karat"], "weight": p["weight"],
                         "making_mode": p["making_mode"], "making_value": p["making_value"], "category": p["category"],

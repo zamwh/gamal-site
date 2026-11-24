@@ -212,6 +212,8 @@ class Store:
         "reservations": [("kind", "TEXT NOT NULL DEFAULT 'deposit'"), ("payer_name", "TEXT"),
                          ("receipt", "TEXT"), ("amount", "REAL"), ("source", "TEXT"), ("session", "TEXT"),
                          ("pickup", "TEXT")],
+        "invoice_items": [("std_making", "REAL"), ("making_discount", "REAL NOT NULL DEFAULT 0")],
+        "invoices": [("pay_method", "TEXT")],
     }
 
     def _migrate(self):
@@ -389,10 +391,15 @@ class Store:
             raise GoldError("ما فيه قطعة بهذا الرقم")
         return p
 
-    def piece_price(self, p, gram_price=None):
+    def piece_price(self, p, gram_price=None, making_value=None):
+        """making_value: optional lower making (per gram, or per piece for fixed) given to the customer as a discount"""
         gp = float(gram_price) if gram_price is not None else self.gram_price(p["karat"], "sell")
-        making = p["making_value"] * p["weight"] if p["making_mode"] == "gram" else p["making_value"]
-        return {"gram_price": gp, "making": round(making), "total": round(p["weight"] * gp + making)}
+        std = p["making_value"] * p["weight"] if p["making_mode"] == "gram" else p["making_value"]
+        mv = p["making_value"] if making_value in (None, "") else float(making_value)
+        making = mv * p["weight"] if p["making_mode"] == "gram" else mv
+        return {"gram_price": gp, "making": round(making), "std_making": round(std),
+                "making_value": mv, "making_discount": max(0, round(std - making)),
+                "gold": round(p["weight"] * gp), "total": round(p["weight"] * gp + making)}
 
     def list_pieces(self, status=None, branch_id=None, search=""):
         sql = ("SELECT p.*, b.name AS branch_name FROM pieces p JOIN branches b ON b.id=p.branch_id "
@@ -450,12 +457,44 @@ class Store:
     def verify_signature(self, number, total, created_at, sig):
         return hmac.compare_digest(self._sign(number, total, created_at), sig)
 
-    def create_sale(self, uid, items, customer_name="", customer_phone="", adjust_amount=0,
-                    adjust_reason="", deposit=0):
-        """items: [{"code": str, "gram_price": optional override}]"""
+    def create_sale(self, *a, **k):
+        try:
+            return self._create_sale(*a, **k)
+        except Exception:
+            self.db.rollback()          # nothing half-written: weighed pieces and lines go together or not at all
+            raise
+
+    def _create_sale(self, uid, items, customer_name="", customer_phone="", adjust_amount=0,
+                    adjust_reason="", deposit=0, pay_method=None):
+        """items: [{"code": str, "gram_price": optional, "making": optional lower making}]
+           or a piece sold by weight that was never registered: {"weighed": {"type","weight","karat","making_mode","making_value","note"}}"""
         u = self.user(uid)
         if not items:
             raise GoldError("الفاتورة فاضية")
+        items = [dict(i) for i in items]
+        if any(i.get("weighed") for i in items):
+            known = [self.piece(i["code"])["branch_id"] for i in items if not i.get("weighed")]
+            br = (known[0] if known else None) or u["branch_id"] or self.branches()[0]["id"]
+            for i in items:
+                w = i.get("weighed")
+                if not w:
+                    continue
+                weight = float(w.get("weight") or 0)
+                if weight <= 0:
+                    raise GoldError("اكتب وزن القطعة")
+                mode = w.get("making_mode") or "gram"
+                if mode not in ("gram", "fixed"):
+                    raise GoldError("نوع المصنعية غير صحيح")
+                pid, code, ts0 = new_id(), self._next_code(), now()
+                self.db.execute("""INSERT INTO pieces (id, code, type, karat, weight, making_mode, making_value, category,
+                                   cost_per_gram, branch_id, status, show_online, notes, created_by, created_at, updated_at)
+                                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                                (pid, code, (w.get("type") or "قطعة").strip(), int(w.get("karat") or 21), round(weight, 3),
+                                 mode, float(w.get("making_value") or 0), "weighed", None, br, "available", 0,
+                                 ("بيع بالوزن " + (w.get("note") or "")).strip(), uid, ts0, ts0))
+                if (w.get("note") or "").strip():
+                    self.db.execute("UPDATE pieces SET title=? WHERE id=?", (w["note"].strip(), pid))
+                i["code"] = code
         codes = [i["code"].strip().upper() for i in items]
         if len(set(codes)) != len(codes):
             raise GoldError("نفس القطعة مكررة في الفاتورة")
@@ -490,7 +529,16 @@ class Store:
                 floor = p["cost_per_gram"] + min_margin
                 if gp < floor and u["role"] != "owner":
                     raise GoldError(f"سعر الجرام للقطعة {p['code']} أقل من الحد الأدنى المسموح")
-            price = self.piece_price(p, gp)
+            mk = item.get("making")
+            if mk not in (None, ""):
+                mk = float(mk)
+                if mk < 0 or mk > p["making_value"]:
+                    raise GoldError("المصنعية لا تزيد عن الأصلية ولا تقل عن صفر")
+                floor = float(self.setting("min_making_gram", 0) or 0)
+                per_g = mk if p["making_mode"] == "gram" else mk / max(p["weight"], 0.001)
+                if floor and per_g < floor and u["role"] not in ("owner", "manager"):
+                    raise GoldError(f"مصنعية {p['code']} أقل من المسموح ({int(floor):,} للجرام). تحتاج موافقة المدير")
+            price = self.piece_price(p, gp, mk)
             lines.append((p, base, price))
             subtotal += price["total"]
         deposit = float(deposit or 0) + auto_deposit
@@ -500,14 +548,22 @@ class Store:
         inv_id, ts = new_id(), now()
         number = self._next_invoice_no("sale")
         sig = self._sign(number, total, ts)
-        self.db.execute("""INSERT INTO invoices VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        self.db.execute("""INSERT INTO invoices (id, number, kind, branch_id, user_id, customer_name, customer_phone, customer_id_note, subtotal, adjust_amount, adjust_reason, deposit, total, signature, status, void_reason, voided_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                         (inv_id, number, "sale", branch_id, uid, customer_name, customer_phone, None,
                          subtotal, adjust_amount, adjust_reason, deposit, total, sig, "ok",
                          None, None, ts))
+        if pay_method:
+            self.db.execute("UPDATE invoices SET pay_method=? WHERE id=?", (str(pay_method)[:20], inv_id))
+        disc = sum(pr["making_discount"] for _, _, pr in lines)
+        if disc:
+            self.log(uid, "making_discount", "invoice", inv_id, {"invoice": number, "amount": disc})
         for p, base, price in lines:
-            self.db.execute("""INSERT INTO invoice_items VALUES (?,?,?,?,?,?,?,?,?,?,0)""",
-                            (new_id(), inv_id, p["id"], p["type"], p["karat"], p["weight"], base,
-                             price["gram_price"], price["making"], price["total"]))
+            self.db.execute("""INSERT INTO invoice_items (id, invoice_id, piece_id, description, karat, weight,
+                               base_gram_price, gram_price, making, line_total, as_scrap, std_making, making_discount)
+                               VALUES (?,?,?,?,?,?,?,?,?,?,0,?,?)""",
+                            (new_id(), inv_id, p["id"], p.get("title") or p["type"], p["karat"], p["weight"], base,
+                             price["gram_price"], price["making"], price["total"], price["std_making"],
+                             price["making_discount"]))
             self.db.execute("UPDATE pieces SET status='sold', updated_at=? WHERE id=?", (ts, p["id"]))
             if price["gram_price"] != base:
                 self.log(uid, "price_override", "piece", p["id"],
@@ -543,12 +599,13 @@ class Store:
             subtotal += line
             rows.append((it, k, w, base, gp, line))
         sig = self._sign(number, subtotal, ts)
-        self.db.execute("""INSERT INTO invoices VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        self.db.execute("""INSERT INTO invoices (id, number, kind, branch_id, user_id, customer_name, customer_phone, customer_id_note, subtotal, adjust_amount, adjust_reason, deposit, total, signature, status, void_reason, voided_by, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                         (inv_id, number, "purchase", branch_id, uid, customer_name, customer_phone,
                          customer_id_note, subtotal, 0, None, 0, subtotal, sig, "ok", None, None, ts))
         for it, k, w, base, gp, line in rows:
             as_scrap = bool(it.get("as_scrap", True))
-            self.db.execute("""INSERT INTO invoice_items VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+            self.db.execute("""INSERT INTO invoice_items (id, invoice_id, piece_id, description, karat, weight,
+                               base_gram_price, gram_price, making, line_total, as_scrap) VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
                             (new_id(), inv_id, None, it.get("type") or "كسر", k, w, base, gp, 0, line,
                              1 if as_scrap else 0))
             if as_scrap:
