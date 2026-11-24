@@ -1,0 +1,34 @@
+name: Build POS installer
+on:
+  push:
+    branches: [main]
+    paths: ["app.py", "core.py", "media.py", "sync_client.py", "agent.py", "taste.py", "shopstate.py", "staff_agent.py",
+            "web.py", "admin.py", "analytics.py", "pos_sync.py", "ui/**", "assets/**", "skills/**", "requirements.txt",
+            "installer/**", ".github/workflows/build-pos.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -r requirements.txt pillow
+      - name: Build exe
+        run: pyinstaller --noconfirm --windowed --name GamalAlmshrqi --icon assets\icon.ico --add-data "ui;ui" --add-data "site;site" --add-data "assets;assets" --add-data "skills;skills" --hidden-import web --hidden-import admin --hidden-import analytics --hidden-import pos_sync --hidden-import staff_agent --hidden-import telegram_bot app.py
+      - name: Build installer
+        env:
+          APP_VERSION: 1.0.${{ github.run_number }}
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\setup.iss
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: pos-1.0.${{ github.run_number }}
+          name: POS 1.0.${{ github.run_number }}
+          make_latest: true
+          files: Output/GamalAlmshrqi_Setup.exe

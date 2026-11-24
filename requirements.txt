@@ -2,3 +2,4 @@ pywebview>=5.0
 qrcode>=7.4
 python-barcode>=0.15
 pyinstaller>=6.0
+pillow>=10.0
