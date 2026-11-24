@@ -181,14 +181,14 @@
         (p.description ? '<p class="desc">' + esc(p.description) + '</p>' : '') +
         '<div class="price">' + moneyH(p.price) + '</div><div class="pnote">شامل المصنعية · على سعر ذهب اليوم' + (CUR !== 'YER' ? ' · ' + esc(money(p.price, 'YER')) : '') + '</div>' +
         '<div class="acts">' + (p.status === 'available' ? '<button class="btn g" data-buy="full">اشترها بتحويل كامل</button><button class="btn" data-buy="deposit">احجزها بعربون ' + pct + '%</button>' : '') +
-        '<button class="btn" data-fav2>' + (inList(p.code) ? 'في اختياراتي ♥' : 'أضف لاختياراتي ♡') + '</button><button class="btn" data-open-chat="أبغى أعرف أكثر عن ' + esc(p.title) + ' (' + p.code + ')"><svg class="b"><use href="#s-spark"/></svg>اسأل المستشار</button>' +
+        '<button class="btn" data-fav2>' + (inList(p.code) ? 'في اختياراتي' : 'أضف لاختياراتي') + '</button><button class="btn" data-open-chat="أبغى أعرف أكثر عن ' + esc(p.title) + ' (' + p.code + ')"><svg class="b"><use href="#s-spark"/></svg>اسأل المستشار</button>' +
         '<a class="btn wide" href="#" data-ask><svg class="b"><use href="#s-wa"/></svg>استفسر عنها على واتساب</a><a class="btn wide" href="#" data-share>شاركها مع أحد</a></div></div></div>' +
         (sim.length ? '<section class="band" style="padding-top:20px"><div class="sh"><div><span class="eyebrow">تنسجم معها</span><h2 class="ttl">قطع <em>مشابهة</em></h2></div></div><div class="grid" id="simGrid">' + sim.map(function (x) { return card(x) }).join('') + '</div></section>' : '');
       $$('[data-ph]').forEach(function (b) { b.onclick = function () { $('#gm img').src = b.dataset.ph; $$('[data-ph]').forEach(function (x) { x.classList.toggle('on', x === b) }) } });
       var gm = $('#gm'); gm.onclick = function () { gm.classList.toggle('zoom'); if (!gm.classList.contains('zoom')) $('#gm img').style.transform = '' };
       gm.onmousemove = function (e) { if (!gm.classList.contains('zoom')) return; var r = gm.getBoundingClientRect(); $('#gm img').style.transform = 'scale(2.2)'; $('#gm img').style.transformOrigin = ((e.clientX - r.left) / r.width * 100) + '% ' + ((e.clientY - r.top) / r.height * 100) + '%' };
       $$('[data-buy]').forEach(function (b) { b.onclick = function () { checkout(p, b.dataset.buy, via) } });
-      $('[data-fav2]').onclick = function () { toggleList(p.code, via); this.textContent = inList(p.code) ? 'في اختياراتي ♥' : 'أضف لاختياراتي ♡' };
+      $('[data-fav2]').onclick = function () { toggleList(p.code, via); this.textContent = inList(p.code) ? 'في اختياراتي' : 'أضف لاختياراتي' };
       $('[data-ask]').onclick = function (e) { e.preventDefault(); var u = wa('السلام عليكم، شدّتني القطعة «' + p.title + '» (رقم ' + p.code + ') في موقعكم، ويا ليت أعرف تفاصيل أكثر عنها.\n' + location.origin + '/p/' + p.code); T('whatsapp_click', p.code, 'piece'); if (u) window.open(u, '_blank', 'noopener'); else toast('رقم الواتساب يُضاف قريباً') };
       $('[data-share]').onclick = function (e) { e.preventDefault(); window.open('https://wa.me/?text=' + encodeURIComponent(p.title + ' — جمال المشرقي للذهب\n' + location.origin + location.pathname + '#p-' + p.code), '_blank', 'noopener') };
       bindChatBtns($('#pieceWrap')); var sg = $('#simGrid'); if (sg) bindCards(sg);
@@ -238,7 +238,7 @@
     var d = $('#drawer'); if (!d.classList.contains('open')) return;
     var items = LIST.map(function (c) { return BY[c] }).filter(Boolean), tot = items.reduce(function (a, p) { return a + p.price }, 0);
     d.innerHTML = '<div class="hd"><h3>اختياراتي</h3><button class="ibtn" data-close>' + X + '</button></div><div class="list">' +
-      (items.length ? items.map(function (p) { return '<div class="li"><img src="' + esc(p.photo || '') + '" data-open="' + p.code + '" alt=""><div class="t"><b>' + esc(p.title) + '</b><span class="num">' + p.weight.toFixed(2) + ' جم</span></div><div class="p num">' + fmt(conv(p.price)) + '</div><button data-rm="' + p.code + '" aria-label="حذف" style="color:var(--faint)">' + X + '</button></div>' }).join('') : '<div class="empty" style="margin-top:20px">ما أضفت قطع بعد. اضغط ♡ على أي قطعة تعجبك.</div>') + '</div>' +
+      (items.length ? items.map(function (p) { return '<div class="li"><img src="' + esc(p.photo || '') + '" data-open="' + p.code + '" alt=""><div class="t"><b>' + esc(p.title) + '</b><span class="num">' + p.weight.toFixed(2) + ' جم</span></div><div class="p num">' + fmt(conv(p.price)) + '</div><button data-rm="' + p.code + '" aria-label="حذف" style="color:var(--faint)">' + X + '</button></div>' }).join('') : '<div class="empty" style="margin-top:20px">ما أضفت قطع بعد. اضغط على أي قطعة تعجبك.</div>') + '</div>' +
       (items.length ? '<div class="ft2"><div class="tot"><span>المجموع على سعر اليوم</span><b>' + moneyH(tot) + '</b></div><a class="btn g full" id="sendList" href="#"><svg class="b"><use href="#s-wa"/></svg>أرسل اختياراتي على واتساب</a></div>' : '');
     $$('[data-close]', d).forEach(function (b) { b.addEventListener('click', closeDrawer) });
     $$('[data-rm]', d).forEach(function (b) { b.onclick = function () { toggleList(b.dataset.rm) } });
@@ -458,7 +458,7 @@
     var row = document.createElement('div'); row.className = 'pcs';
     row.innerHTML = items.map(function (p, i) {
       var photo = p.photo || (BY[p.code] || {}).photo || '';
-      return '<div class="pc" style="animation-delay:' + (i * .12) + 's" data-code="' + esc(p.code) + '"><div class="im">' + (photo ? '<img src="' + esc(photo) + '" alt="">' : '') + '</div><div class="tx"><b>' + esc(p.title) + '</b><div class="mt num">' + p.karat + 'K · ' + Number(p.weight).toFixed(2) + ' جم</div><div class="pp">' + esc(money(p.price)) + '</div><div class="avl">' + (p.status === 'reserved' ? 'محجوزة حالياً' : 'متوفرة · الاستلام من أي فرع') + '</div><div class="row"><button data-d>التفاصيل</button><button data-l>♡ أضف</button></div></div></div>';
+      return '<div class="pc" style="animation-delay:' + (i * .12) + 's" data-code="' + esc(p.code) + '"><div class="im">' + (photo ? '<img src="' + esc(photo) + '" alt="">' : '') + '</div><div class="tx"><b>' + esc(p.title) + '</b><div class="mt num">' + p.karat + 'K · ' + Number(p.weight).toFixed(2) + ' جم</div><div class="pp">' + esc(money(p.price)) + '</div><div class="avl">' + (p.status === 'reserved' ? 'محجوزة حالياً' : 'متوفرة · الاستلام من أي فرع') + '</div><div class="row"><button data-d>التفاصيل</button><button data-l> أضف</button></div></div></div>';
     }).join('');
     msgs.appendChild(row); msgs.scrollTop = 1e6;
     items.forEach(function (p) { T('ai_card_shown', p.code, null, 1) });
@@ -534,7 +534,7 @@
     { t: 'محتار وش تختار؟ أنا هنا أساعدك', q: '' },
     { t: 'قل لي المناسبة، وأرشّح لك الأنسب من قطع اليوم', q: '' },
     { t: 'تبي تعرف سعر قطعة على ذهب اليوم؟ اسألني', q: '' },
-    { t: 'عندي أفكار تنسيقات تليق بك 💫', q: 'أبغى أفكار تنسيقات' },
+    { t: 'عندي أفكار تنسيقات تليق بك', q: 'أبغى أفكار تنسيقات' },
     { t: 'تجهّز لعرس؟ خلني أرتب لك باقة متكاملة', q: 'أبغى أجهز باقة عروس' },
     { t: 'تدور هدية تفرّح؟ أقترح لك على ميزانيتك', q: 'أبغى هدية' },
     { t: 'تفضّل الناعم ولا الفخم؟ قل لي وأطلع لك الأقرب لذوقك', q: '' }], hintN = 0, chatUsed = false, hintHide;

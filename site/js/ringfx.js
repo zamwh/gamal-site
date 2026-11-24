@@ -11,19 +11,21 @@
   var endX = function () { return MOBILE ? 0 : -innerWidth * 0.27 };
   var endY = function () { return MOBILE ? -innerHeight * 0.26 : 0 };
 
-  // a slow, endless turn of its own — the ring is alive even when you stop scrolling
-  var idle = gsap.timeline({ repeat: -1, yoyo: true, paused: REDUCED });
-  idle.to('#rspin', { rotationY: 26, rotationZ: 2, duration: 4.5, ease: 'sine.inOut' })
-      .fromTo('#rspec', { backgroundPosition: '125% 0' }, { backgroundPosition: '-25% 0', duration: 4.5, ease: 'sine.inOut' }, 0);
-  gsap.set('#rspin', { rotationY: -22, rotationZ: -2 });
+  // alive at rest: a slow breath in depth — it comes a touch closer, then settles back (no side-to-side sway)
+  var idle = gsap.timeline({ repeat: -1, yoyo: true, paused: true });
+  idle.to('#rspin', { scale: 1.04, z: 30, duration: 3.6, ease: 'sine.inOut' });
+  gsap.set('#rspin', { rotationY: -16, rotationX: 6 });   // a fixed, calm three-quarter angle
 
   if (REDUCED) {
-    gsap.set('#robj', { x: endX, y: endY, opacity: 1 }); gsap.set('#ramb', { opacity: 1, x: endX });
-    window.ringRefresh = function () { }; return;
+    gsap.set('#robj', { x: endX, y: endY, opacity: 1 });
+    // 6) when the section leaves, the ring withdraws back into depth
+  gsap.to('#robj', { scale: 0.55, z: -300, opacity: 0, ease: 'power2.in',
+    scrollTrigger: { trigger: '#rfx', start: 'bottom 85%', end: 'bottom 15%', scrub: 1, invalidateOnRefresh: true } });
+
+  window.ringRefresh = function () { }; return;
   }
 
-  gsap.set('#robj', { scale: 0.22, rotationX: 28, opacity: 0, transformPerspective: 1400, transformOrigin: '50% 55%' });
-  gsap.set('#ramb', { opacity: 0, scale: 0.6, xPercent: 0 });
+  gsap.set('#robj', { x: endX, y: endY, scale: 0.18, z: -600, opacity: 0, transformPerspective: 1400, transformOrigin: '50% 55%' });
   gsap.set('#rk, #rlead', { opacity: 0, y: 18 });
   gsap.set('#rt1, #rt2', { yPercent: 110 });
   gsap.set('#rcards .rc', { opacity: 0, y: 40 });
@@ -32,13 +34,9 @@
     defaults: { ease: 'none' },
     scrollTrigger: { trigger: '#rfx', start: 'top top', end: '+=' + (MOBILE ? 230 : 260) + '%', pin: '.rstage', scrub: 1, anticipatePin: 1, invalidateOnRefresh: true }
   });
-  // 1) out of the dark, far away
-  tl.to('#robj', { opacity: 1, duration: 1, ease: 'power1.out' }, 0)
-    .to('#ramb', { opacity: 1, duration: 1.4, ease: 'sine.out' }, 0)
-  // 2–3) turns in depth and comes closer, gliding to its side
-    .to('#robj', { scale: 1, rotationX: 0, duration: 3.4, ease: 'power2.inOut' }, 0.3)
-    .to('#robj', { x: endX, y: endY, duration: 3.4, ease: 'power3.inOut' }, 0.6)
-    .to('#ramb', { x: function () { return MOBILE ? 0 : -innerWidth * 0.05 }, scale: 1, duration: 3.4, ease: 'sine.inOut' }, 0.6)
+  // 1) enters from deep in the dark, straight toward you, in its place
+  tl.to('#robj', { opacity: 1, duration: 1.2, ease: 'power1.out' }, 0)
+    .to('#robj', { scale: 1, z: 0, duration: 3.6, ease: 'power3.out' }, 0)
   // 4) the words beside it
     .to('#rk', { opacity: 1, y: 0, duration: 0.8, ease: 'power2.out' }, 2.6)
     .to('#rt1', { yPercent: 0, duration: 1, ease: 'power3.out' }, 2.8)
@@ -53,7 +51,7 @@
   function size() { W = cv.clientWidth; H = cv.clientHeight; cv.width = W * dpr; cv.height = H * dpr; cx.setTransform(dpr, 0, 0, dpr, 0, 0) }
   size(); addEventListener('resize', size);
   for (var i = 0; i < (MOBILE ? 26 : 54); i++) D.push({ x: Math.random(), y: Math.random(), z: 0.2 + Math.random() * 0.8, r: 0.4 + Math.random() * 1.3, t: Math.random() * 6.28, s: 0.0005 + Math.random() * 0.001 });
-  new IntersectionObserver(function (e) { on = e[0].isIntersecting; on ? idle.play() : idle.pause() }).observe(document.getElementById('rfx'));
+  new IntersectionObserver(function (e) { on = e[0].isIntersecting; on && !REDUCED ? idle.play() : idle.pause() }).observe(document.getElementById('rfx'));
   (function loop() {
     requestAnimationFrame(loop); if (!on) return;
     cx.clearRect(0, 0, W, H);
