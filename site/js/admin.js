@@ -157,6 +157,7 @@
       $$('[data-h]').forEach(function (b) { b.onclick = function () { api('/api/admin/handoff_done', { id: +b.dataset.h }).then(load) } });
     }).catch(err(mp));
   }
+  function ta(id, label, v) { return '<label class="fld"><span>' + label + '</span><textarea class="inp" id="t_' + id + '" rows="3" style="width:100%;resize:vertical">' + esc(v || '') + '</textarea></label>' }
   function settings(mp) {
     api('/api/admin/settings').then(function (d) {
       var p = d.prices || {}, L = d.links || {};
@@ -166,7 +167,10 @@
         '<div class="box"><h3>المساعد الذكي</h3><div class="sub">المفتاح يُحفظ في السيرفر فقط ولا يظهر في الموقع</div>' + f('api_key', 'مفتاح OpenAI', d.ai.api_key, 'text') + f('model', 'النموذج الأساسي', d.ai.model, 'text') + f('model_strong', 'نموذج اللحظات الحاسمة', d.ai.model_strong, 'text') + f('daily_cap_usd', 'السقف اليومي بالدولار', d.ai.daily_cap_usd) + f('monthly_cap_usd', 'السقف الشهري بالدولار', d.ai.monthly_cap_usd) +
         '<label class="chk"><input type="checkbox" id="aiOn"' + (d.ai.enabled ? ' checked' : '') + '><span>تشغيل المساعد في الموقع</span></label><button class="btn g full" id="svA">حفظ</button><button class="btn full" id="tsA" style="margin-top:10px">اختبار المساعد</button><div id="tsR" style="margin-top:12px;font-size:14px;line-height:1.9"></div></div></div>' +
         '<div class="g2"><div class="box"><h3>روابط التواصل</h3>' + f('l_tiktok', 'تيك توك', L.tiktok, 'text') + f('l_instagram', 'إنستغرام', L.instagram, 'text') + f('l_facebook', 'فيسبوك', L.facebook, 'text') + f('l_whatsapp', 'رقم واتساب (مع رمز الدولة)', L.whatsapp, 'text') + '<button class="btn g full" id="svL">حفظ الروابط</button></div>' +
-        '<div class="box"><h3>حسابات التحويل</h3><div class="sub">تظهر للعميل فقط بعد موافقته على الشروط</div><div id="accs">' + (d.payments || []).map(acc).join('') + '</div><button class="btn s" id="addAcc">+ حساب</button> <button class="btn g s" id="svPay">حفظ الحسابات</button></div></div>';
+        '<div class="box"><h3>حسابات التحويل</h3><div class="sub">تظهر للعميل فقط بعد موافقته على الشروط</div><div id="accs">' + (d.payments || []).map(acc).join('') + '</div><button class="btn s" id="addAcc">+ حساب</button> <button class="btn g s" id="svPay">حفظ الحسابات</button></div></div>' +
+        '<div class="g2"><div class="box"><h3>سياسات المحل للمستشار الذكي</h3><div class="sub">يقرأها المستشار ويجاوب منها الزبون. اتركها فاضية إذا ما عندكم سياسة، وسيقول للزبون إن فريق المبيعات يوضحها.</div>' +
+        ta('returns', 'الإرجاع والاستبدال', (d.policy || {}).returns) + ta('warranty', 'الضمان', (d.policy || {}).warranty) + ta('branches_near', 'معالم قرب كل فرع (مثلاً: فرع جرعان قريب من ...)', (d.policy || {}).branches_near) + ta('other', 'معلومات أخرى يعرفها المستشار', (d.policy || {}).other) +
+        '<button class="btn g full" id="svPol">حفظ السياسات</button></div></div>';
       $('#svP').onclick = function () { var b = {}; ['k21_sell', 'k21_buy', 'pound_sell', 'pound_buy', 'sar_rate', 'usd_rate'].forEach(function (k) { b[k] = parseFloat($('#f_' + k).value) || null }); api('/api/admin/prices', b).then(function () { toast('تم حفظ الأسعار') }).catch(function (e) { toast(e.error || 'خطأ') }) };
       $('#tsA').onclick = function () {
         var b = this; b.disabled = true; b.textContent = 'جاري الاختبار...';
@@ -177,6 +181,7 @@
       $('#svA').onclick = function () { api('/api/admin/settings', { ai: { api_key: $('#f_api_key').value, model: $('#f_model').value, model_strong: $('#f_model_strong').value, daily_cap_usd: parseFloat($('#f_daily_cap_usd').value), monthly_cap_usd: parseFloat($('#f_monthly_cap_usd').value), enabled: $('#aiOn').checked } }).then(function () { toast('تم الحفظ'); load() }).catch(function (e) { toast(e.error || 'خطأ') }) };
       $('#svL').onclick = function () { api('/api/admin/settings', { links: { tiktok: $('#f_l_tiktok').value, instagram: $('#f_l_instagram').value, facebook: $('#f_l_facebook').value, whatsapp: $('#f_l_whatsapp').value } }).then(function () { toast('تم الحفظ') }) };
       $('#addAcc').onclick = function () { $('#accs').insertAdjacentHTML('beforeend', acc({})) };
+      $('#svPol').onclick = function () { api('/api/admin/settings', { policy: { returns: $('#t_returns').value, warranty: $('#t_warranty').value, branches_near: $('#t_branches_near').value, other: $('#t_other').value } }).then(function () { toast('تم الحفظ') }) };
       $('#svPay').onclick = function () { var list = $$('#accs .acc2').map(function (r) { return { name: $('[data-n]', r).value, holder: $('[data-h2]', r).value, account: $('[data-a]', r).value } }).filter(function (a) { return a.name && a.account }); api('/api/admin/settings', { payments: list }).then(function () { toast('تم الحفظ') }) };
     }).catch(err(mp));
     function f(k, l, v, t) { return '<label class="fld"><span>' + l + '</span><input class="inp' + (t ? '' : ' num') + '" id="f_' + k + '" type="' + (t || 'number') + '" value="' + esc(v == null ? '' : v) + '"></label>' }

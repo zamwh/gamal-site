@@ -139,7 +139,8 @@ def get(app, u, path, q):
             ai = app.agent.cfg()
             ai["api_key"] = ("••••" + ai["api_key"][-4:]) if ai.get("api_key") else ""
             return {"ai": ai, "links": s.setting("links", {}), "payments": s.setting("payments", []),
-                    "prices": s.current_prices(), "reservation": s.setting("reservation")}
+                    "prices": s.current_prices(), "reservation": s.setting("reservation"),
+                    "policy": s.setting("policy", {}) or {}}
     raise GoldError("غير موجود")
 
 
@@ -188,6 +189,8 @@ def post(app, u, path, d):
             if "payments" in d:
                 s.set_setting("payments", [{k: str(a.get(k, ""))[:80] for k in ("name", "holder", "account")}
                                            for a in d["payments"]][:8])
+            if "policy" in d:
+                s.set_setting("policy", {k: str(d["policy"].get(k, ""))[:800] for k in ("returns", "warranty", "branches_near", "other")})
             s.log(u["id"], "settings_change", "settings", None, {"keys": list(d.keys())})
             s.db.commit()
             return {"ok": True}
