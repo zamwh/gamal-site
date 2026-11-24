@@ -312,7 +312,7 @@ class Taste:
         count = max(1, min(3, int(count or 2)))
         chosen = scored[:1]
         rest = scored[1:]
-        if contrast and chosen and rest and count >= 2:
+        if contrast and chosen and rest and count >= 2 and self.evidence(p) < 1.5:   # unknown taste: show two directions
             first = dict(piece_values(chosen[0][1]))
             alt = [r for r in rest if dict(piece_values(r[1])).get("presence") != first.get("presence")
                    or dict(piece_values(r[1])).get("detail") != first.get("detail")]

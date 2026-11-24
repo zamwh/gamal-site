@@ -624,7 +624,9 @@ class SalesAgent:
         ctx = {"session": session, "profile": prof, "facts": c["facts"], "shown": list(c["shown"])}
         text = ""
         try:
-            for _ in range(3):
+            for rnd in range(5):
+                if rnd == 4:          # tools done several times without a word yet: ask for the reply itself
+                    cfg = dict(cfg, extra=dict(cfg.get("extra") or {}, tool_choice="none"))
                 resp, cfg = self._call_any(cfg, msgs)
                 u = resp.get("usage") or {}
                 t_in += u.get("prompt_tokens", 0)
