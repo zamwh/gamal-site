@@ -1,11 +1,6 @@
 name: Build POS installer
 on:
-  push:
-    branches: [main]
-    paths: ["app.py", "core.py", "media.py", "sync_client.py", "agent.py", "taste.py", "shopstate.py", "staff_agent.py",
-            "web.py", "admin.py", "analytics.py", "pos_sync.py", "ui/**", "assets/**", "skills/**", "requirements.txt",
-            "installer/**", ".github/workflows/build-pos.yml"]
-  workflow_dispatch:
+  workflow_dispatch:     # run by hand when a version is approved
 permissions:
   contents: write
 jobs:
