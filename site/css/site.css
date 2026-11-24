@@ -662,9 +662,6 @@ html.day .rfx{background:#0d0b08}
 #brideBanner::before{opacity:var(--sh,1)}
 #brideBanner .bg{inset:0;transform-origin:50% 46%}
 /* prices: digits roll into place */
-.odo{display:inline-flex;direction:ltr}
-.odo .c{display:inline-block;height:1.15em;overflow:hidden;line-height:1.15}
-.odo .c i{display:block;font-style:normal;transition:transform 1.8s cubic-bezier(.16,1,.3,1)}
 .hit{transform-origin:50% 50%}
 /* ---------- opening v3: two real pieces, half hidden beyond each edge; the words in the middle ---------- */
 .hero .slides,.hero .sctl{display:none}

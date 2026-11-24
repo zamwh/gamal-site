@@ -141,18 +141,15 @@
   }
 
   /* ---------- prices: every digit rolls into place, like an old exchange board ---------- */
-  function roll(el) {
-    var txt = el.textContent; if (!/\d/.test(txt) || el.dataset.rolled === txt) return;
-    el.dataset.rolled = txt; el.classList.add('odo');
-    el.innerHTML = txt.split('').map(function (ch) {
-      if (!/\d/.test(ch)) return '<span class="c"><i>' + ch + '</i></span>';
-      var col = ''; for (var d = 0; d <= 9; d++) col += d + '<br>';
-      return '<span class="c"><i style="transform:translateY(0)">' + col + '</i></span>';
-    }).join('');
-    var cols = el.querySelectorAll('.c i'), digits = txt.replace(/[^\d]/g, '').split(''), k = 0;
-    requestAnimationFrame(function () { requestAnimationFrame(function () {
-      txt.split('').forEach(function (ch, i) { if (/\d/.test(ch)) { var c = cols[i]; c.style.transitionDelay = (k++ * 0.06) + 's'; c.style.transform = 'translateY(' + (-1.15 * +ch) + 'em)' } });
-    }) });
+  function roll(el) {   // the price counts up into place (plain text: safe on every phone)
+    var txt = el.textContent, target = parseInt(txt.replace(/[^\d]/g, ''), 10);
+    if (!target || el.dataset.rolled === txt) return; el.dataset.rolled = txt;
+    var from = Math.round(target * 0.92), t0 = performance.now(), D = 1600;
+    (function step(now) {
+      var k = Math.min(1, (now - t0) / D), e = 1 - Math.pow(1 - k, 4);
+      el.textContent = Math.round(from + (target - from) * e).toLocaleString('en-US');
+      if (k < 1) requestAnimationFrame(step); else { el.textContent = txt; el.dataset.rolled = txt }
+    })(t0);
   }
   var qh = document.getElementById('quotesHome');
   if (qh) new IntersectionObserver(function (es) { if (es[0].isIntersecting) qh.querySelectorAll('.sell .num').forEach(roll) }, { threshold: 0.4 }).observe(qh);
