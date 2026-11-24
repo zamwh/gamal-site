@@ -616,7 +616,7 @@
   function pieceHint() { var p = openCode && BY[openCode]; return p && ROUTE === 'piece' ? { t: 'تبغى أشرح لك تفاصيل «' + p.title + '» ووش يميزها؟', q: 'اشرح لي تفاصيل ' + p.title + ' (' + p.code + ')' } : null }
   function hint() {
     if (chatUsed || chatEl.classList.contains('open') || $('#modal').classList.contains('open') || hintN >= HINTS.length) return;
-    if (hintN === 0) HINTS.sort(function () { return Math.random() - .5 }); var h = pieceHint() || HINTS[hintN]; hintN++; $('#aibTx').textContent = h.t; $('#aib').dataset.q = h.q;
+    if (hintN === 0) HINTS.sort(function () { return Math.random() - .5 }); var h = pieceHint() || HINTS[hintN]; hintN++; $('#aibTx').textContent = window.GM_tr ? GM_tr(h.t) : h.t; $('#aib').dataset.q = window.GM_tr ? GM_tr(h.q) : h.q;
     $('#aib').classList.add('on'); document.body.classList.add('has-hint');
     clearTimeout(hintHide); hintHide = setTimeout(hideHint, 6500);
   }

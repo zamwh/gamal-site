@@ -7,7 +7,7 @@
 <meta name="description" content="جمال المشرقي للذهب والمجوهرات — إب. أطقم العرايس والعقود والكردانات بعيار 21.">
 <meta name="theme-color" content="#070605">
 <link rel="icon" href="img/logo_night.png">
-<link rel="stylesheet" href="css/site.css?v=11241635">
+<link rel="stylesheet" href="css/site.css?v=11241930">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -28,6 +28,7 @@
   <button class="ibtn menu-btn" id="menuBtn" aria-label="القائمة"><svg class="i" viewBox="0 0 24 24"><path d="M4 8h16M4 16h10"/></svg></button>
   <a href="#home" class="logo" aria-label="جمال المشرقي"><img class="lg-night" src="img/logo_night.png" alt="جمال المشرقي للذهب والمجوهرات"><img class="lg-day" src="img/logo_day.png" alt=""></a>
   <div class="rgt">
+  <div class="lng" id="lng"><button data-l="ar" class="on">ع</button><button data-l="en">EN</button></div>
   <button type="button" class="catpill" data-cats aria-label="الفئات"><svg class="i" viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg><span>الفئات</span></button>
     <div class="curr" id="cur"><button data-c="YER" class="on">ر.ي</button><button data-c="SAR">ر.س</button><button data-c="USD">$</button></div>
     <button class="ibtn" id="modeBtn" aria-label="الوضع"><svg class="i" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></button>
@@ -35,18 +36,18 @@
   </div>
 </div></header>
 <div class="mnav" id="mnav"><button class="ibtn x" id="menuX" aria-label="إغلاق"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-  <a href="#home">الرئيسية</a><a href="#collections">المجموعات</a><a href="#" data-cats>الفئات</a><a href="#bride">باقة العروس</a><a href="#gold">بورصة الذهب</a><a href="#branches">الفروع</a></div>
+  <a href="#home">الرئيسية</a><a href="#collections">المجموعات</a><a href="#" data-cats>الفئات</a><a href="#bride">باقة العروس</a><a href="#gold">بورصة الذهب</a><a href="#branches">الفروع</a><div class="lng" style="margin-top:18px;align-self:flex-start"><button data-l="ar" class="on">عربي</button><button data-l="en">English</button></div></div>
 <div class="catp" id="catp" role="dialog" aria-label="الفئات"><div class="catp-in"><div class="catp-h"><span class="eyebrow">تسوّق حسب الفئة</span><button class="ibtn" id="catX" aria-label="إغلاق"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div><div class="catp-l" id="catRow"></div><div class="catp-pv" aria-hidden="true"><img id="catPv" alt=""></div></div></div>
 
 <main>
 <!-- ================= HOME ================= -->
 <div class="page on" id="pg-home">
-  <section class="hero h3" id="hero">
+  <section class="hero h3" id="hero" style="display:none" aria-hidden="true">
     <div class="slides" id="slides"></div>
     <div class="hpair" style="display:none"><a class="hp l" id="hpL"><img alt=""></a><a class="hp r" id="hpR"><img alt=""></a></div>
     <div class="h3stage" id="h3stage">
       <div class="h3light"></div>
-      <img class="h3piece" id="h3piece" src="img/scene_medallion.webp" alt="" aria-hidden="true">
+      <img class="h3piece" src="img/scene_medallion.webp" alt="" aria-hidden="true">
       <div class="h3copy" id="h3copy">
         <h1 class="hx"><span class="w8"><span style="--i:0">حين</span></span> <span class="w8"><span style="--i:1">يصبح</span></span> <span class="w8"><span style="--i:2">الذهب</span></span> <em><span class="w8"><span style="--i:3">حكاية</span></span></em></h1>
         <a class="btn g" href="#collections">اكتشف التشكيلة <svg class="i ar"><use href="#s-arr"/></svg></a>
@@ -56,8 +57,30 @@
     <div style="display:none"><b id="hp21"></b><b id="hpP"></b></div>
   </section>
 
-  <div class="ribbon" aria-label="أسعار الذهب"><div class="track" id="track"></div></div>
 
+  <section class="lux" id="lux"><div class="w">
+    <div class="lx-hero">
+      <div class="lx-t">
+        <div class="lx-eye">صُنع ليبقى</div>
+        <h1 class="lx-h">ذهب عيار 21<br><em>بتفاصيل تُورَث</em></h1>
+        <p class="lx-lead">أطقم العرايس والعقود والكردانات، بسعر ذهب اليوم شامل المصنعية، تستلمها من أي فرع من فروعنا في إب.</p>
+        <div class="lx-cta"><a class="btn g" href="#collections">تصفّح المجموعة <svg class="i ar"><use href="#s-arr"/></svg></a><button class="btn lx-o" data-open-chat>اسأل المستشار</button></div>
+        <div class="lx-stats"><div><b>21</b><span>عيار كل قطعنا</span></div><div><b>3</b><span>فروع في إب</span></div><div><b>يومياً</b><span>تحديث سعر الذهب</span></div><div><b>رسمية</b><span>فاتورة برمز تحقق</span></div></div>
+      </div>
+      <a class="lx-main tilt" id="lxMain" href="#collections"><img id="lxMainImg" alt=""></a>
+      <aside class="lx-feat tilt" id="lxFeat"></aside>
+    </div>
+    <div class="lx-cards" id="lxCards"></div>
+    <div class="lx-trust">
+      <div><svg viewBox="0 0 24 24"><path d="M6 3h12l3 6-9 12L3 9z"/><path d="M3 9h18M9 3l3 18 3-18"/></svg><p><b>عيار 21 موثّق</b><span>في الفاتورة الرسمية</span></p></div>
+      <div><svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 4 8-9"/><path d="M15 7h5v5"/></svg><p><b>سعر اليوم الشفاف</b><span>الذهب والمصنعية واضحة</span></p></div>
+      <div><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.5-7-11a7 7 0 0114 0c0 4.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><p><b>استلام من 3 فروع</b><span>جرعان والسبل</span></p></div>
+      <div><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="13" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/></svg><p><b>احجز بعربون</b><span>10% لمدة 24 ساعة</span></p></div>
+      <div><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg><p><b>مستشار يرد فوراً</b><span>على الموقع والتليجرام</span></p></div>
+    </div>
+  </div></section>
+
+  <div class="ribbon" aria-label="أسعار الذهب"><div class="track" id="track"></div></div>
   <section class="shop" id="shop"><div class="w">
     <div class="shop-h"><div><span class="eyebrow">تسوّق</span><h2 class="ttl">قطع <em>متوفرة الآن</em></h2></div><div class="shop-acts"><button type="button" class="catpill big" data-cats><svg class="i" viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg><span>تسوّق بالفئة</span></button><a class="link" href="#collections">عرض الكل <svg class="i" style="width:16px"><use href="#s-arr"/></svg></a></div></div>
     <div class="stabs" id="stabs" role="tablist"></div>
@@ -172,10 +195,12 @@
 </nav>
 <div class="toast" id="toast"></div>
 
-<script src="js/track.js?v=11241635"></script>
-<script src="js/gsap.min.js?v=11241635"></script>
-<script src="js/ScrollTrigger.min.js?v=11241635"></script>
-<script src="js/site.js?v=11241635"></script>
-<script src="js/homefx.js?v=11241635"></script>
+<script src="js/track.js?v=11241930"></script>
+<script src="js/gsap.min.js?v=11241930"></script>
+<script src="js/ScrollTrigger.min.js?v=11241930"></script>
+<script src="js/site.js?v=11241930"></script>
+<script src="js/homefx.js?v=11241930"></script>
+<script src="js/lux.js?v=11241930"></script>
+<script src="js/i18n.js?v=11241930"></script>
 </body>
 </html>

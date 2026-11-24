@@ -339,7 +339,16 @@ def describe(piece):
     return {"look": "، ".join(b for b in bits if b), "visual_note": t.get("note") or ""}
 
 
+DEMO_EN = {"طقم عروس متكامل بالورد": "Complete Rose Bridal Set", "عقد صدر شبك": "Lattice Bib Necklace",
+           "طقم الهلال بالشراشيب": "Crescent Tassel Set", "طقم سلاسل بالمستطيل": "Tiered Chain Set",
+           "عقد مجدول بالقطرات": "Braided Teardrop Necklace", "كردان كرات مع أسورة": "Engraved Bead Collar & Bracelet",
+           "طقم الوردة الطويل مع الحزام": "Long Rose Set with Belt", "أسورة مستعملة نظيفة": "Pre-owned Bracelet"}
+
+
 def seed_demo_traits(store):
+    for t, en in DEMO_EN.items():
+        store.db.execute("UPDATE pieces SET title_en=? WHERE title=? AND (title_en IS NULL OR title_en='')", (en, t))
+    store.db.commit()
     n = 0
     for p in store.q("SELECT id, title, traits FROM pieces"):
         if p["traits"] or p["title"] not in DEMO_TRAITS:

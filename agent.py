@@ -52,6 +52,7 @@ CORE_PROMPT = """أنت "مستشار جمال المشرقي" في موقع "ج
 أنت مستشار يفهم ذوق الزبون ويوصله للقطعة اللي تشبهه، مو بوت يصرّف بضاعة. تبيع بالفهم والاختيار الصح والتوقيت، مو بكثرة الكلام.
 
 الأسلوب:
+- رد بنفس لغة الزبون: إذا كتب بالإنجليزي رد بإنجليزي راقٍ وبسيط بنفس القواعد، وإذا كتب بالعربي رد بالعربي.
 - لهجة يمنية/خليجية بيضاء، ودودة وطبيعية. خاطب بصيغة المذكر العامة.
 - ردود قصيرة: سطر إلى ثلاثة أسطر عادةً. لما يسأل عن قطعة بعينها اشرحها في ثلاثة إلى أربعة أسطر بالكثير.
 - سؤال واحد بالكثير في الرد، وفقط لما تحتاج تفهم شيء. مو كل رد لازم ينتهي بسؤال. لا تحوّل المحادثة لاستبيان.
@@ -471,6 +472,7 @@ class SalesAgent:
     def _public(self, p, price=None):
         photos = json.loads(p["photos"] or "[]") if "photos" in p.keys() else []
         return {"code": p["code"], "title": (p["title"] if "title" in p.keys() else None) or p["type"],
+                "title_en": (p["title_en"] if "title_en" in p.keys() else None) or None,
                 "kind": p["type"], "karat": p["karat"], "weight": p["weight"],
                 "price": price if price is not None else self.store.piece_price(p)["total"],
                 "branch": None, "photo": self._murl(photos[0]) if photos else None,
@@ -1152,7 +1154,8 @@ class SalesAgent:
                     "أرجع JSON فقط بهذه المفاتيح: detail (هادئ|متوسط|غني) = كثافة التفاصيل؛ presence (ناعم|متوسط|ملفت) = "
                     "قوة حضورها عند اللبس؛ composition = قائمة من [وحدات متكررة، تكوين مركزي، متدرج، طبقات، متناظر، "
                     "شراشيب، ورود، تخريم] بما يظهر فعلاً فقط؛ character (تراثي|كلاسيكي|عصري)؛ note = جملة واحدة قصيرة "
-                    "تصف كيف بُنيت القطعة (وش في الوسط، الأطراف، التكرار). لا تخمّن شيئاً لا يظهر في الصورة.")
+                    "تصف كيف بُنيت القطعة (وش في الوسط، الأطراف، التكرار)؛ title_en = اسم إنجليزي قصير راقٍ للقطعة "
+                    "(3 إلى 6 كلمات، بدون كلمة gold). لا تخمّن شيئاً لا يظهر في الصورة.")
 
     def tag_traits(self, limit=6):
         """Reads the look of untagged pieces from their photo, once per piece. Returns how many were tagged."""
@@ -1202,6 +1205,8 @@ class SalesAgent:
                 with self.lock:
                     self.store.db.execute("UPDATE pieces SET traits=? WHERE id=? AND (traits IS NULL OR traits='')",
                                           (json.dumps(t, ensure_ascii=False), p["id"]))
+                    if data.get("title_en") and not (p["title_en"] if "title_en" in p.keys() else None):
+                        self.store.db.execute("UPDATE pieces SET title_en=? WHERE id=?", (str(data["title_en"])[:60], p["id"]))
                     self.store.db.commit()
                 n += 1
             except Exception:

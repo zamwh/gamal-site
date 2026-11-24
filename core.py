@@ -208,7 +208,8 @@ class Store:
 
     MIGRATIONS = {
         "pieces": [("title", "TEXT"), ("photos", "TEXT NOT NULL DEFAULT '[]'"), ("style", "TEXT"),
-                   ("occasion", "TEXT"), ("description", "TEXT"), ("traits", "TEXT")],
+                   ("occasion", "TEXT"), ("description", "TEXT"), ("traits", "TEXT"),
+                   ("title_en", "TEXT")],
         "reservations": [("kind", "TEXT NOT NULL DEFAULT 'deposit'"), ("payer_name", "TEXT"),
                          ("receipt", "TEXT"), ("amount", "REAL"), ("source", "TEXT"), ("session", "TEXT"),
                          ("pickup", "TEXT")],
