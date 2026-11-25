@@ -6,23 +6,66 @@ import datetime as dt
 
 import ops
 
-ROWS = [["مبيعات اليوم", "مبيعات أمس"],
-        ["مبيعات آخر 7 أيام", "مبيعات هذا الشهر"],
-        ["المخزون الحالي", "آخر الفواتير"],
-        ["الحجوزات", "طلبات ما توفرت"],
-        ["الأكثر اهتماماً", "زوار الموقع اليوم"],
-        ["سعر الذهب اليوم", "تنبيه الشراء"],
-        ["قطع بدون صور", "قناة المحل"]]
-BUTTONS = {t for row in ROWS for t in row}
-VERSION = 1          # bump when the buttons change: linked staff get the new keyboard once
+# the keyboard under the chat: one button per section; each opens its own options inside the chat
+SECTIONS = [["التقارير", "التنبيهات"], ["القطع والصور", "قناة المحل"]]
+# section -> options (label, callback). Pressing an option rewrites the section's message in place.
+OPTIONS = {
+    "التقارير": [("مبيعات اليوم", "r:today"), ("مبيعات أمس", "r:yday"), ("آخر 7 أيام", "r:week"), ("هذا الشهر", "r:month"),
+                 ("المخزون الحالي", "r:stock"), ("آخر الفواتير", "r:inv"), ("الأكثر اهتماماً", "r:int"),
+                 ("زوار الموقع اليوم", "r:web"), ("طلبات ما توفرت", "r:dem"), ("سعر الذهب اليوم", "r:price")],
+    "التنبيهات": [("آخر التنبيهات", "n:list"), ("تنبيه الشراء", "r:restock"), ("الحجوزات المفتوحة", "r:res")],
+    "القطع والصور": [("قطع بدون صور", "p:none"), ("ناقصها مخمل أو قريبة", "p:part"), ("آخر القطع المضافة", "p:latest")],
+}
+INTRO = {"التقارير": "التقارير: اختر من تحت، ويطلع التقرير هنا.",
+         "التنبيهات": "التنبيهات: يوصلك هنا كل بيع وكل حجز وتنبيه الشراء.",
+         "القطع والصور": "القطع والصور: اختر من تحت."}
+SECTION_OF = {cb: name for name, opts in OPTIONS.items() for _, cb in opts}
+REPORT_CB = {"r:today": "مبيعات اليوم", "r:yday": "مبيعات أمس", "r:week": "مبيعات آخر 7 أيام", "r:month": "مبيعات هذا الشهر",
+             "r:stock": "المخزون الحالي", "r:inv": "آخر الفواتير", "r:int": "الأكثر اهتماماً", "r:web": "زوار الموقع اليوم",
+             "r:dem": "طلبات ما توفرت", "r:price": "سعر الذهب اليوم", "r:restock": "تنبيه الشراء", "r:res": "الحجوزات"}
+BUTTONS = set(REPORT_CB.values())       # typing a report's name still works
+VERSION = 2          # bump when the buttons change: linked staff get the new keyboard once
 DAYS = ["الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"]
 RES_AR = {"pending": "بانتظار التأكيد", "active": "مؤكد", "done": "تم", "completed": "تم", "expired": "انتهى",
           "cancelled": "ملغي", "rejected": "مرفوض"}
 
 
 def keyboard():
-    return {"keyboard": [[{"text": t} for t in row] for row in ROWS], "resize_keyboard": True, "is_persistent": True,
-            "input_field_placeholder": "اختر تقرير، أو اسأل الوكيل أي سؤال"}
+    return {"keyboard": [[{"text": t} for t in row] for row in SECTIONS], "resize_keyboard": True, "is_persistent": True,
+            "input_field_placeholder": "اختر قسم، أو اسأل الوكيل أي سؤال"}
+
+
+def section_kb(name, muted=None):
+    """Inline options of a section, two a row."""
+    opts = list(OPTIONS.get(name, []))
+    if name == "التنبيهات" and muted is not None:
+        opts.append(("شغّل التنبيهات عندي", "n:on") if muted else ("وقّف التنبيهات عندي", "n:off"))
+    rows = [opts[i:i + 2] for i in range(0, len(opts), 2)]
+    return {"inline_keyboard": [[{"text": t, "callback_data": cb} for t, cb in row] for row in rows]}
+
+
+def notifications(app):
+    rows = ops.notifications(app.store, 10)["items"]
+    if not rows:
+        return "آخر التنبيهات\nما فيه تنبيهات."
+    return "\n".join(["آخر التنبيهات"] + [f"{_when(r['ts'])} · {r['title']}" for r in rows])
+
+
+def latest_pieces(app):
+    import core
+    rows = app.store.q("""SELECT p.*, b.name branch FROM pieces p JOIN branches b ON b.id=p.branch_id
+                          ORDER BY p.created_at DESC, p.rowid DESC LIMIT 8""")
+    if not rows:
+        return "آخر القطع المضافة\nما فيه قطع."
+    ST = {"available": "متاحة", "reserved": "محجوزة", "sold": "مباعة", "inactive": "موقوفة"}
+    out = ["آخر القطع المضافة"]
+    for p in rows:
+        r = core.piece_roles(p)
+        n = sum(1 for k in core.PHOTO_ROLES if r.get(k))
+        out.append(f"{p['code']} · {p['title'] or p['type']} · {_g(p['weight'])} جم · {p['branch']} · {ST.get(p['status'], p['status'])}"
+                   f" · {'بدون صور' if not n else 'الصور كاملة' if n == 3 else f'{n} من 3 صور'}"
+                   + ("" if p["show_online"] else " · مخفية من الموقع"))
+    return "\n".join(out)
 
 
 def _n(x):

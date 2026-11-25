@@ -278,7 +278,19 @@
         '<label class="chk"><input type="checkbox" id="tgOn"' + ((d.telegram || {}).enabled !== false ? ' checked' : '') + '><span>تشغيل البوت</span></label>' +
         '<div class="sub">الحالة: ' + esc((d.telegram || {}).status || '') + ((d.telegram || {}).username ? ' · @' + esc(d.telegram.username) : '') + ' · حسابات مربوطة: ' + ((d.telegram || {}).staff || 0) + '</div>' +
         chBox((d.telegram || {}).channel || {}, (d.telegram || {}).username) +
-        '<button class="btn g full" id="svTg">حفظ</button></div></div>';
+        '<button class="btn g full" id="svTg">حفظ</button></div></div>' +
+        '<div class="g2"><div class="box"><h3>ربط برنامج المحل</h3><div class="sub">في برنامج المحل: الإعدادات، ثم «الفروع والربط». الصق رمز الفرع واضغط «ربط». بعدها أي قطعة تنضاف في البرنامج تنزل في الموقع، والبوت يطلب صورها.</div><div id="posKeys" class="sub">جاري التحميل…</div></div></div>';
+      api('/api/admin/pos_keys').then(function (ks) {
+        $('#posKeys').innerHTML = ks.map(function (k, i) {
+          var code = 'GM:' + btoa(unescape(encodeURIComponent(JSON.stringify({ u: location.origin, k: k.key, p: String.fromCharCode(65 + i) }))));
+          return '<div style="margin:10px 0"><b>' + esc(k.branch) + '</b><div style="display:flex;gap:8px;margin-top:6px"><input class="inp" readonly value="' + esc(code) + '" style="direction:ltr;flex:1;font-size:12px"><button class="btn s g" data-cp="' + esc(code) + '">نسخ</button></div></div>';
+        }).join('');
+        mp.querySelectorAll('[data-cp]').forEach(function (b) { b.onclick = function () {
+          var v = b.dataset.cp, done = function () { toast('تم النسخ') };
+          if (navigator.clipboard) navigator.clipboard.writeText(v).then(done).catch(function () { b.previousSibling.select(); document.execCommand('copy'); done() });
+          else { b.previousSibling.select(); document.execCommand('copy'); done() }
+        } });
+      }).catch(function (e) { $('#posKeys').textContent = e.error || 'تعذر التحميل' });
       $('#svP').onclick = function () { var b = {}; ['k21_sell', 'k21_buy', 'pound_sell', 'pound_buy', 'sar_rate', 'usd_rate'].forEach(function (k) { b[k] = parseFloat($('#f_' + k).value) || null }); api('/api/admin/prices', b).then(function () { toast('تم حفظ الأسعار') }).catch(function (e) { toast(e.error || 'خطأ') }) };
       $('#tsA').onclick = function () {
         var b = this; b.disabled = true; b.textContent = 'جاري الاختبار...';

@@ -140,13 +140,14 @@ def on_sale(s, inv):
 ROLE_AR = {"card": "صورة المخمل", "macro": "اللقطة القريبة", "orig": "الصورة الأصلية"}
 
 
-def missing_photos(s, limit=30):
+def missing_photos(s, limit=30, kind="any"):
+    """kind: "none" = no photo at all; "partial" = has a photo, missing the velvet or close-up or original; "any"."""
     from core import piece_roles
     out = []
     for p in s.q("SELECT * FROM pieces WHERE status IN ('available','reserved') ORDER BY created_at DESC LIMIT 400"):
         r = piece_roles(p)
         miss = [k for k in ("card", "macro", "orig") if not r.get(k)]
-        if miss:
+        if miss and (kind == "any" or (kind == "none") == (len(miss) == 3)):
             out.append({"code": p["code"], "title": p["title"] or p["type"], "weight": p["weight"], "missing": miss, "roles": r})
         if len(out) >= limit:
             break

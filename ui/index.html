@@ -487,6 +487,9 @@ html.dark .pslot{background:rgba(30,24,14,.55)}html.dark .pslot b{color:#ecd29a}
           </div>
           <div class="sp-p" data-p="link">
             <h2>الفروع والربط</h2><p class="mut sub">البرنامج يبيع حتى بدون نت. أول ما يرجع النت يرسل المبيعات والقطع والصور والسعر، ويستلم مخزون كل الفروع.</p>
+            <label>رمز الربط (من لوحة الإدارة: الإعدادات، ثم ربط برنامج المحل)</label>
+            <div style="display:flex;gap:8px;margin-bottom:14px"><input id="syCode" placeholder="الصق رمز الربط هنا" style="direction:ltr;flex:1"><button class="btn gold" onclick="linkByCode()">ربط</button></div>
+            <p class="mut" style="font-size:12.5px;margin:-6px 0 12px">المبيعات اللي سويتها قبل الربط تجربة على هذا الجهاز، وما تنرسل للموقع. القطع المعروضة هنا تنرسل.</p>
             <div class="grid g2" style="gap:10px">
               <input id="syUrl" placeholder="رابط الموقع مثل https://..." style="direction:ltr">
               <input id="syKey" placeholder="مفتاح الفرع" style="direction:ltr">
@@ -801,6 +804,11 @@ async function loadSync(){const st=await api('sync_status');$('syUrl').value=st.
   $('syState').innerHTML=(st.linked?'مربوط':'غير مربوط')+' · بانتظار الإرسال: '+st.queued_sales+' بيع، '+st.queued_pieces+' قطعة'+(st.last_ok?' · آخر مزامنة '+st.last_ok:'')+(st.last_error?'<br><span style="color:#e0a050">آخر محاولة بدون نت: '+st.last_error+'</span>':'')+(st.conflicts&&st.conflicts.length?'<br><span style="color:#eb5757">تعارض: '+st.conflicts.map(c=>c.codes.join('،')+' — '+c.error).join(' | ')+'</span>':'')}
 async function saveSync(){await api('sync_configure',{url:$('syUrl').value.trim(),key:$('syKey').value.trim(),prefix:$('syPre').value.trim()});toast&&toast('تم الحفظ');loadSync()}
 async function syncNow(){$('syState').textContent='جاري المزامنة…';await api('sync_now');loadSync()}
+async function linkByCode(){let d=null;try{d=JSON.parse(decodeURIComponent(escape(atob($('syCode').value.trim().replace(/^GM:/,'')))))}catch(e){}
+  if(!d||!d.u||!d.k)return toast('رمز الربط غير صحيح. انسخه كامل من لوحة الإدارة.',true);
+  $('syUrl').value=d.u;$('syKey').value=d.k;$('syPre').value=d.p||'';
+  await api('sync_configure',{url:d.u,key:d.k,prefix:d.p||''});$('syCode').value='';
+  $('syState').textContent='تم الربط، جاري إرسال القطع…';await api('sync_now');await api('sync_now');loadSync();toast('تم الربط بالموقع')}
 async function loadSettings(){loadSync();const s=await api('get_settings');INFO=await api('info');
   $('siteUrl').textContent=INFO.site_url||'الموقع غير شغال (المنفذ 8080 مستخدم)';$('shPhone').value=s.shop.phone||'';$('shAddr').value=s.shop.address||'';
   const r=s.reservation;$('rH').value=r.hours;$('rD').value=r.deposit_pct;$('rF').value=r.free_cancel_hours;$('rN').value=r.noshow_deduct_pct;$('rM').value=r.noshow_min;$('rR').value=r.refund_days;

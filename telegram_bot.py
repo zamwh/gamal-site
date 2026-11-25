@@ -149,14 +149,74 @@ class Bot(threading.Thread):
                   + (f"\nباقي: {'، '.join(miss)}" if miss else "\nصور القطعة كاملة." + (" وبتنزل في قناة المحل خلال دقيقة." if to_channel else "")),
                   self._photo_buttons(code) if miss else None)
 
-    def _pending_list(self, token, chat):
-        import ops
+    def _pending_list(self, token, chat, kind="none", mid=None):
+        """kind "none": pieces with no photo at all; "partial": a photo is in, the velvet/close-up/original missing."""
+        import ops, staff_menu
         with self.app.lock:
-            rows = ops.missing_photos(self.app.store, 10)
-        if not rows:
-            return self.send(token, chat, "كل القطع صورها كاملة.")
+            rows = ops.missing_photos(self.app.store, 10, kind)
+            part = len(ops.missing_photos(self.app.store, 400, "partial")) if kind == "none" else 0
+        if kind == "none":
+            head = (f"{staff_menu._pcs(len(rows))} بدون أي صورة، تحت كل وحدة أزرار الصور." if rows else "كل القطع لها صور.") \
+                + (f"\nوفيه {staff_menu._pcs(part)} ناقصها صورة المخمل أو القريبة: اضغط «ناقصها مخمل أو قريبة»." if part else "")
+        else:
+            head = f"{staff_menu._pcs(len(rows))} ناقصها صورة، تحت كل وحدة أزرار الصور." if rows else "ما فيه قطع ناقصها صور."
+        self._edit(token, chat, mid, head, staff_menu.section_kb("القطع والصور"))
         for r in rows:
             self.send(token, chat, f"{r['code']} · {r['title']} · {r['weight']:.2f} جم", self._photo_buttons(r["code"]))
+
+    def _edit(self, token, chat, mid, text, kb):
+        """Rewrite a section's message in place; a new message when there is none to rewrite."""
+        if mid:
+            try:
+                return self.call(token, "editMessageText", {"chat_id": chat, "message_id": mid, "text": text[:4000],
+                                                            "reply_markup": kb, "disable_web_page_preview": True})
+            except urllib.error.HTTPError as e:
+                if "not modified" in e.read().decode(errors="ignore"):
+                    return None
+            except Exception as e:
+                print("edit:", e, flush=True)
+        return self.send(token, chat, text, markup=kb)
+
+    def _staff_menu(self, token, chat, uid, text, mid=None):
+        """The staff sections (keyboard under the chat) and their options (inside the chat). True when handled."""
+        import staff_menu
+        app = self.app
+        if text in staff_menu.OPTIONS:                              # a section button
+            with app.lock:
+                muted = uid in (cfg(app.store).get("muted") or [])
+            self.send(token, chat, staff_menu.INTRO[text], markup=staff_menu.section_kb(text, muted if text == "التنبيهات" else None))
+            return True
+        if text == "قناة المحل":
+            self._channel_cmd(token, chat, uid, "/channel")
+            return True
+        if text in ("p:none", "p:part"):
+            self._pending_list(token, chat, "none" if text == "p:none" else "partial", mid)
+            return True
+        if text in ("n:on", "n:off"):
+            with app.lock:
+                c = cfg(app.store)
+                m = [x for x in (c.get("muted") or []) if x != uid] + ([uid] if text == "n:off" else [])
+                c["muted"] = m
+                app.store.set_setting("telegram", c)
+            self._edit(token, chat, mid, "وقفت التنبيهات عندك. تقدر تشغلها من نفس الزر." if text == "n:off" else "رجعت التنبيهات عندك: يوصلك كل بيع وكل حجز.",
+                       staff_menu.section_kb("التنبيهات", text == "n:off"))
+            return True
+        if text in staff_menu.SECTION_OF or text in staff_menu.BUTTONS:
+            name = staff_menu.SECTION_OF.get(text)
+            try:
+                with app.lock:
+                    rep = (staff_menu.notifications(app) if text == "n:list" else staff_menu.latest_pieces(app) if text == "p:latest"
+                           else staff_menu.report(app, staff_menu.REPORT_CB.get(text, text)))
+                    muted = uid in (cfg(app.store).get("muted") or [])
+            except Exception as e:
+                print("report:", text, e, flush=True)
+                rep = "ما قدرت أطلع التقرير الحين."
+            if name:
+                self._edit(token, chat, mid, rep or "ما فيه بيانات.", staff_menu.section_kb(name, muted if name == "التنبيهات" else None))
+            else:
+                self.send(token, chat, rep or "ما فيه بيانات.")
+            return True
+        return False
 
     # ---------- the shop's channel: new pieces posted by themselves, sold ones marked sold
     @staticmethod
@@ -335,7 +395,10 @@ class Bot(threading.Thread):
                                           "1. سوّ قناة في تليجرام.\n"
                                           f"2. من إعدادات القناة: المشرفين، ثم إضافة مشرف، وابحث عن @{self.username or 'البوت'} واحفظ.\n"
                                           "وترتبط لحالها، ويوصلك تأكيد هنا.")
-        btn = [{"text": "وقف النشر التلقائي" if st["auto"] else "شغّل النشر التلقائي", "callback_data": "ch:auto:" + ("0" if st["auto"] else "1")}]
+        with app.lock:
+            n = len(tg_channel.seed_candidates(app.store))
+        btn = ([{"text": f"انشر القطع الموجودة ({n})", "callback_data": "ch:seed"}] if n else []) + \
+              [{"text": "وقف النشر التلقائي" if st["auto"] else "شغّل النشر التلقائي", "callback_data": "ch:auto:" + ("0" if st["auto"] else "1")}]
         self.send(token, chat, f"قناة المحل: «{st['title']}»\nنزل فيها {st['posted']} قطعة"
                   + (f"، وباقي {st['queued']} بالدور" if st["queued"] else "") + ".\n"
                   + ("النشر التلقائي شغال." if st["auto"] else "النشر التلقائي موقف.")
@@ -376,7 +439,7 @@ class Bot(threading.Thread):
             self.app.store.set_setting("telegram", c)
             chats = list((c.get("staff") or {}).keys())
         for chat in chats:
-            self.send(token, chat, "وصلت أزرار التقارير تحت: المبيعات، المخزون، الفواتير، الحجوزات، اهتمام الزبائن، وغيرها.",
+            self.send(token, chat, "رتبت الأزرار: تحت أربعة أقسام (التقارير، التنبيهات، القطع والصور، قناة المحل)، وكل قسم يفتح خياراته هنا في المحادثة.",
                       markup=staff_menu.keyboard())
 
     # ---------- loop
@@ -421,7 +484,7 @@ class Bot(threading.Thread):
         if u.get("callback_query"):
             q = u["callback_query"]
             self.call(token, "answerCallbackQuery", {"callback_query_id": q["id"]})
-            msg = {"chat": q["message"]["chat"], "from": q["from"], "text": q.get("data", "")}
+            msg = {"chat": q["message"]["chat"], "from": q["from"], "text": q.get("data", ""), "_mid": q["message"].get("message_id")}
         else:
             msg = u.get("message") or {}
         text = (msg.get("text") or "").strip()
@@ -458,22 +521,12 @@ class Bot(threading.Thread):
             return
         if staff and text in ("/photos", "/صور", "قطع بدون صور"):
             return self._pending_list(token, chat)
-        if staff and text == "قناة المحل":
-            return self._channel_cmd(token, chat, uid, "/channel")
         if staff and text in ("/start", "/menu", "/القائمة"):
             import staff_menu
-            return self.send(token, chat, "اختر التقرير من الأزرار تحت، أو اكتب أي سؤال عن المحل والوكيل يجاوبك.",
+            return self.send(token, chat, "الأقسام في الأزرار تحت، وكل قسم يفتح خياراته هنا. وأي سؤال ثاني اكتبه والوكيل يجاوبك.",
                              markup=staff_menu.keyboard())
-        if staff:
-            import staff_menu
-            if text in staff_menu.BUTTONS:
-                try:
-                    with app.lock:
-                        rep = staff_menu.report(app, text)
-                except Exception as e:
-                    print("report:", text, e, flush=True)
-                    rep = "ما قدرت أطلع التقرير الحين."
-                return self.send(token, chat, rep or "ما فيه بيانات.")
+        if staff and self._staff_menu(token, chat, uid, text, msg.get("_mid")):
+            return
         if staff and (text in ("/channel", "/قناة") or text.startswith("ch:")):
             return self._channel_cmd(token, chat, uid, text)
         if staff and text.startswith("/post"):
@@ -506,7 +559,7 @@ class Bot(threading.Thread):
                     app.store.db.commit()
                 import staff_menu
                 self.send(token, chat, "تم ربطك. يوصلك هنا كل بيع وكل حجز وتنبيهات الشراء، وكل قطعة جديدة تطلب صورها.\n"
-                                       "التقارير في الأزرار تحت، وأي سؤال ثاني اكتبه والوكيل يجاوبك.\n"
+                                       "الأقسام في الأزرار تحت، وكل قسم يفتح خياراته هنا. وأي سؤال ثاني اكتبه والوكيل يجاوبك.\n"
                                        "/customer تجربة المستشار كزبون، /staff للرجوع", markup=staff_menu.keyboard())
             else:
                 self._admin_fail[uid] = fails + [time.time()]

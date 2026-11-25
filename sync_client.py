@@ -23,6 +23,12 @@ def _save(s, c):
 
 def configure(s, url, key, prefix):
     c = _cfg(s)
+    if key.strip() and key.strip() != c.get("key"):
+        # first link (or a new branch key): sales made before it were trials on this computer; they never reach
+        # the website, so a test sale can't sell a real piece. Pieces still go (see _pending_pieces).
+        c["sent_invoices"] = list(set(c.get("sent_invoices", [])) |
+                                  {r["number"] for r in s.q("SELECT number FROM invoices WHERE kind='sale'")})[-5000:]
+        c["server_codes"] = []
     c.update({"url": url.rstrip("/"), "key": key.strip(), "prefix": prefix.strip().upper()})
     _save(s, c)
     if c["prefix"]:
@@ -50,11 +56,17 @@ def _pending_sales(s, c):
 
 
 def _pending_pieces(s, c):
+    """Pieces entered here that the website doesn't have yet: this branch's letter, plus any piece on sale here
+    that the server's stock doesn't list (entered before the branch was linked, under another letter)."""
     pre = c.get("prefix") or ""
     sent = set(c.get("sent_pieces", []))
-    if not pre:
-        return []
-    return [p for p in s.q("SELECT * FROM pieces WHERE code LIKE ? ORDER BY created_at", (pre + "%",)) if p["code"] not in sent]
+    out = [p for p in s.q("SELECT * FROM pieces WHERE code LIKE ? ORDER BY created_at", (pre + "%",)) if p["code"] not in sent] if pre else []
+    known = set(c.get("server_codes") or [])
+    if known:                                   # learned on the first round after linking
+        have = {p["code"] for p in out}
+        out += [p for p in s.q("SELECT * FROM pieces WHERE status IN ('available','reserved') ORDER BY created_at")
+                if p["code"] not in known and p["code"] not in sent and p["code"] not in have]
+    return out
 
 
 def _file_url(s, name):
@@ -202,6 +214,7 @@ def run_once(s, timeout=25):
         c["price_pending"] = False
     # the shop-wide stock: anything this branch still shows as available but the server no longer offers was sold elsewhere
     live = {x["code"] for x in res.get("stock", [])}
+    c["server_codes"] = sorted(live)[-20000:]
     known = set(c["sent_pieces"]) | {x["code"] for x in res.get("stock", [])}
     for p in s.q("SELECT code FROM pieces WHERE status IN ('available','reserved')"):
         if p["code"] in known and p["code"] not in live:
