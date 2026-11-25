@@ -95,9 +95,9 @@ check("8 all photos in: one post, the velvet display photo, with the sales and w
       and urls[0].startswith("https://wa.me/967770088801?text=") and p["code"] in __import__("urllib.parse").parse.unquote(urls[0])
       and urls[1] == f"https://shop.example/p/{p['code']}", (m, files, kb))
 cap = fields.get("caption", "")
-check("9 caption: name, karat and weight, branch, code; no link to the bot",
+check("9 caption: name, karat and weight, the one shop address (no branch), code; no link to the bot",
       "طقم ورد" in cap and "38.50 جرام" in cap and "عيار 21" in cap and p["code"] in cap
-      and "t.me/" not in cap and s.branches()[0]["name"] in cap and "وصل حديثاً" in cap, cap)
+      and "t.me/" not in cap and "📍" in cap and "البوابة الرئيسية" in cap and "الفرع" not in cap and "وصل حديثاً" in cap, cap)
 n0 = len(uploads)
 p2 = s.add_piece(owner, "خاتم", 21, 4.2, "gram", 2500, br, title="خاتم ناعم",
                  media={"card": photo("b_c.jpg", (30, 30, 30)), "macro": photo("b_m.jpg", (1, 2, 3)), "orig": photo("b_o.jpg", (9, 9, 9))})

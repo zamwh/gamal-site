@@ -181,13 +181,6 @@ def seed(store, limit=10):
 
 
 # ---------------- the post
-def _branch(store, p):
-    b = store.one("SELECT name, address FROM branches WHERE id=?", (p["branch_id"],))
-    if not b:
-        return ""
-    return b["name"] + (f": {b['address']}" if b["address"] else "")
-
-
 def site_host_ok(store, host):
     """Only a real address of the shop's website may go into the channel's buttons (never one a request made up)."""
     h = (host or "").split(":")[0].lower()
@@ -253,9 +246,8 @@ def caption(store, p, sold=False):
     if desc and not sold:
         lines.append(e(desc[:200]))
     lines.append(f"ذهب عيار {p['karat']} · الوزن {float(p['weight']):.2f} جرام")
-    br = _branch(store, p)
-    if br and not sold:
-        lines.append(e(br))
+    if not sold:                                   # one shop in everything the customer sees
+        lines.append(e("📍 " + (core.storefront(store).get("address") or "")))
     lines.append(f"رقم القطعة {e(p['code'])}")
     if sold:
         lines += ["", "عجبتك؟ اضغط «أبغى مثلها»، ورأيك يحدد البضاعة الجاية."]

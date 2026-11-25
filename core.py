@@ -179,6 +179,7 @@ class Store:
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA foreign_keys=ON")
         self.db.executescript(SCHEMA)
+        self._fresh = fresh
         self._migrate()
         if fresh:
             self._init_settings()
@@ -228,6 +229,7 @@ class Store:
         if self.one("SELECT 1 FROM branches WHERE address=?", ("خط السبل — مركز وان مول، الدور الأول، المحل رقم 3",)):
             self.db.execute("UPDATE branches SET name='الفرع الثالث', address='السبل — داخل ون مول' WHERE address=?", ("خط السبل — مركز وان مول، الدور الأول، المحل رقم 3",))
             self.db.execute("UPDATE branches SET name='الفرع الثاني' WHERE address='بجوار البوابة الرئيسية لمركز جرعان'")
+        self._one_shop()
         import ops
         ops.ensure(self)
         if self.one("SELECT 1 FROM settings WHERE key='secret'") and self.setting("payments") is None:
@@ -333,8 +335,37 @@ class Store:
         return float(p[f"k{int(karat)}_{side}"])
 
     # ---- branches
+    SHOP_NAME = "جمال المشرقي للذهب والمجوهرات"
+
+    def _one_shop(self):
+        """Nov 2026: the system works as one shop, the location next to the main gate of Jar'an center, under the
+        shop's own name: no branch numbers anywhere. The other locations stay in the database, hidden, so adding
+        branches later is a setting away (setting "single_branch"). Runs once on an existing database."""
+        if self.setting("single_shop_v1") is not None:
+            return
+        if getattr(self, "_fresh", False) or not self.one("SELECT 1 FROM branches"):
+            self.set_setting("single_shop_v1", "skipped")       # a new database keeps what it is created with
+            return
+        gate = self.one("SELECT * FROM branches WHERE address LIKE '%البوابة%' ORDER BY rowid LIMIT 1")
+        if gate:
+            moved = self.q("SELECT code, branch_id FROM pieces WHERE branch_id<>? AND status IN ('available','reserved','inactive')", (gate["id"],))
+            self.db.execute("UPDATE branches SET name=? WHERE id=?", (self.SHOP_NAME, gate["id"]))
+            self.db.execute("UPDATE pieces SET branch_id=? WHERE branch_id<>? AND status IN ('available','reserved','inactive')", (gate["id"], gate["id"]))
+            self.db.execute("UPDATE users SET branch_id=? WHERE branch_id IS NOT NULL AND branch_id<>?", (gate["id"], gate["id"]))
+            self.set_setting("single_branch", gate["id"])
+            self.log(None, "one_shop", "branch", gate["id"], {"moved": [[m["code"], m["branch_id"]] for m in moved]})
+        self.set_setting("single_shop_v1", "done")
+
+    def one_shop(self):
+        """The one shop when the system runs as a single shop, else None."""
+        bid = self.setting("single_branch")
+        return self.one("SELECT * FROM branches WHERE id=?", (bid,)) if bid else None
+
     def branches(self):
         rows = self.q("SELECT * FROM branches ORDER BY rowid")
+        bid = self.setting("single_branch")
+        if bid and any(r["id"] == bid for r in rows):
+            rows = [r for r in rows if r["id"] == bid]
         order = ["الأول", "الثاني", "الثالث", "الرابع", "الخامس"]
         return sorted(rows, key=lambda r: next((i for i, w in enumerate(order) if w in (r["name"] or "")), 99))
 
@@ -703,6 +734,7 @@ class Store:
         qr_text = f"GAM|{inv['number']}|{int(round(inv['total']))}|{inv['created_at']}|{inv['signature']}"
         inv["qr"] = svg_data_uri(qr_svg(qr_text))
         inv["shop"] = self.setting("shop")
+        inv["storefront"] = storefront(self)          # what the customer sees: one shop name and its address
         inv["demo"] = self.mode == "demo"
         return inv
 
@@ -923,6 +955,25 @@ def piece_roles(p):
             ph = []
         m = {"card": None, "macro": None, "orig": ph[0] if ph else None}
     return {k: m.get(k) for k in PHOTO_ROLES}
+
+
+STOREFRONT_NAME = "جمال المشرقي للذهب والمجوهرات"
+
+
+def storefront(s):
+    """The one shop the customer hears about (agent, channel, invoices): the shop name and the address next to
+    Jarraan's main gate. Every shop's stock still shows; the branches stay in the system for later expansion.
+    Settings may override: setting "storefront" = {"name", "address"}."""
+    st = dict(s.setting("storefront", {}) or {})
+    if not st.get("address"):
+        rows = s.q("SELECT id, address FROM branches")
+        gate = next((b for b in rows if "البوابة" in (b["address"] or "")), rows[0] if rows else None)
+        st.setdefault("branch_id", gate["id"] if gate else None)
+        st["address"] = (gate["address"] if gate else "") or ""
+        if st["address"] and "إب" not in st["address"]:
+            st["address"] += "، إب"
+    st.setdefault("name", STOREFRONT_NAME)
+    return st
 
 
 def showcase_state(p):

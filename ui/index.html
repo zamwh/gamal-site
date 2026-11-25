@@ -757,7 +757,7 @@ const PAYN={cash:'نقداً',transfer:'تحويل',mixed:'نقد وتحويل'}
 function invHTML(inv){const sale=inv.kind==='sale',s=inv.shop||{};const disc=(inv.items||[]).reduce((a,i)=>a+(i.making_discount||0),0);
   const sub=(inv.items||[]).reduce((a,i)=>a+(i.line_total||0),0);
   return `<div class="inv ${PRINT_SIZE}">
-  <div class="ihd"><div class="ilogo"><img src="/assets/logo_light.png" alt=""></div><div class="ishop"><b>${esc(s.name||'جمال المشرقي للذهب والمجوهرات')}</b><div>${esc(inv.branch_name)}${inv.branch_address?' — '+esc(inv.branch_address):''}</div><div>${esc(inv.branch_phone||s.phone||'')}</div></div>
+  <div class="ihd"><div class="ilogo"><img src="/assets/logo_light.png" alt=""></div><div class="ishop"><b>${esc(s.name||'جمال المشرقي للذهب والمجوهرات')}</b><div>${esc((inv.storefront||{}).address||inv.branch_address||'')}</div><div>${esc(inv.branch_phone||s.phone||'')}</div></div>
   <div class="ino"><div class="ity">${sale?'فاتورة بيع':'سند شراء ذهب'}</div><div class="inum">${esc(inv.number)}</div><div>${esc(inv.created_at)}</div></div></div>
   ${inv.demo?'<div class="idemo">نسخة تجريبية — ليست فاتورة رسمية</div>':''}
   <div class="iparty"><div><small>${sale?'العميل':'البائع'}</small><b>${esc(inv.customer_name||'—')}</b>${inv.customer_phone?`<span>${esc(inv.customer_phone)}</span>`:''}${inv.customer_id_note?`<span>الهوية: ${esc(inv.customer_id_note)}</span>`:''}</div><div><small>الموظف</small><b>${esc(inv.user_name)}</b></div>${inv.pay_method?`<div><small>طريقة الدفع</small><b>${PAYN[inv.pay_method]||''}</b></div>`:''}</div>
@@ -771,7 +771,7 @@ function invHTML(inv){const sale=inv.kind==='sale',s=inv.shop||{};const disc=(in
   ${inv.status==='void'?'<div class="ivoid">ملغاة</div>':''}</div>`}
 async function doPrint(){try{const ok=await window.pywebview.api.print_silent(PRINT_SIZE);if(ok&&ok.ok&&ok.data)return true}catch(e){}window.print();return false}
 function waLink(inv){let ph=String(inv.customer_phone||'').replace(/[^0-9]/g,'');if(!ph)return '';if(ph.startsWith('00'))ph=ph.slice(2);else if(ph.startsWith('0'))ph='967'+ph.slice(1);else if(ph.length===9)ph='967'+ph;
-  const s=inv.shop||{},L=[`${s.name||'جمال المشرقي للذهب والمجوهرات'}`,`${inv.kind==='sale'?'فاتورة بيع':'سند شراء'} رقم ${inv.number}`,`التاريخ: ${inv.created_at}`,''];
+  const s=inv.shop||{},L=[`${s.name||'جمال المشرقي للذهب والمجوهرات'}`,...((inv.storefront||{}).address?[inv.storefront.address]:[]),`${inv.kind==='sale'?'فاتورة بيع':'سند شراء'} رقم ${inv.number}`,`التاريخ: ${inv.created_at}`,''];
   inv.items.forEach(i=>L.push(`• ${i.description}${i.code?' ('+i.code+')':''} — عيار ${i.karat} — ${(+i.weight).toFixed(2)} جم — ${fmt(i.line_total)} ريال`));
   L.push('',`الإجمالي: ${fmt(inv.total)} ريال يمني`,`رمز التحقق: ${String(inv.signature||'').slice(0,10)}`,'','شكراً لثقتكم، نتشرف بخدمتكم دائماً.');
   return 'https://wa.me/'+ph+'?text='+encodeURIComponent(L.join('\n'))}
