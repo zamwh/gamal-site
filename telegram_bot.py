@@ -1,6 +1,8 @@
-"""Telegram channel: customers talk to the same sales brain as the website; linked staff talk to the internal agent.
+"""Telegram bot for the shop's staff only: sale/reservation/restock notices, piece photos from the phone, the internal
+agent, and the shop's channel. Customers never talk to it: they follow the channel, whose posts lead to the sales team
+on WhatsApp and to the website. Anyone else writing to the bot gets a short note pointing there (no AI).
 Long-polling with the standard library only. Settings live in the shop database (setting "telegram")."""
-import json, mimetypes, os, random, threading, time, urllib.error, urllib.parse, urllib.request, uuid
+import json, mimetypes, os, random, re, threading, time, urllib.error, urllib.parse, urllib.request, uuid
 
 API = "https://api.telegram.org/bot{}/{}"
 
@@ -25,6 +27,8 @@ class Bot(threading.Thread):
         self.username = ""
         self.waiting = {}       # staff chat id -> (piece code, photo role) after pressing a photo button
         self._ch_last = 0       # last channel check
+        self._pub = {}          # chat -> last time the "staff only" note went out
+        self._admin_fail = {}   # user -> wrong /admin codes in the last hour
 
     # ---------- telegram calls
     def call(self, token, method, data=None, timeout=35):
@@ -153,6 +157,11 @@ class Bot(threading.Thread):
             self.send(token, chat, f"{r['code']} · {r['title']} · {r['weight']:.2f} جم", self._photo_buttons(r["code"]))
 
     # ---------- the shop's channel: new pieces posted by themselves, sold ones marked sold
+    @staticmethod
+    def _site(app):
+        """The website address for the channel's buttons: the last real one the site was opened on."""
+        return (app.store.setting("public_url", "") or "").rstrip("/")
+
     def _post_piece(self, token, code):
         import tg_channel
         app = self.app
@@ -160,23 +169,19 @@ class Bot(threading.Thread):
             s = app.store
             ch = tg_channel.get(s)
             p = s.piece(code)
-            files, cap = tg_channel.album(s, p, self.username)
+            photo = tg_channel.main_photo(s, p)
+            cap = tg_channel.caption(s, p)
+            kb = tg_channel.buttons(s, p, self._site(app))
         if not ch.get("id"):
             return None
-        if not files:                               # photo files missing on disk: skipped after a few tries
+        if not photo:                               # photo file missing on disk: skipped after a few tries
             with app.lock:
                 tg_channel.failed(app.store, code, "صور القطعة غير موجودة على السيرفر", retry_after=1)
             return None
         try:
-            if len(files) == 1:
-                r = self.upload(token, "sendPhoto", {"chat_id": ch["id"], "caption": cap, "parse_mode": "HTML"}, {"photo": files[0]})
-                mid = r["result"]["message_id"]
-            else:
-                media = [{"type": "photo", "media": f"attach://p{i}"} for i in range(len(files))]
-                media[0].update(caption=cap, parse_mode="HTML")
-                r = self.upload(token, "sendMediaGroup", {"chat_id": ch["id"], "media": json.dumps(media, ensure_ascii=False)},
-                                {f"p{i}": f for i, f in enumerate(files)})
-                mid = r["result"][0]["message_id"]
+            r = self.upload(token, "sendPhoto", {"chat_id": ch["id"], "caption": cap, "parse_mode": "HTML",
+                                                 "reply_markup": json.dumps(kb, ensure_ascii=False)}, {"photo": photo})
+            mid = r["result"]["message_id"]
         except Exception as e:
             why, wait = str(e), None
             if isinstance(e, urllib.error.HTTPError):
@@ -195,11 +200,27 @@ class Bot(threading.Thread):
                             "تأكد إن البوت مشرف في القناة وله صلاحية نشر الرسائل. بحاول مرة ثانية بعد ربع ساعة.")
             return None
         with app.lock:
-            tg_channel.record(app.store, code, ch["id"], mid, len(files))
+            tg_channel.record(app.store, code, ch["id"], mid, kb)
             sold = app.store.piece(code)["status"] == "sold"
         if sold:                                    # sold while it was uploading
             self._mark_sold(token, [code])
         return mid
+
+    def _fix_buttons(self, token, limit=3):
+        """The website address or the WhatsApp number changed: old posts get the new buttons, a few a minute."""
+        import tg_channel
+        with self.app.lock:
+            items = tg_channel.stale_buttons(self.app.store, self._site(self.app), limit)
+        for r, kb in items:
+            try:
+                self.call(token, "editMessageReplyMarkup", {"chat_id": r["chat_id"], "message_id": r["message_id"], "reply_markup": kb})
+            except urllib.error.HTTPError as e:
+                print("channel buttons:", r["code"], e.read().decode(errors="ignore")[:160], flush=True)   # post deleted etc.: don't retry
+            except Exception as e:
+                print("channel buttons:", e, flush=True)
+                continue
+            with self.app.lock:
+                tg_channel.set_markup(self.app.store, r["code"], kb)
 
     def _channel_tick(self, token, force=False):
         import tg_channel
@@ -208,18 +229,23 @@ class Bot(threading.Thread):
         self._ch_last = time.time()
         with self.app.lock:
             p = tg_channel.next_piece(self.app.store)
-        return self._post_piece(token, p["code"]) if p else None
+        if p:
+            return self._post_piece(token, p["code"])
+        self._fix_buttons(token)
+        return None
 
     def _mark_sold(self, token, codes):
         import tg_channel
         with self.app.lock:
             s = self.app.store
             rows = tg_channel.unsold_posts(s, codes)
-            caps = {r["code"]: tg_channel.caption(s, s.piece(r["code"]), self.username, sold=True) for r in rows}
+            caps = {r["code"]: tg_channel.caption(s, s.piece(r["code"]), sold=True) for r in rows}
+            kbs = {r["code"]: tg_channel.buttons(s, s.piece(r["code"]), self._site(self.app), sold=True) for r in rows}
         for r in rows:
             try:
                 self.call(token, "editMessageCaption", {"chat_id": r["chat_id"], "message_id": r["message_id"],
-                                                        "caption": caps[r["code"]], "parse_mode": "HTML"})
+                                                        "caption": caps[r["code"]], "parse_mode": "HTML",
+                                                        "reply_markup": kbs[r["code"]]})
                 ok = True
             except urllib.error.HTTPError as e:
                 ok = "not modified" in e.read().decode(errors="ignore")
@@ -228,7 +254,7 @@ class Bot(threading.Thread):
                 ok = False
             if ok:
                 with self.app.lock:
-                    tg_channel.mark_sold(self.app.store, r["code"])
+                    tg_channel.mark_sold(self.app.store, r["code"], kbs[r["code"]])
 
     def channel_sold(self, codes):
         """Called after every sale (store.sold_cb): the piece's post in the channel becomes "تم البيع". Never blocks a sale."""
@@ -314,39 +340,28 @@ class Bot(threading.Thread):
                   + (f"\nآخر مشكلة: {st['last_error']}" if st.get("last_error") else "")
                   + "\n/post ورقم القطعة: تنشرها الحين.", btn)
 
-    def _show_piece(self, token, chat, uid, code):
-        """A customer tapped a piece's link in the channel: the piece with today's price, and the assistant knows it."""
-        app = self.app
-        with app.lock:
-            try:
-                p = app.store.piece(code)
-            except Exception:
-                p = None
-            ok = bool(p) and p["status"] == "available" and bool(p["show_online"])
-            pub = app.agent.seed_piece(f"tg{chat}", p["code"]) if ok else None
-            br = app.store.one("SELECT name, address FROM branches WHERE id=?", (p["branch_id"],)) if ok else None
-        if not ok:
-            return self.send(token, chat, ("هذي القطعة انباعت. " if p and p["status"] == "sold" else "هذي القطعة ما عادت معروضة. ")
-                             + "قل لي وش تدور عليه وأعرض لك المتوفر.")
-        if getattr(app, "analytics", None):
-            try:
-                app.analytics.log_view(f"telegram-{uid}", p["code"])       # one Telegram account = one person
-            except Exception:
-                pass
-        base = getattr(app, "public_url", "") or ""
-        cap = (f"{pub['title']}\nعيار {pub['karat']} · الوزن {float(pub['weight']):.2f} جرام\n"
-               + (f"سعرها اليوم {pub['price']:,} ريال يمني شامل المصنعية\n" if pub.get("price") else "")
-               + (f"موجودة في {br['name']}" + (f": {br['address']}" if br["address"] else "") + "\n" if br else "")
-               + "\nاسألني أي شي عنها، أو قل لي وش تدور عليه.")
-        btn = [{"text": "أبغى هذي", "callback_data": f"أبغى {p['code']}"}]
-        if base:
-            btn.append({"text": "صفحة القطعة", "url": f"{base}/p/{p['code']}"})
-        photo = (pub.get("photo") or "").split("?")[0].replace("/media/", "")
-        fp = os.path.join(app.store.base_dir, "media", app.store.mode, photo) if photo else ""
-        if fp and os.path.isfile(fp):
-            self.send_photo(token, chat, fp, cap, btn)
-        else:
-            self.send(token, chat, cap, btn)
+    def _public_reply(self, token, chat):
+        """Someone who is not staff wrote to the bot: one short note (no AI), at most every 10 minutes."""
+        now = time.time()
+        if now - self._pub.get(chat, 0) < 600:
+            return
+        if len(self._pub) > 5000:
+            self._pub.clear()
+        self._pub[chat] = now
+        import tg_channel
+        with self.app.lock:
+            ch = tg_channel.get(self.app.store)
+            num = re.sub(r"\D", "", (self.app.store.setting("links", {}) or {}).get("whatsapp", "") or "")
+            site = self._site(self.app)
+        btn = []
+        if ch.get("username"):
+            btn.append({"text": "قناة جمال المشرقي", "url": f"https://t.me/{ch['username']}"})
+        if num:
+            btn.append({"text": "تواصل مع فريق المبيعات", "url": f"https://wa.me/{num}"})
+        if site:
+            btn.append({"text": "الموقع", "url": site})
+        self.send(token, chat, "أهلاً بك. هذا الحساب خاص بإدارة محل جمال المشرقي للذهب والمجوهرات.\n"
+                               "تابع قطعنا الجديدة في قناتنا، وللاستفسار تواصل مع فريق المبيعات.", btn or None)
 
     # ---------- loop
     def run(self):
@@ -424,8 +439,6 @@ class Bot(threading.Thread):
             return self._save_photo(token, chat, msg, target[0], target[1])
         if not chat or not text:
             return
-        if text.lower().startswith("/start p_"):          # a piece's link in the shop's channel
-            return self._show_piece(token, chat, uid, text.split("_", 1)[1].strip().upper()[:20])
         if staff and text in ("/photos", "/صور"):
             return self._pending_list(token, chat)
         if staff and (text in ("/channel", "/قناة") or text.startswith("ch:")):
@@ -447,6 +460,11 @@ class Bot(threading.Thread):
             return self.send(token, chat, "نزلت في القناة." if self._post_piece(token, code) else "ما قدرت أنشرها الحين، وبحاول مرة ثانية.")
         if text.startswith("/admin"):
             code = text.split()[-1] if len(text.split()) > 1 else ""
+            fails = [t for t in self._admin_fail.get(uid, []) if time.time() - t < 3600]
+            if len(fails) >= 5:
+                return self.send(token, chat, "محاولات كثيرة. جرّب بعد ساعة.")
+            if not code:
+                return self.send(token, chat, "اكتب /admin ومعه الرمز اللي في لوحة الإدارة (الإعدادات، مربع بوت التليجرام)، مثل: /admin 123456")
             if code == c["link_code"]:
                 with app.lock:
                     c["staff"][uid] = msg.get("from", {}).get("first_name", "")
@@ -457,8 +475,11 @@ class Bot(threading.Thread):
                                        "اسألني عن المبيعات والمخزون والحجوزات واهتمام الزبائن بالقطع.\n"
                                        "/photos القطع اللي ناقصها صور\n/channel قناة المحل\n/customer تجربة كزبون، /staff للرجوع")
             else:
+                self._admin_fail[uid] = fails + [time.time()]
                 self.send(token, chat, "الرمز غير صحيح.")
             return
+        if not staff:                                 # the bot is the shop's tool; customers follow the channel
+            return self._public_reply(token, chat)
         if staff and text in ("/customer", "/staff"):
             self.mode[chat] = text[1:]
             self.send(token, chat, "وضع الزبون: كلمني كأنك زبون." if text == "/customer" else "رجعنا للوكيل الداخلي.")
@@ -468,7 +489,7 @@ class Bot(threading.Thread):
             ans = app.staff.ask(f"tg{uid}", text if not text.startswith("/") else "عطني ملخص اليوم")
             self.send(token, chat, ans)
             return
-        # ---- customer: the same sales brain as the website
+        # ---- staff testing as a customer (/customer): the same sales brain as the website
         if text == "/start":
             text = "السلام عليكم"
         self.call(token, "sendChatAction", {"chat_id": chat, "action": "typing"})

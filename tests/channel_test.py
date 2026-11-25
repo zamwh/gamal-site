@@ -2,10 +2,11 @@
 
 Telegram itself is replaced by a recorder (no token here): the test checks what the bot would send and when.
 1-4   linking: owner adds the bot to a channel / someone else does / /channel confirms / removal unlinks
-5-11  posting: waits for the display photo, waits for the photos to settle, album order, one post a minute,
-      old pieces stay out, a refused post pauses and is skipped after three tries
-12-13 sold: the post becomes "تم البيع", from a branch sale too
-14-17 a customer taps the piece link: photo with today's price, the assistant knows the piece, it counts as a view
+5-11  posting: waits for the display photo, waits for the photos to settle, one photo with the sales (WhatsApp)
+      and website buttons, one post a minute, old pieces stay out, a refused post pauses and is skipped after 3 tries
+12-13 sold: the post becomes "تم البيع" and keeps only the sales button, from a branch sale too
+14-17 the bot is staff-only: customers get a short note (no AI), the website address change fixes old buttons,
+      /admin without a code explains, wrong codes are limited
 18-21 interest: people who opened a piece / keep it saved, sent to the shop program and shown in its pieces list
 """
 import io, json, os, shutil, sys, tempfile, threading, time, urllib.error
@@ -31,6 +32,7 @@ class App: pass
 app = App(); app.lock = threading.RLock(); app.store = s
 app.analytics = Analytics(os.path.join(d, "an.db")); app.agent = SalesAgent(s, app.lock, app.analytics)
 app.public_url = "https://shop.example"
+s.set_setting("public_url", "https://shop.example")
 bot = telegram_bot.Bot(app); bot.username = "AlmshrqiGoldBot"
 calls, uploads, fail = [], [], {"n": 0}
 def fake_call(token, method, data=None, timeout=35):
@@ -81,14 +83,16 @@ check("7 display shot in, close-up still missing: waits 10 minutes for it",
 s.set_piece_photos(owner, p["code"], {"macro": photo("a_m.jpg", (200, 160, 60))})
 mid = tick()
 m, fields, files = uploads[-1] if uploads else (None, {}, {})
-media = json.loads(fields.get("media", "[]") or "[]")
-order = [os.path.basename(files[x["media"].split("//")[1]]) for x in media] if media else []
-check("8 all three photos: posted as one album, display shot first, then close-up, then original",
-      m == "sendMediaGroup" and order == ["a_c.jpg", "a_m.jpg", "a_o.jpg"] and mid, (m, order))
-cap = media[0].get("caption", "") if media else ""
-check("9 caption: name, karat and weight, branch, code, and the link to the piece in the bot",
+kb = json.loads(fields.get("reply_markup", "{}") or "{}").get("inline_keyboard", [])
+urls = [r[0].get("url", "") for r in kb]
+check("8 all photos in: one post, the velvet display photo, with the sales and website buttons",
+      m == "sendPhoto" and os.path.basename(files.get("photo", "")) == "a_c.jpg" and mid and len(kb) == 2
+      and urls[0].startswith("https://wa.me/967770088801?text=") and p["code"] in __import__("urllib.parse").parse.unquote(urls[0])
+      and urls[1] == f"https://shop.example/p/{p['code']}", (m, files, kb))
+cap = fields.get("caption", "")
+check("9 caption: name, karat and weight, branch, code; no link to the bot",
       "طقم ورد" in cap and "38.50 جرام" in cap and "عيار 21" in cap and p["code"] in cap
-      and f"t.me/AlmshrqiGoldBot?start=p_{p['code']}" in cap and s.branches()[0]["name"] in cap and "وصل حديثاً" in cap, cap)
+      and "t.me/" not in cap and s.branches()[0]["name"] in cap and "وصل حديثاً" in cap, cap)
 n0 = len(uploads)
 p2 = s.add_piece(owner, "خاتم", 21, 4.2, "gram", 2500, br, title="خاتم ناعم",
                  media={"card": photo("b_c.jpg", (30, 30, 30)), "macro": photo("b_m.jpg", (1, 2, 3)), "orig": photo("b_o.jpg", (9, 9, 9))})
@@ -116,8 +120,10 @@ calls.clear()
 inv = s.create_sale(owner, [{"code": p["code"]}], "زبون", "")
 time.sleep(0.5)
 ed = [x for m, x in calls if m == "editMessageCaption"]
-check("12 sold: the post's caption becomes \"تم البيع\" and the price link goes",
-      ed and "تم البيع" in ed[0]["caption"] and "start=p_" not in ed[0]["caption"] and tg_channel.posted(s, p["code"])["sold"] == 1, ed)
+sold_kb = (ed[0].get("reply_markup") or {}).get("inline_keyboard", []) if ed else []
+check("12 sold: caption becomes \"تم البيع\", the website button goes, the sales button stays",
+      ed and "تم البيع" in ed[0]["caption"] and len(sold_kb) == 1 and "wa.me" in sold_kb[0][0]["url"]
+      and tg_channel.posted(s, p["code"])["sold"] == 1, ed)
 k = dict(s.setting("pos_keys", {}) or {}); k[br] = "testkey123"; s.set_setting("pos_keys", k)
 calls.clear()
 pos_sync.sync(s, {"key": "testkey123", "sales": [{"ref": "B-1", "codes": [p2["code"]]}]})
@@ -125,22 +131,34 @@ time.sleep(0.5)
 check("13 a sale from a branch program marks its post sold too", tg_channel.posted(s, p2["code"])["sold"] == 1
       and any(m == "editMessageCaption" for m, _ in calls))
 
-# ---- the piece link
-s.set_prices(owner, 60000, 58000)
+# ---- the bot is the shop's tool only
 uploads.clear(); calls.clear()
-bot.handle("T", msg(555, f"/start p_{p3['code']}"))
-up = uploads[-1] if uploads else (None, {}, {})
-check("14 customer taps the link: the piece's photo with today's price and buttons",
-      up[0] == "sendPhoto" and str(up[1].get("chat_id")) == "555" and "سعرها اليوم" in up[1].get("caption", "")
-      and "أبغى هذي" in up[1].get("reply_markup", "") and f"/p/{p3['code']}" in up[1].get("reply_markup", ""), up[1])
-logs = s.q("SELECT role, content FROM chat_logs WHERE session='tg555' ORDER BY id")
-st = app.agent._ctx("tg555")["state"]
-check("15 the assistant knows the piece: in its history and counted as shown",
-      len(logs) == 2 and p3["code"] in logs[1]["content"] and [e["code"] for e in st["shown"]] == [p3["code"]], logs)
-check("16 the open counts as a view", app.analytics.piece_interest([p3["code"]]).get(p3["code"], [0])[0] == 1)
+bot.handle("T", msg(555, "/start"))
+bot.handle("T", msg(555, "عندكم خواتم؟"))
+note = sent_to(555)
+check("14 a customer writes to the bot: one short note pointing to the channel and WhatsApp, no AI",
+      len(note) == 1 and "خاص بإدارة" in note[0]["text"] and "wa.me/967770088801" in json.dumps(note[0].get("reply_markup"))
+      and "t.me/almshrqi_gold" in json.dumps(note[0].get("reply_markup"))
+      and not s.q("SELECT 1 FROM chat_logs WHERE session LIKE 'tg555%'"), note)
 calls.clear()
-bot.handle("T", msg(556, f"/start p_{p['code']}"))
-check("17 a sold piece's link says it was sold", any("انباعت" in x["text"] for x in sent_to(556)))
+bot.handle("T", msg(111, "/photos"))
+check("15 staff still get their tools", sent_to(111) and not any("خاص بإدارة" in x["text"] for x in sent_to(111)))
+s.set_setting("public_url", "https://new-address.trycloudflare.com")
+calls.clear(); tick()
+fixed = [x for m, x in calls if m == "editMessageReplyMarkup"]
+row = tg_channel.posted(s, p3["code"])
+check("16 the website address changed: old posts get the new website button, a few a minute",
+      fixed and any("new-address.trycloudflare.com/p/" in json.dumps(x["reply_markup"]) for x in fixed)
+      and "new-address" in (row["markup"] or ""), fixed[:1])
+calls.clear()
+bot.handle("T", msg(777, "/admin"))
+for i in range(6):
+    bot.handle("T", msg(777, "/admin 000000"))
+t777 = [x["text"] for x in sent_to(777)]
+check("17 /admin without a code explains; wrong codes stop after five tries",
+      "اكتب /admin ومعه الرمز" in t777[0] and t777.count("الرمز غير صحيح.") == 5 and "محاولات كثيرة" in t777[-1], t777)
+check("17b site addresses a request made up never reach the channel",
+      tg_channel.site_host_ok(s, "abc-def.trycloudflare.com") and not tg_channel.site_host_ok(s, "evil.example.com"))
 
 # ---- interest
 an = app.analytics

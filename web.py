@@ -192,6 +192,15 @@ class Server:
                 h = self.headers.get("Host", "")
                 if h and not h.startswith(("127.", "localhost", "0.0.0.0")) and "." in h:
                     app.public_url = ("https://" if self.headers.get("X-Forwarded-Proto") == "https" or "trycloudflare" in h else "http://") + h
+                    if app.public_url != getattr(app, "_pu_saved", None):     # the channel's buttons use the last real address
+                        app._pu_saved = app.public_url
+                        try:
+                            import tg_channel
+                            with app.lock:
+                                if tg_channel.site_host_ok(app.store, h) and app.store.setting("public_url") != app.public_url:
+                                    app.store.set_setting("public_url", app.public_url)
+                        except Exception as e:
+                            print("public_url:", e, flush=True)
                 if path.startswith("/api/") and server.limited(self._ip(), "api"):
                     return self._send(429, {"error": "too many requests"})
                 try:

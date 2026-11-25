@@ -4,14 +4,18 @@
 Linking: the owner makes a channel and adds the bot as an admin of it. Telegram tells the bot; when the person who
 added it is a linked staff account the channel is linked on the spot, otherwise it waits for /channel from one.
 Posting: a piece is posted by itself once it has its display (velvet) photo: at once when all three photos are in,
-or after a quiet 10 minutes, so photos sent one by one land in a single post. At most one post a minute.
-Album order: display shot, close-up, untouched original. The caption carries the weight and the branch, and a link
-that opens the bot on that piece with today's price, so the customer lands in a chat with the sales assistant.
-Sold: the post's caption changes to "تم البيع"."""
+or after a quiet 10 minutes, so the website page has every photo by the time customers open it. At most one post a
+minute. The post is one photo (Telegram allows no buttons under an album) with two buttons under it: the sales team
+on WhatsApp (a ready message names the piece) and the piece's page on the website, where it can be bought.
+Sold: the caption changes to "تم البيع" and only the sales button stays.
+The bot itself is for the shop's staff only; customers see the channel."""
 import datetime as dt
 import html
+import json
 import os
+import re
 import time
+import urllib.parse
 
 import core
 
@@ -164,7 +168,39 @@ def _branch(store, p):
     return b["name"] + (f": {b['address']}" if b["address"] else "")
 
 
-def caption(store, p, bot_username, sold=False):
+def site_host_ok(store, host):
+    """Only a real address of the shop's website may go into the channel's buttons (never one a request made up)."""
+    h = (host or "").split(":")[0].lower()
+    if re.fullmatch(r"[a-z0-9-]+\.trycloudflare\.com", h):
+        return True
+    return h in [str(d).strip().lower() for d in (store.setting("site_domains", []) or [])]
+
+
+def wa_link(store, p):
+    num = re.sub(r"\D", "", (store.setting("links", {}) or {}).get("whatsapp", "") or "")
+    if not num:
+        return None
+    title = (p["title"] if "title" in p.keys() else None) or p["type"]
+    msg = f"السلام عليكم، أبغى أستفسر عن القطعة «{title}» رقم {p['code']} من قناة التليجرام."
+    return f"https://wa.me/{num}?text=" + urllib.parse.quote(msg)
+
+
+def buttons(store, p, base, sold=False):
+    """Under the post: the sales team on WhatsApp, and the piece on the website (gone once sold)."""
+    rows = []
+    wa = wa_link(store, p)
+    if wa:
+        rows.append([{"text": "تواصل مع فريق المبيعات", "url": wa}])
+    if base and not sold:
+        rows.append([{"text": "اعرضها واشترِها من الموقع", "url": f"{base.rstrip('/')}/p/{p['code']}"}])
+    return {"inline_keyboard": rows}
+
+
+def _kb(markup):
+    return json.dumps(markup, ensure_ascii=False, sort_keys=True)
+
+
+def caption(store, p, sold=False):
     e = lambda t: html.escape(str(t or ""), quote=False)
     title = (p["title"] if "title" in p.keys() else None) or p["type"]
     new = core.showcase_state(p)["new"]
@@ -178,23 +214,22 @@ def caption(store, p, bot_username, sold=False):
     if br and not sold:
         lines.append(e(br))
     lines.append(f"رقم القطعة {e(p['code'])}")
-    if not sold and bot_username:
-        lines += ["", f'<a href="https://t.me/{e(bot_username)}?start=p_{e(p["code"])}">السعر اليوم والتفاصيل، واسأل عنها</a>']
     return "\n".join(lines)
 
 
-def album(store, p, bot_username):
-    """Photo files in post order (display, close-up, original) and the caption."""
+def main_photo(store, p):
+    """The post's one photo: the velvet display shot, else the original, else the close-up."""
     folder = os.path.join(store.base_dir, "media", store.mode)
     r = core.piece_roles(p)
-    files = [os.path.join(folder, r[k]) for k in core.PHOTO_ROLES if r.get(k)]
-    files = list(dict.fromkeys(f for f in files if os.path.isfile(f)))
-    return files, caption(store, p, bot_username)
+    for k in ("card", "orig", "macro"):
+        if r.get(k) and os.path.isfile(os.path.join(folder, r[k])):
+            return os.path.join(folder, r[k])
+    return None
 
 
-def record(store, code, chat_id, message_id, photos):
-    store.db.execute("INSERT OR REPLACE INTO channel_posts (code, chat_id, message_id, photos, posted_at, sold) VALUES (?,?,?,?,?,0)",
-                     (code, str(chat_id), int(message_id), int(photos), core.now()))
+def record(store, code, chat_id, message_id, markup):
+    store.db.execute("INSERT OR REPLACE INTO channel_posts (code, chat_id, message_id, photos, posted_at, sold, markup) VALUES (?,?,?,1,?,0,?)",
+                     (code, str(chat_id), int(message_id), core.now(), _kb(markup)))
     ch = get(store)
     if ch:
         ch["queue"] = [c for c in (ch.get("queue") or []) if c != code]
@@ -229,6 +264,27 @@ def unsold_posts(store, codes):
     return store.q(f"SELECT * FROM channel_posts WHERE sold=0 AND message_id>0 AND code IN ({','.join('?' * len(codes))})", codes)
 
 
-def mark_sold(store, code):
-    store.db.execute("UPDATE channel_posts SET sold=1 WHERE code=?", (code,))
+def mark_sold(store, code, markup=None):
+    store.db.execute("UPDATE channel_posts SET sold=1, markup=COALESCE(?, markup) WHERE code=?",
+                     (_kb(markup) if markup is not None else None, code))
     store.db.commit()
+
+
+def set_markup(store, code, markup):
+    store.db.execute("UPDATE channel_posts SET markup=? WHERE code=?", (_kb(markup), code))
+    store.db.commit()
+
+
+def stale_buttons(store, base, limit=3):
+    """Posts whose buttons no longer match: the website address changed, or the WhatsApp number did."""
+    out = []
+    for r in store.q("SELECT * FROM channel_posts WHERE message_id>0 ORDER BY posted_at DESC LIMIT 400"):
+        p = store.one("SELECT * FROM pieces WHERE code=?", (r["code"],))
+        if not p:
+            continue
+        want = buttons(store, p, base, sold=bool(r["sold"]))
+        if _kb(want) != (r.get("markup") or ""):
+            out.append((r, want))
+            if len(out) >= limit:
+                break
+    return out

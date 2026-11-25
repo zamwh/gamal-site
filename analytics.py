@@ -139,12 +139,6 @@ class Analytics:
         data = self._pi[1]
         return dict(data) if codes is None else {c: data[c] for c in codes if c in data}
 
-    def log_view(self, who, code, where="telegram"):
-        """A piece opened outside the website (the Telegram channel link): counted like a page view."""
-        self._pi = (0, self._pi[1])
-        return self.ingest({"s": who, "v": who, "n": 0, "d": where, "l": "/" + where, "r": where,
-                            "e": [{"id": f"{who}-{code}-{int(time.time())}", "t": "piece_view", "c": code, "p": "/" + where}]})
-
     # ---------- reports
     def _q(self, sql, args=()):
         with self.lock:
