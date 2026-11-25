@@ -2,7 +2,7 @@
 agent, and the shop's channel. Customers never talk to it: they follow the channel, whose posts lead to the sales team
 on WhatsApp and to the website. Anyone else writing to the bot gets a short note pointing there (no AI).
 Long-polling with the standard library only. Settings live in the shop database (setting "telegram")."""
-import json, mimetypes, os, random, re, threading, time, urllib.error, urllib.parse, urllib.request, uuid
+import json, mimetypes, os, random, re, secrets, threading, time, urllib.error, urllib.parse, urllib.request, uuid
 
 API = "https://api.telegram.org/bot{}/{}"
 
@@ -181,6 +181,9 @@ class Bot(threading.Thread):
         """The staff sections (keyboard under the chat) and their options (inside the chat). True when handled."""
         import staff_menu
         app = self.app
+        if text.startswith("o:"):
+            self._officials(token, chat, uid, text, mid)
+            return True
         sec = staff_menu.section_name(text)
         if sec == "قناة المحل":
             self._channel_cmd(token, chat, uid, "/channel")
@@ -217,6 +220,86 @@ class Bot(threading.Thread):
                 self.send(token, chat, rep or "ما فيه بيانات.")
             return True
         return False
+
+    # ---------- officials: invite by a one-time link, see who is linked, remove someone
+    WELCOME = ("تم ربطك. يوصلك هنا كل بيع وكل حجز وتنبيهات الشراء، وكل قطعة جديدة تطلب صورها.\n"
+               "الأقسام في الأزرار تحت، وكل قسم يفتح خياراته هنا. وأي سؤال ثاني اكتبه والوكيل يجاوبك.\n"
+               "/customer تجربة المستشار كزبون، /staff للرجوع")
+
+    def _officials(self, token, chat, uid, text, mid=None):
+        import staff_menu
+        app = self.app
+        kb = staff_menu.section_kb("المسؤولين")
+        with app.lock:
+            c = cfg(app.store)
+            staff = dict(c.get("staff") or {})
+        if text == "o:add":
+            code = secrets.token_hex(6)
+            with app.lock:
+                c = cfg(app.store)
+                inv = {k: v for k, v in (c.get("invites") or {}).items() if time.time() - v.get("ts", 0) < 86400}
+                inv[code] = {"by": uid, "ts": time.time()}
+                c["invites"] = inv
+                app.store.set_setting("telegram", c)
+                app.store.db.commit()
+            if not self.username:
+                return self._edit(token, chat, mid, "البوت للحين ما اتصل، جرّب بعد دقيقة.", kb)
+            return self._edit(token, chat, mid, "➕ رابط دعوة لمسؤول جديد:\n"
+                              f"https://t.me/{self.username}?start=inv_{code}\n\n"
+                              "أرسله للشخص اللي تبغاه. يفتحه ويضغط «ابدأ» وينضاف على طول. "
+                              "الرابط يشتغل مرة وحدة خلال 24 ساعة.", kb)
+        if text == "o:list":
+            lines = [f"• {name or 'بدون اسم'}" + (" (أنت)" if sid == uid else "") for sid, name in staff.items()]
+            rows = [[{"text": f"❌ إزالة {name or sid}", "callback_data": f"o:rm:{sid}"}] for sid, name in staff.items() if sid != uid]
+            return self._edit(token, chat, mid, f"📋 المسؤولين الحاليين ({len(staff)}):\n" + "\n".join(lines),
+                              {"inline_keyboard": rows + kb["inline_keyboard"]})
+        if text.startswith("o:rm:"):
+            sid = text.split(":", 2)[2]
+            if sid not in staff or sid == uid:
+                return self._officials(token, chat, uid, "o:list", mid)
+            return self._edit(token, chat, mid, f"أزيل {staff[sid] or sid} من المسؤولين؟ ما عاد يوصله شي من البوت.",
+                              {"inline_keyboard": [[{"text": "نعم، أزله", "callback_data": f"o:rmy:{sid}"},
+                                                    {"text": "لا", "callback_data": "o:list"}]]})
+        if text.startswith("o:rmy:"):
+            sid = text.split(":", 2)[2]
+            if sid == uid or sid not in staff:
+                return self._officials(token, chat, uid, "o:list", mid)
+            with app.lock:
+                c = cfg(app.store)
+                name = c["staff"].pop(sid, "")
+                c["muted"] = [x for x in (c.get("muted") or []) if x != sid]
+                app.store.set_setting("telegram", c)
+                app.store.db.commit()
+            return self._edit(token, chat, mid, f"تمت إزالة {name or sid}.", kb)
+        return None
+
+    def _join(self, token, chat, uid, msg, code):
+        """Someone opened an official's invite link."""
+        import staff_menu
+        app = self.app
+        name = (msg.get("from") or {}).get("first_name", "")
+        with app.lock:
+            c = cfg(app.store)
+            if uid in c["staff"]:
+                inviter = None
+                ok = "already"
+            else:
+                inv = c.get("invites") or {}
+                v = inv.get(code)
+                if not v or time.time() - v.get("ts", 0) > 86400:
+                    ok, inviter = "expired", None
+                else:
+                    c["staff"][uid] = name
+                    inv.pop(code, None)
+                    c["invites"] = inv
+                    app.store.set_setting("telegram", c)
+                    app.store.db.commit()
+                    ok, inviter = "joined", v.get("by")
+        if ok == "expired":
+            return self.send(token, chat, "الرابط انتهى أو انستخدم. اطلب رابط جديد من أحد المسؤولين.")
+        self.send(token, chat, self.WELCOME if ok == "joined" else "أنت مضاف من قبل.", markup=staff_menu.keyboard())
+        if inviter and inviter != uid:
+            self.send(token, inviter, f"✅ {name or 'مسؤول جديد'} انضاف للمسؤولين.")
 
     # ---------- the shop's channel: new pieces posted by themselves, sold ones marked sold
     @staticmethod
@@ -588,6 +671,8 @@ class Bot(threading.Thread):
             return
         if staff and text in ("/photos", "/صور", "قطع بدون صور"):
             return self._pending_list(token, chat)
+        if text.startswith("/start inv_"):
+            return self._join(token, chat, uid, msg, text.split("inv_", 1)[1].strip())
         if staff and text in ("/start", "/menu", "/القائمة"):
             import staff_menu
             return self.send(token, chat, "الأقسام في الأزرار تحت، وكل قسم يفتح خياراته هنا. وأي سؤال ثاني اكتبه والوكيل يجاوبك.",
@@ -632,9 +717,7 @@ class Bot(threading.Thread):
                     app.store.set_setting("telegram", c)
                     app.store.db.commit()
                 import staff_menu
-                self.send(token, chat, "تم ربطك. يوصلك هنا كل بيع وكل حجز وتنبيهات الشراء، وكل قطعة جديدة تطلب صورها.\n"
-                                       "الأقسام في الأزرار تحت، وكل قسم يفتح خياراته هنا. وأي سؤال ثاني اكتبه والوكيل يجاوبك.\n"
-                                       "/customer تجربة المستشار كزبون، /staff للرجوع", markup=staff_menu.keyboard())
+                self.send(token, chat, self.WELCOME, markup=staff_menu.keyboard())
             else:
                 self._admin_fail[uid] = fails + [time.time()]
                 self.send(token, chat, "الرمز غير صحيح.")

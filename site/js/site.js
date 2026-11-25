@@ -21,7 +21,7 @@
     prices: { k21: { sell: 52000, buy: 50000, chg: 500 }, pound: { sell: 416000, buy: 400000, chg: 4000 }, updated: '', rates: { sar: 140, usd: 535 } },
     history: [], links: { tiktok: 'https://www.tiktok.com/@almashraqi.gold8', instagram: 'https://www.instagram.com/almashreqi_gold', facebook: 'https://www.facebook.com/share/1JkbaD2t5t/', whatsapp: '+967770088801' },
     branches: [{ n: 'جمال المشرقي للذهب والمجوهرات', addr: 'بجوار البوابة الرئيسية لمركز جرعان، إب', one: true }],
-    policy: { deposit: 'الحجز بعربون 10% من قيمة القطعة يحفظها 24 ساعة من تأكيده ولا يثبّت سعر الذهب؛ السعر النهائي بسعر الذهب يوم إتمام البيع ويُخصم منه العربون. لا يُعد الحجز مؤكداً إلا بعد مراجعة المحاسب لوصول التحويل. الاستلام في الفرع فقط بفاتورة موقعة من الطرفين.', full: 'شراء بتحويل كامل قيمة القطعة: يثبت السعر بسعر الذهب وقت التحويل، ولا يُعد الشراء رسمياً إلا بعد مراجعة المحاسب لوصول المبلغ كاملاً. بعد التأكيد تستلم القطعة من الفرع بفاتورة رسمية موقعة من الطرفين.' },
+    policy: { deposit: 'الحجز بعربون 10% من قيمة القطعة يحفظها 24 ساعة من تأكيده ولا يثبّت سعر الذهب؛ السعر النهائي بسعر الذهب يوم إتمام البيع ويُخصم منه العربون. لا يُعد الحجز مؤكداً إلا بعد مراجعة المحاسب لوصول التحويل. الاستلام من المحل فقط بفاتورة موقعة من الطرفين.', full: 'شراء بتحويل كامل قيمة القطعة: يثبت السعر بسعر الذهب وقت التحويل، ولا يُعد الشراء رسمياً إلا بعد مراجعة المحاسب لوصول المبلغ كاملاً. بعد التأكيد تستلم القطعة من المحل بفاتورة رسمية موقعة من الطرفين.' },
     pieces: [
       ['D000001', 'طقم عروس متكامل بالورد', 'طقم', 148.6, 'set', 'فخم', 'عرس', 'الفرع الأول', 'طقم كامل: عقد بشراشيب، حلق، كف بخواتم، وحزام مدوّر.'],
       ['D000002', 'عقد صدر شبك', 'عقد', 96.4, 'bib', 'فخم', 'عرس', 'الفرع الأول', 'عقد صدر عريض بتصميم الشبك والمعيّنات.'],
@@ -214,7 +214,7 @@
     if (!$('#spot')) return;
     var p = SITE.pieces.filter(function (x) { return x.style === 'فخم' && x.photo })[1] || SITE.pieces[0]; if (!p) return;
     $('#spot').innerHTML = '<div class="ph wipe" id="spotPh"><img src="' + esc(p.photo) + '" alt="' + esc(p.title) + '"></div><div><span class="eyebrow rv">قطعة الأسبوع</span><h2 class="ttl rv d1">' + esc(p.title) + '</h2><p class="lead rv d2">' + esc(p.description || '') + '</p>' +
-      '<div class="meta2 rv d2"><div><small>الوزن</small><b class="num">' + p.weight.toFixed(2) + '</b> جم</div><div><small>العيار</small><b class="num">21K</b></div><div><small>الاستلام</small><b>من أي فرع</b></div></div>' +
+      '<div class="meta2 rv d2"><div><small>الوزن</small><b class="num">' + p.weight.toFixed(2) + '</b> جم</div><div><small>العيار</small><b class="num">21K</b></div><div><small>الاستلام</small><b>' + ((SITE.branches || []).length === 1 ? 'من المحل' : 'من أي فرع') + '</b></div></div>' +
       '<div class="pr rv d3">' + moneyH(p.price) + '</div><div class="rv d3" style="display:flex;gap:12px;flex-wrap:wrap"><a class="btn g" href="#p-' + p.code + '">تفاصيل القطعة <svg class="i ar"><use href="#s-arr"/></svg></a><button class="btn" data-open-chat="أبغى أعرف أكثر عن ' + esc(p.title) + '">اسأل المستشار</button></div></div>';
     bindChatBtns($('#spot'));
   }
@@ -267,7 +267,7 @@
       $('#pieceWrap').innerHTML = '<div class="pd"><div class="gal"><div class="main" id="gm" data-role="' + esc(gal[0] ? gal[0].role : '') + '"><img src="' + esc(photos[0] || '') + '" alt="' + esc(p.title) + '"><span class="gcap" id="gcap">' + (gal[0] && gal[0].role === 'orig' && gal.length > 1 ? 'صورة حقيقية للقطعة بدون أي تعديل' : '') + '</span></div>' +
         (photos.length > 1 ? '<div class="th">' + gal.map(function (g, i) { return '<button' + (i ? '' : ' class="on"') + ' data-ph="' + esc(g.url) + '" data-i="' + i + '"><img src="' + esc(g.url) + '" alt="">' + (RL[g.role] ? '<small>' + RL[g.role] + '</small>' : '') + '</button>' }).join('') + '</div>' : '') + '</div>' +
         '<div class="pi"><div class="crumbs"><a href="#home">الرئيسية</a><span>/</span><a href="#collections">المجموعات</a><span>/</span><span>' + esc(p.kind) + '</span></div>' +
-        '<h1>' + esc(p.title) + '</h1>' + (p.status === 'reserved' ? '<span class="avail" style="color:var(--warn)"><i></i>محجوزة حالياً</span>' : '<span class="avail"><i></i>متوفرة · تستلمها من الفرع اللي يريحك</span>') +
+        '<h1>' + esc(p.title) + '</h1>' + (p.status === 'reserved' ? '<span class="avail" style="color:var(--warn)"><i></i>محجوزة حالياً</span>' : '<span class="avail"><i></i>متوفرة · ' + ((SITE.branches || []).length === 1 ? 'تستلمها من المحل' : 'تستلمها من الفرع اللي يريحك') + '</span>') +
         '<div class="specs"><div><small>الوزن</small><b class="num">' + p.weight.toFixed(2) + '</b> جم</div><div><small>العيار</small><b class="num">21K</b></div><div><small>رقم القطعة</small><b class="num">' + esc(p.code) + '</b></div></div>' +
         (p.description ? '<p class="desc">' + esc(p.description) + '</p>' : '') +
         '<div class="price">' + moneyH(p.price) + '</div><div class="pnote">شامل المصنعية · على سعر ذهب اليوم' + (CUR !== 'YER' ? ' · ' + esc(money(p.price, 'YER')) : '') + '</div>' +
@@ -502,7 +502,7 @@
     var hd = '<div class="hd"><h3>' + (CK.kind === 'full' ? 'شراء بتحويل كامل' : 'حجز بعربون') + '</h3><button class="ibtn" data-cx>' + X + '</button></div>';
     var body = '';
     if (CK.step === 1) {
-      body = '<div class="choice"><button class="opt" data-k="full"><b>شراء بتحويل كامل المبلغ</b><span>السعر يثبت بسعر الذهب وقت التحويل، وتستلم القطعة من الفرع بعد تأكيد المحاسب.</span><span class="amt num">' + esc(money(p.price)) + '</span></button>' +
+      body = '<div class="choice"><button class="opt" data-k="full"><b>شراء بتحويل كامل المبلغ</b><span>السعر يثبت بسعر الذهب وقت التحويل، وتستلم القطعة من ' + ((SITE.branches || []).length === 1 ? 'المحل' : 'الفرع') + ' بعد تأكيد المحاسب.</span><span class="amt num">' + esc(money(p.price)) + '</span></button>' +
         '<button class="opt" data-k="deposit"><b>حجز بعربون ' + pct + '%</b><span>تُحفظ القطعة 24 ساعة بعد التأكيد، والسعر النهائي بسعر الذهب يوم الاستلام ويُخصم العربون.</span><span class="amt num">' + esc(money(Math.round(p.price * pct / 100))) + '</span></button></div>';
     } else if (CK.step === 2) {
       var txt = (SITE.policy || {})[CK.kind] || '';
@@ -520,7 +520,7 @@
         '<label class="fld"><span>اسم المحوِّل كما في الإيصال</span><input class="inp" id="fPayer" maxlength="80"></label><label class="drop" id="drop"><input type="file" id="fRec" accept="image/*" hidden><span id="dropTx">اضغط لإرفاق صورة إيصال التحويل</span><img id="recPrev" class="hidden" alt=""></label>' +
         '<button class="btn g full" id="submit" style="margin-top:14px">أرسل الطلب للمراجعة</button><div class="err" id="ckErr"></div>';
     } else {
-      body = '<div class="done"><div class="ok"><svg class="i" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><h3 class="h" style="font-size:24px;margin:0 0 6px">وصل طلبك</h3><p style="color:var(--mut);margin:0 0 10px">رقم الطلب <b class="num">' + esc(CK.number || '') + '</b> — قيد المراجعة</p><p class="note">المحاسب يراجع التحويل ويتواصل معك. الطلب يصير رسمياً بعد التأكيد، والاستلام من الفرع بفاتورة رسمية.</p><button class="btn full" data-cx>تم</button></div>';
+      body = '<div class="done"><div class="ok"><svg class="i" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><h3 class="h" style="font-size:24px;margin:0 0 6px">وصل طلبك</h3><p style="color:var(--mut);margin:0 0 10px">رقم الطلب <b class="num">' + esc(CK.number || '') + '</b> — قيد المراجعة</p><p class="note">المحاسب يراجع التحويل ويتواصل معك. الطلب يصير رسمياً بعد التأكيد، والاستلام من ' + ((SITE.branches || []).length === 1 ? 'المحل' : 'الفرع') + ' بفاتورة رسمية.</p><button class="btn full" data-cx>تم</button></div>';
     }
     m.innerHTML = hd + '<div class="bd">' + steps + body + '</div>';
     $$('[data-cx]', m).forEach(function (b) { b.onclick = closeModal });
@@ -587,7 +587,7 @@
     var row = document.createElement('div'); row.className = 'pcs';
     row.innerHTML = items.map(function (p, i) {
       var photo = p.photo || (BY[p.code] || {}).photo || '';
-      return '<div class="pc" style="animation-delay:' + (i * .12) + 's" data-code="' + esc(p.code) + '"><div class="im">' + (photo ? '<img src="' + esc(photo) + '" alt="">' : '') + '</div><div class="tx"><b>' + esc(p.title) + '</b><div class="mt num">' + p.karat + 'K · ' + Number(p.weight).toFixed(2) + ' جم</div><div class="pp">' + esc(money(p.price)) + '</div><div class="avl">' + (p.status === 'reserved' ? 'محجوزة حالياً' : 'متوفرة · الاستلام من أي فرع') + '</div><div class="row"><button data-d>التفاصيل</button><button data-l> أضف</button></div></div></div>';
+      return '<div class="pc" style="animation-delay:' + (i * .12) + 's" data-code="' + esc(p.code) + '"><div class="im">' + (photo ? '<img src="' + esc(photo) + '" alt="">' : '') + '</div><div class="tx"><b>' + esc(p.title) + '</b><div class="mt num">' + p.karat + 'K · ' + Number(p.weight).toFixed(2) + ' جم</div><div class="pp">' + esc(money(p.price)) + '</div><div class="avl">' + (p.status === 'reserved' ? 'محجوزة حالياً' : ((SITE.branches || []).length === 1 ? 'متوفرة · الاستلام من المحل' : 'متوفرة · الاستلام من أي فرع')) + '</div><div class="row"><button data-d>التفاصيل</button><button data-l> أضف</button></div></div></div>';
     }).join('');
     msgs.appendChild(row); msgs.scrollTop = 1e6;
     items.forEach(function (p) { T('ai_card_shown', p.code, null, 1) });

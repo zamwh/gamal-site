@@ -3,31 +3,37 @@
 Every number comes straight from the database through the same read-only tools the internal agent uses:
 no AI, so the reports are instant, free and exact. Free questions still go to the internal agent."""
 import datetime as dt
+import json
+from collections import Counter
 
 import ops
 
 # the keyboard under the chat: one button per section; each opens its own options inside the chat
-SECTIONS = [["📊 التقارير", "🔔 التنبيهات"], ["💎 القطع والصور", "📢 قناة المحل"], ["❤️ اهتمامات العملاء"]]
+SECTIONS = [["📊 التقارير", "🔔 التنبيهات"], ["💎 القطع والصور", "📢 قناة المحل"], ["❤️ اهتمامات العملاء", "👥 المسؤولين"]]
 # section -> options (label, callback). Pressing an option rewrites the section's message in place.
 OPTIONS = {
     "التقارير": [("📅 مبيعات اليوم", "r:today"), ("⏮️ مبيعات أمس", "r:yday"), ("🗓️ آخر 7 أيام", "r:week"), ("📆 هذا الشهر", "r:month"),
                  ("📦 المخزون الحالي", "r:stock"), ("🧾 آخر الفواتير", "r:inv"), ("🌐 زوار الموقع اليوم", "r:web"),
-                 ("💰 سعر الذهب اليوم", "r:price")],
+                 ("💰 سعر الذهب اليوم", "r:price"), ("🧪 جودة الوكيل", "r:qa")],
     "التنبيهات": [("🔔 آخر التنبيهات", "n:list"), ("🛒 تنبيه الشراء", "r:restock"), ("📌 الحجوزات المفتوحة", "r:res")],
     "القطع والصور": [("📷 قطع بدون صور", "p:none"), ("✨ ناقصها مخمل أو قريبة", "p:part"), ("🆕 آخر القطع المضافة", "p:latest")],
     "اهتمامات العملاء": [("❤️ طلبوا مثلها", "i:want"), ("👍 تفاعل القناة", "i:react"), ("👀 مشاهدات الموقع", "r:int"),
-                          ("🏷️ الاهتمام حسب النوع", "i:kind"), ("🔎 طلبات ما توفرت", "r:dem")],
+                          ("🏷️ الاهتمام حسب النوع", "i:kind"), ("🔎 طلبات ما توفرت", "r:dem"),
+                          ("🔍 بحثوا وما لقوا", "i:unmet")],
+    "المسؤولين": [("➕ إضافة مسؤول", "o:add"), ("📋 المسؤولين الحاليين", "o:list")],
 }
 INTRO = {"التقارير": "📊 التقارير: اختر من تحت، ويطلع التقرير هنا.",
          "التنبيهات": "🔔 التنبيهات: يوصلك هنا كل بيع وكل حجز وتنبيه الشراء.",
          "القطع والصور": "💎 القطع والصور: اختر من تحت.",
-         "اهتمامات العملاء": "❤️ اهتمامات العملاء: وش يعجب الزبائن ووش يطلبونه، عشان تقرر وش تنزّل من بضاعة."}
+         "اهتمامات العملاء": "❤️ اهتمامات العملاء: وش يعجب الزبائن ووش يطلبونه، عشان تقرر وش تنزّل من بضاعة.",
+         "المسؤولين": "👥 المسؤولين: كل مسؤول يوصله البيع والتنبيهات وصور القطع والتقارير والوكيل الداخلي. "
+                      "تضيف مسؤول برابط دعوة يشتغل مرة وحدة."}
 SECTION_OF = {cb: name for name, opts in OPTIONS.items() for _, cb in opts}
 REPORT_CB = {"r:today": "مبيعات اليوم", "r:yday": "مبيعات أمس", "r:week": "مبيعات آخر 7 أيام", "r:month": "مبيعات هذا الشهر",
              "r:stock": "المخزون الحالي", "r:inv": "آخر الفواتير", "r:int": "الأكثر اهتماماً", "r:web": "زوار الموقع اليوم",
              "r:dem": "طلبات ما توفرت", "r:price": "سعر الذهب اليوم", "r:restock": "تنبيه الشراء", "r:res": "الحجوزات"}
 BUTTONS = set(REPORT_CB.values())       # typing a report's name still works
-VERSION = 3          # bump when the buttons change: linked staff get the new keyboard once
+VERSION = 4          # bump when the buttons change: linked staff get the new keyboard once
 
 
 def section_name(text):
@@ -115,7 +121,8 @@ def by_kind(app):
 
 def render(app, key):
     """Any option or report name -> its text (caller holds the lock)."""
-    fn = {"n:list": notifications, "p:latest": latest_pieces, "i:want": wanted, "i:react": reactions, "i:kind": by_kind}.get(key)
+    fn = {"n:list": notifications, "p:latest": latest_pieces, "i:want": wanted, "i:react": reactions, "i:kind": by_kind,
+          "r:qa": quality, "i:unmet": unmet}.get(key)
     return fn(app) if fn else report(app, REPORT_CB.get(key, key))
 
 
@@ -303,3 +310,67 @@ def report(app, text):
     fn = {"المخزون الحالي": stock, "آخر الفواتير": last_invoices, "الحجوزات": reservations, "طلبات ما توفرت": demand,
           "الأكثر اهتماماً": interest, "زوار الموقع اليوم": website, "سعر الذهب اليوم": price, "تنبيه الشراء": restock}.get(text)
     return fn(app) if fn else None
+
+
+PROBLEM_AR = {"number": "رقم مو من النظام", "scarcity": "استعجال أو ندرة", "promise": "وعد المحل ما يسويه", "taste": "ادعاء معرفة الذوق",
+              "jargon": "كلمات داخلية", "banned": "كلمة ممنوعة", "relative": "ذكر قرابة", "branch": "ذكر فروع",
+              "karat": "عيار غير 21", "entity": "نوع قطعة غلط", "repeat": "تكرار نفس الرد", "questions": "أكثر من سؤال",
+              "hidden": "ما عرض القطع اللي لقاها"}
+
+
+def quality(app):
+    """How the website assistant did in the last 7 days (test chats left out). From the logs, no AI."""
+    s = app.store
+    since = (dt.date.today() - dt.timedelta(days=6)).isoformat()
+    rows = s.q("SELECT session, skills, cost FROM chat_logs WHERE role='assistant' AND ts>=? AND session NOT LIKE 'evaltest%'", (since,))
+    if not rows:
+        return "🧪 جودة الوكيل (آخر 7 أيام)\nما فيه محادثات."
+    sessions = {r["session"] for r in rows}
+    tpl = sum(1 for r in rows if (r["skills"] or "").startswith("tpl:"))
+    plain = sum(1 for r in rows if (r["skills"] or "").startswith("plain:"))
+    ai = len(rows) - tpl - plain
+    tr = s.q("""SELECT tool, args FROM ai_trace WHERE ts>=? AND session NOT LIKE 'evaltest%'
+                AND tool IN ('check', 'fallback')""", (since,))
+    checks = [json.loads(r["args"] or "{}").get("problems") or [] for r in tr if r["tool"] == "check"]
+    fallbacks = sum(1 for r in tr if r["tool"] == "fallback")
+    serious = sum(1 for p in checks if set(p) & {"number", "scarcity", "promise", "karat", "taste", "entity"})
+    why = Counter(k for p in checks for k in p)
+    hand = s.q("SELECT reason FROM handoffs WHERE ts>=? AND session NOT LIKE 'evaltest%'", (since,))
+    cost = sum(float(r["cost"] or 0) for r in rows)
+    pct = lambda a, b: f"{round(100 * a / b)}%" if b else "0%"
+    out = ["🧪 جودة الوكيل (آخر 7 أيام)",
+           f"محادثات: {len(sessions)} · ردود: {len(rows)}",
+           f"ردود جاهزة بدون ذكاء: {tpl} ({pct(tpl, len(rows))}) · ردود بالذكاء: {ai}" + (f" · بدون ذكاء (حد أو عطل): {plain}" if plain else ""),
+           f"ردود انمسكت قبل ما توصل الزبون: {len(checks)} ({pct(len(checks), ai)} من ردود الذكاء)",
+           f"منها أخطاء معلومات (رقم، وعد، ندرة، ذوق، نوع): {serious} ({pct(serious, ai)})",
+           f"ردود آمنة بعد ما فشل التصحيح: {fallbacks}",
+           f"تحويلات لفريق المبيعات: {len(hand)}"]
+    if why:
+        out.append("أكثر الأخطاء: " + "، ".join(f"{PROBLEM_AR.get(k, k)} {n}" for k, n in why.most_common(4)))
+    if hand:
+        out.append("أسباب التحويل: " + "، ".join(f"{k} {n}" for k, n in Counter(r["reason"] for r in hand).most_common(4)))
+    out.append(f"التكلفة: {cost:.2f}$ · للمحادثة {cost / max(1, len(sessions)):.3f}$")
+    return "\n".join(out)
+
+
+def unmet(app):
+    """What customers searched for and the shop did not have (last 30 days): a stocking signal."""
+    s = app.store
+    since = (dt.date.today() - dt.timedelta(days=29)).isoformat()
+    try:
+        rows = s.q("SELECT kind, budget, weight_max FROM unmet_searches WHERE ts>=? AND session NOT LIKE 'evaltest%'", (since,))
+    except Exception:
+        rows = []
+    if not rows:
+        return "🔍 بحثوا وما لقوا (آخر 30 يوم)\nما فيه بحث رجع فاضي."
+
+    def band(r):
+        bits = [r["kind"] or "أي نوع"]
+        b = r["budget"]
+        if b:
+            bits.append(f"حدود {b / 1e6:.1f} مليون" if b >= 1e6 else f"حدود {int(b // 1000)} ألف")
+        if r["weight_max"]:
+            bits.append(f"أقل من {float(r['weight_max']):g} جم")
+        return " · ".join(bits)
+    cnt = Counter(band(r) for r in rows)
+    return "🔍 بحثوا وما لقوا (آخر 30 يوم)\n" + "\n".join(f"{i}. {k}: {n} مرة" for i, (k, n) in enumerate(cnt.most_common(10), 1))

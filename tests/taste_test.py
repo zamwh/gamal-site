@@ -104,6 +104,7 @@ check("11 kind not in stock -> nothing passed off as a ring, other categories li
 
 # whole chat path with the AI switched off still learns and saves the profile
 out = ag.chat("sessA-1", "ابغى شي هادي بسيط", visitor="v12")
-check("12 profile saved per visitor even without AI", T.summary(T.load("v12")) != "", out.get("text", "")[:60])
+check("12 profile kept for this visit (not across visits until the customer agrees)",
+      T.summary(T.load("v12~sessA")) != "" and T.summary(T.load("v12")) == "", out.get("text", "")[:60])
 s.close(); shutil.rmtree(d)
 print(f"\n{sum(o for _, o in res)}/{len(res)} passed")

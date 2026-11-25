@@ -185,7 +185,8 @@ class Taste:
         return hits
 
     # ---------- learning from behaviour on the site (a view is interest, not a liking)
-    def from_events(self, p, visitor, session=None):
+    def from_events(self, p, visitor, session=None, only_session=False):
+        """only_session: this visit's behaviour only (a visitor who has not agreed to be remembered)."""
         a = self.analytics
         if not a or not visitor:
             return 0
@@ -194,8 +195,9 @@ class Taste:
             sess.add(session.split("-")[0])
         try:
             with a.lock:
-                rows = a.db.execute("SELECT session FROM sessions WHERE visitor=?", (visitor,)).fetchall()
-                sess |= {r[0] for r in rows}
+                if not only_session:
+                    rows = a.db.execute("SELECT session FROM sessions WHERE visitor=?", (visitor,)).fetchall()
+                    sess |= {r[0] for r in rows}
                 if not sess:
                     return 0
                 q = ",".join("?" * len(sess))
