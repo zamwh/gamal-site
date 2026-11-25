@@ -312,7 +312,13 @@ class Server:
                             return self._send(429, {"error": "too many requests"})
                         import pos_sync
                         with app.lock:
-                            return self._send(200, pos_sync.sync(app.store, data))
+                            res = pos_sync.sync(app.store, data)
+                        if app.analytics and res.get("stock"):     # who looked at each piece / saved it, shown next to it in the shop program
+                            try:
+                                res["interest"] = app.analytics.piece_interest([x["code"] for x in res["stock"]])
+                            except Exception as e:
+                                print("interest:", e, flush=True)
+                        return self._send(200, res)
                     if path == "/api/chat":
                         if server.limited(ip, "chat"):
                             return self._send(429, {"error": "رسائل كثيرة، انتظر دقيقة"})

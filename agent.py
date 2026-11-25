@@ -488,6 +488,29 @@ class SalesAgent:
                 "is_new": showcase_state(p)["new"], "featured": showcase_state(p)["featured"],
                 "occasion": p["occasion"] if "occasion" in p.keys() else None}
 
+    def seed_piece(self, session, code):
+        """The customer opened this piece from the shop's Telegram channel. It counts as shown and clicked, and the
+        chat history says so, so "كم سعرها" or "أبغاها" mean this piece. No AI call. The caller holds the lock."""
+        import shopstate
+        session = re.sub(r"[^A-Za-z0-9_-]", "", session or "")[:40] or "anon"
+        p = self.store.piece(code)
+        try:
+            pub = self._public(p)
+        except __import__("core").GoldError:          # no gold price set today
+            pub = self._public(p, price=0)
+        c = self._ctx(session)
+        st = c["state"]
+        st["turn"] += 1
+        shopstate.register_shown(st, [pub])
+        shopstate.mark(st, pub["code"], clicked=True)
+        c["shown"] = (c["shown"] + [pub["code"]])[-12:]
+        price = f"، سعرها اليوم {pub['price']:,} ريال شامل المصنعية" if pub.get("price") else ""
+        self._log(session, f"فتحت القطعة {pub['code']} من قناة المحل في تليجرام",
+                  f"[[{pub['code']}]] {pub['title']}: عيار {pub['karat']}، الوزن {pub['weight']} جرام{price}.", "channel", 0, 0, 0)
+        self._save_ctx(session, c)
+        self.store.db.commit()
+        return pub
+
     def _murl(self, f):
         """Photo address with a version stamp, so a phone never keeps showing an old picture."""
         try:

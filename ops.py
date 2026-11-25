@@ -23,6 +23,9 @@ CREATE TABLE IF NOT EXISTS stocktakes (
 CREATE TABLE IF NOT EXISTS notifications (
   id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT NOT NULL, kind TEXT NOT NULL, title TEXT NOT NULL,
   body TEXT, ref TEXT, seen INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS channel_posts (
+  code TEXT PRIMARY KEY, chat_id TEXT NOT NULL, message_id INTEGER NOT NULL, photos INTEGER NOT NULL DEFAULT 1,
+  posted_at TEXT NOT NULL, sold INTEGER NOT NULL DEFAULT 0);
 """
 
 
@@ -105,7 +108,13 @@ def set_restock_threshold(s, uid, threshold):
 
 
 def on_sale(s, inv):
-    """Called after every sale: owner notice, customer card, and the restock reminder."""
+    """Called after every sale: owner notice, customer card, the restock reminder, and "sold" on the shop's channel post."""
+    cb = getattr(s, "sold_cb", None)
+    if cb:
+        try:
+            cb([i["code"] for i in inv.get("items", []) if i.get("code")])
+        except Exception as e:
+            print("sold_cb:", e, flush=True)
     try:
         if inv.get("customer_phone"):
             upsert_customer(s, inv.get("customer_name") or "", inv["customer_phone"])

@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS events (
   type TEXT, page TEXT, code TEXT, value TEXT, via_ai INTEGER DEFAULT 0);
 CREATE INDEX IF NOT EXISTS ix_ev_day ON events(day, type);
 CREATE INDEX IF NOT EXISTS ix_ev_sess ON events(session);
+CREATE INDEX IF NOT EXISTS ix_ev_code ON events(code, type);
 CREATE TABLE IF NOT EXISTS ai_usage (
   id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, day TEXT, session TEXT, model TEXT, kind TEXT,
   stage TEXT, skills TEXT, t_in INTEGER, t_cached INTEGER, t_out INTEGER, cost REAL, ms INTEGER, need TEXT);
@@ -54,6 +55,7 @@ class Analytics:
         self.db.executescript(SCHEMA)
         self.db.commit()
         self._rate = {}
+        self._pi = (0, {})          # piece interest, cached for a minute
 
     # ---------- ingest
     def ingest(self, payload):
@@ -114,6 +116,34 @@ class Analytics:
     def cost_since(self, day_from):
         r = self.db.execute("SELECT COALESCE(SUM(cost),0) FROM ai_usage WHERE day>=?", (day_from,)).fetchone()
         return float(r[0])
+
+    def piece_interest(self, codes=None):
+        """Per piece, since it was listed: how many people opened it (on the site, or from the shop's Telegram channel)
+        and how many keep it saved in their list now. A person = one browser or one Telegram account, counted once."""
+        if time.time() - self._pi[0] > 60:
+            who = "COALESCE(NULLIF(s.visitor,''), e.session)"
+            views = self._q(f"""SELECT e.code, COUNT(DISTINCT {who}) n FROM events e LEFT JOIN sessions s ON s.session=e.session
+                                WHERE e.type='piece_view' AND e.code IS NOT NULL GROUP BY e.code""")
+            saves = self._q(f"""SELECT code, SUM(type='shortlist_add') n FROM (
+                                  SELECT e.code, e.type, ROW_NUMBER() OVER (PARTITION BY e.code, {who} ORDER BY e.id DESC) rn
+                                  FROM events e LEFT JOIN sessions s ON s.session=e.session
+                                  WHERE e.type IN ('shortlist_add','shortlist_remove') AND e.code IS NOT NULL)
+                                WHERE rn=1 GROUP BY code""")
+            data = {}
+            for r in views:
+                data.setdefault(r["code"], [0, 0])[0] = r["n"] or 0
+            for r in saves:
+                if r["n"]:
+                    data.setdefault(r["code"], [0, 0])[1] = r["n"]
+            self._pi = (time.time(), data)
+        data = self._pi[1]
+        return dict(data) if codes is None else {c: data[c] for c in codes if c in data}
+
+    def log_view(self, who, code, where="telegram"):
+        """A piece opened outside the website (the Telegram channel link): counted like a page view."""
+        self._pi = (0, self._pi[1])
+        return self.ingest({"s": who, "v": who, "n": 0, "d": where, "l": "/" + where, "r": where,
+                            "e": [{"id": f"{who}-{code}-{int(time.time())}", "t": "piece_view", "c": code, "p": "/" + where}]})
 
     # ---------- reports
     def _q(self, sql, args=()):

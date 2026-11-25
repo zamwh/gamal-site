@@ -210,7 +210,7 @@ class Store:
         "pieces": [("title", "TEXT"), ("photos", "TEXT NOT NULL DEFAULT '[]'"), ("style", "TEXT"),
                    ("occasion", "TEXT"), ("description", "TEXT"), ("traits", "TEXT"),
                    ("title_en", "TEXT"), ("media", "TEXT"), ("new_until", "TEXT"), ("featured", "INTEGER NOT NULL DEFAULT 0"),
-                   ("featured_until", "TEXT")],
+                   ("featured_until", "TEXT"), ("media_at", "TEXT")],
         "reservations": [("kind", "TEXT NOT NULL DEFAULT 'deposit'"), ("payer_name", "TEXT"),
                          ("receipt", "TEXT"), ("amount", "REAL"), ("source", "TEXT"), ("session", "TEXT"),
                          ("pickup", "TEXT")],
@@ -394,8 +394,9 @@ class Store:
         for k, v in roles.items():
             cur[k] = v or None
         ordered = [cur.get(k) for k in PHOTO_ROLES if cur.get(k)]
-        self.db.execute("UPDATE pieces SET media=?, photos=? WHERE id=?",
-                        (json.dumps(cur, ensure_ascii=False), json.dumps(list(dict.fromkeys(ordered)), ensure_ascii=False), pid))
+        # media_at: when a photo last changed (the Telegram channel waits for the photos to settle before posting)
+        self.db.execute("UPDATE pieces SET media=?, photos=?, media_at=? WHERE id=?",
+                        (json.dumps(cur, ensure_ascii=False), json.dumps(list(dict.fromkeys(ordered)), ensure_ascii=False), now(), pid))
         return cur
 
     def set_showcase(self, uid, code, new_days=None, featured=None, featured_days=None):

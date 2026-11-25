@@ -43,6 +43,7 @@ h1,h2,h3{margin:0 0 14px;font-weight:700}h2{font:700 24px Mes,Plex;color:var(--t
 table{width:100%;border-collapse:collapse}th,td{padding:11px 10px;border-bottom:1px solid var(--line);text-align:right;font-size:14.5px}
 th{color:var(--mut);font-weight:600;font-size:13.5px}
 tr:hover td{background:rgba(214,168,78,.06)}
+.intr{font-size:12.5px;line-height:1.55;white-space:nowrap}.intr b{color:var(--gold);font-size:14px}
 .pill{display:inline-block;padding:3px 11px;border-radius:99px;font-size:12.5px;font-weight:600;border:1px solid var(--line);background:var(--glass2)}
 .pill.available,.pill.active{color:var(--ok)}.pill.sold{color:var(--mut)}.pill.reserved,.pill.pending{color:var(--warn)}.pill.inactive{color:var(--bad)}
 .badge{padding:5px 12px;border-radius:99px;font-size:12.5px;font-weight:700;background:var(--glass2);border:1px solid var(--brd)}
@@ -355,6 +356,7 @@ html.dark .pslot{background:rgba(30,24,14,.55)}html.dark .pslot b{color:#ecd29a}
       <div class="glass card">
         <div class="row"><input id="ps" placeholder="بحث بالرقم أو النوع أو الاسم" oninput="loadPieces()"><select id="pst" onchange="loadPieces()" style="width:170px"><option value="">كل الحالات</option><option value="available">متاحة</option><option value="reserved">محجوزة</option><option value="sold">مباعة</option><option value="inactive">موقوفة</option></select><select id="pbr" onchange="loadPieces()" style="width:170px"></select></div>
         <div class="tw"><table id="piecesT" style="margin-top:10px"></table></div>
+        <div class="mut" id="intrAt" style="font-size:12.5px;margin-top:10px"></div>
       </div>
     </section>
     <!-- purchase -->
@@ -669,7 +671,7 @@ async function doBuy(){const items=[...document.querySelectorAll('#buyLines>div'
 
 /* pieces */
 async function loadPieces(){const rows=await api('list_pieces',$('pst').value,$('pbr').value,$('ps').value);
-  $('piecesT').innerHTML='<tr><th>الرقم</th><th>النوع</th><th>العيار</th><th>الوزن</th><th>المصنعية</th><th>السعر الآن</th><th>الفرع</th><th>الصور</th><th>العرض في الموقع</th><th>الحالة</th><th></th></tr>'+rows.map(p=>`<tr><td>${p.code}</td><td>${esc(p.type)}${p.category==='clean_scrap'?' <span class="pill">كسر نظيف</span>':''}</td><td>${p.karat}</td><td>${p.weight}</td><td>${fmt(p.making_value)}${p.making_mode==='gram'?'/جم':''}</td><td class="gold-t">${fmt(p.price)}</td><td>${esc(p.branch_name)}</td><td>${photoState(p)}</td><td>${showState(p)}</td><td><span class="pill ${p.status}">${ST[p.status]}</span></td><td><button class="btn sm" onclick="printLabel('${p.code}')">ملصق</button> ${['owner','manager'].includes(USER.role)?`<button class="btn sm" onclick="openPhotos('${p.code}')">الصور</button> <button class="btn sm" onclick="openShowcase('${p.code}')">العرض</button>`:''} ${p.status==='available'||p.status==='inactive'?`<button class="btn sm" onclick="pieceMenu('${p.code}','${p.status}')">⋯</button>`:''}</td></tr>`).join('')}
+  $('piecesT').innerHTML='<tr><th>الرقم</th><th>النوع</th><th>العيار</th><th>الوزن</th><th>المصنعية</th><th>السعر الآن</th><th>الفرع</th><th>الصور</th><th>العرض في الموقع</th><th>الاهتمام</th><th>الحالة</th><th></th></tr>'+rows.map(p=>`<tr><td>${p.code}</td><td>${esc(p.type)}${p.category==='clean_scrap'?' <span class="pill">كسر نظيف</span>':''}</td><td>${p.karat}</td><td>${p.weight}</td><td>${fmt(p.making_value)}${p.making_mode==='gram'?'/جم':''}</td><td class="gold-t">${fmt(p.price)}</td><td>${esc(p.branch_name)}</td><td>${photoState(p)}</td><td>${showState(p)}</td><td>${intr(p)}</td><td><span class="pill ${p.status}">${ST[p.status]}</span></td><td><button class="btn sm" onclick="printLabel('${p.code}')">ملصق</button> ${['owner','manager'].includes(USER.role)?`<button class="btn sm" onclick="openPhotos('${p.code}')">الصور</button> <button class="btn sm" onclick="openShowcase('${p.code}')">العرض</button>`:''} ${p.status==='available'||p.status==='inactive'?`<button class="btn sm" onclick="pieceMenu('${p.code}','${p.status}')">⋯</button>`:''}</td></tr>`).join('');intrNote()}
 /* new stock: details + three photos (velvet card shot, real close-up, untouched original) */
 const KIND_LIST=['طقم','عقد','سلسلة','حلق','خاتم','أسورة','كف','حزام','جنيه'];
 const PROLES=[['card','صورة العرض (مخمل)','تظهر في بطاقة الموقع'],['macro','لقطة قريبة (ماكرو)','تظهر داخل التفاصيل'],['orig','الصورة الأصلية','حقيقية بدون تعديل، داخل التفاصيل']];
@@ -708,6 +710,8 @@ async function savePhotos(code){const b=$('phSave');if(b.disabled)return;b.disab
 /* showcase: "new arrival" for a limited time, "featured" until switched off (or a set end date) */
 const TODAY=()=>new Date().toISOString().slice(0,10);
 const dmy=d=>d?d.slice(8,10)+'/'+d.slice(5,7):'';
+function intr(p){return p.views||p.saves?`<span class="intr"><b>${p.views||0}</b> شافها<br><b>${p.saves||0}</b> حفظها</span>`:'<span class="mut">—</span>'}
+async function intrNote(){try{const i=await api('interest_info');$('intrAt').textContent=i&&i.at?`الاهتمام: كم شخص فتح القطعة من الموقع أو من قناة التليجرام، وكم شخص حافظها عنده. آخر تحديث ${i.at}.`:'الاهتمام يظهر بعد ربط البرنامج بالموقع.'}catch(e){}}
 function showState(p){const t=TODAY(),nw=p.new_until&&p.new_until>=t,ft=+p.featured&&(!p.featured_until||p.featured_until>=t);
   return `<span class="phs">${nw?`<i class="on">جديد حتى ${dmy(p.new_until)}</i>`:''}${ft?`<i class="on">مميزة${p.featured_until?' حتى '+dmy(p.featured_until):''}</i>`:''}${!nw&&!ft?'<i>عادي</i>':''}</span>`}
 async function openShowcase(code){const rows=await api('list_pieces','',null,code);const p=rows.find(x=>x.code===code)||{};const cfg=await api('showcase_settings');

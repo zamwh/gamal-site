@@ -26,6 +26,8 @@ TOOLS = [
      "parameters": {"type": "object", "properties": {}}}},
     {"type": "function", "function": {"name": "website_and_ai", "description": "زوار الموقع ومشاهدات القطع ومحادثات المستشار وتكلفة الذكاء الاصطناعي في فترة.",
      "parameters": {"type": "object", "properties": {"date_from": {"type": "string"}, "date_to": {"type": "string"}}}}},
+    {"type": "function", "function": {"name": "piece_interest", "description": "اهتمام الزبائن بالقطع المعروضة: كم شخص فتح كل قطعة (من الموقع أو من قناة التليجرام) وكم شخص حافظها، مرتبة من الأكثر. تفيد لمعرفة القطع اللي عليها طلب وما انباعت.",
+     "parameters": {"type": "object", "properties": {"limit": {"type": "integer"}}}}},
     {"type": "function", "function": {"name": "prices_today", "description": "سعر الذهب المعتمد اليوم وأسعار الصرف.", "parameters": {"type": "object", "properties": {}}}},
     {"type": "function", "function": {"name": "find_piece", "description": "بحث عن قطعة برمزها أو اسمها: حالتها وسعرها وفرعها.",
      "parameters": {"type": "object", "properties": {"q": {"type": "string"}}, "required": ["q"]}}},
@@ -97,13 +99,27 @@ class StaffAgent:
                     out["ai_messages"] = self.analytics._one("SELECT COUNT(*) n FROM ai_usage WHERE day BETWEEN ? AND ?", (a, b))["n"]
             out["handoffs"] = s.one("SELECT COUNT(*) n FROM handoffs WHERE substr(ts,1,10) BETWEEN ? AND ?", (a, b))["n"]
             return out
+        if name == "piece_interest":
+            pi = self.analytics.piece_interest() if self.analytics else {}
+            rows = []
+            for p in s.q("""SELECT p.code, COALESCE(p.title,p.type) name, p.weight, b.name branch FROM pieces p
+                            JOIN branches b ON b.id=p.branch_id WHERE p.status='available'"""):
+                v = pi.get(p["code"]) or [0, 0]
+                rows.append(dict(p, opened_by=v[0], saved_by=v[1]))
+            rows.sort(key=lambda r: (r["opened_by"] + 3 * r["saved_by"]), reverse=True)
+            return {"note": "opened_by = أشخاص فتحوا القطعة، saved_by = أشخاص حافظينها الحين، من يوم نزلت",
+                    "pieces": rows[:int(args.get("limit") or 15)]}
         if name == "prices_today":
             return s.current_prices() or {"error": "ما فيه سعر معتمد اليوم"}
         if name == "find_piece":
             q = str(args.get("q", "")).strip()
-            return {"rows": s.q("""SELECT p.code, COALESCE(p.title,p.type) name, p.weight, p.status, p.show_online, b.name branch
-                                   FROM pieces p JOIN branches b ON b.id=p.branch_id WHERE p.code=? OR p.title LIKE ? OR p.type LIKE ? LIMIT 10""",
-                                (q.upper(), f"%{q}%", f"%{q}%"))}
+            rows = s.q("""SELECT p.code, COALESCE(p.title,p.type) name, p.weight, p.status, p.show_online, b.name branch
+                          FROM pieces p JOIN branches b ON b.id=p.branch_id WHERE p.code=? OR p.title LIKE ? OR p.type LIKE ? LIMIT 10""",
+                       (q.upper(), f"%{q}%", f"%{q}%"))
+            pi = self.analytics.piece_interest([r["code"] for r in rows]) if self.analytics else {}
+            for r in rows:
+                r["opened_by"], r["saved_by"] = (pi.get(r["code"]) or [0, 0])
+            return {"rows": rows}
         if name == "run_sql":
             sql = str(args.get("sql", "")).strip().rstrip(";")
             if not re.match(r"(?is)^\s*(select|with)\b", sql) or ";" in sql or re.search(r"(?i)\b(attach|pragma|insert|update|delete|drop|alter|create|replace|vacuum)\b", sql):

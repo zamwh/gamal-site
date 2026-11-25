@@ -73,6 +73,7 @@ def main():
     app.bot.start()
     app.store.notify_cb = app.bot.notify        # every sale, reservation and restock reminder reaches the owner on Telegram
     app.store.piece_cb = app.bot.piece_alert     # a new piece asks for its photos, sent straight from the phone
+    app.store.sold_cb = app.bot.channel_sold     # a sold piece's post in the shop's channel becomes "تم البيع"
     while True:
         time.sleep(3600)
         try:

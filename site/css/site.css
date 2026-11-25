@@ -937,6 +937,7 @@ html[dir=ltr] .i.ar{transform:scaleX(-1)}
 .pslot.busy{opacity:.6;pointer-events:none}
 .phs{display:flex;gap:4px;margin-top:4px}.phs i{font-style:normal;font-size:10.5px;padding:1px 7px;border-radius:999px;border:1px solid rgba(217,184,114,.3);color:#8f846f}
 .phs i.on{background:rgba(217,184,114,.18);color:#ecd29a;border-color:rgba(217,184,114,.5)}
+.tbl td.intr{font-size:12.5px;line-height:1.55;white-space:nowrap}.tbl td.intr b{color:var(--gold,#d9b872);font-size:14px}
 .tbl td.thc{width:52px}.tbl td.thc img{width:44px;height:44px;object-fit:cover;border-radius:8px;display:block}
 @media(max-width:560px){.pslot small{display:none}}
 .tag.l.nw{background:linear-gradient(135deg,#ecd29a,#c79b45);color:#2a1d08;border-color:transparent;font-weight:600}

@@ -363,7 +363,17 @@ class Api:
                                                          d.get("show_online")))
 
     def list_pieces(self, status=None, branch_id=None, search=""):
-        return self._run(lambda: self._s.list_pieces(status or None, branch_id or None, search or ""))
+        def f():
+            rows = self._s.list_pieces(status or None, branch_id or None, search or "")
+            pi = (self._s.setting("piece_interest", {}) or {}).get("by_code") or {}
+            for r in rows:                         # from the website, through the sync: people who opened it / saved it
+                v = pi.get(r["code"]) or [0, 0]
+                r["views"], r["saves"] = v[0], v[1]
+            return rows
+        return self._run(f)
+
+    def interest_info(self):
+        return self._run(lambda: {"at": (self._s.setting("piece_interest", {}) or {}).get("at")})
 
     def piece(self, code):
         def f():

@@ -65,6 +65,10 @@ def get(app, u, path, q):
     if path == "/api/admin/stock":
         if u["role"] not in ("owner", "manager"):
             raise GoldError("غير مصرح")
+        try:
+            pi = an.piece_interest() if an else {}
+        except Exception:
+            pi = {}
         with app.lock:
             out = []
             for p in s.list_pieces(search=(q.get("q") or "").strip()):
@@ -76,7 +80,8 @@ def get(app, u, path, q):
                             "photos": {k: bool(v) for k, v in roles.items()}, "thumb": "/media/" + cp if cp else None,
                             "type": p["type"], "karat": p["karat"], "weight": p["weight"], "status": p["status"],
                             "branch": p["branch_name"], "online": bool(p["show_online"]),
-                            "price": p["price"] if p["status"] != "sold" else None})
+                            "price": p["price"] if p["status"] != "sold" else None,
+                            "views": (pi.get(p["code"]) or [0, 0])[0], "saves": (pi.get(p["code"]) or [0, 0])[1]})
             return out[:300]
     if path == "/api/admin/piece_photos":
         s.require(u["id"], "owner", "manager")
@@ -172,7 +177,8 @@ def get(app, u, path, q):
                     "telegram": (lambda c: {"has_token": bool(c.get("token")), "token": ("••••" + c["token"][-4:]) if c.get("token") else "",
                                  "enabled": c.get("enabled", True), "link_code": c.get("link_code"), "staff": len(c.get("staff") or {}),
                                  "status": getattr(getattr(app, "bot", None), "status", "stopped"),
-                                 "username": getattr(getattr(app, "bot", None), "username", "")})(__import__("telegram_bot").cfg(s)),
+                                 "username": getattr(getattr(app, "bot", None), "username", ""),
+                                 "channel": __import__("tg_channel").status(s)})(__import__("telegram_bot").cfg(s)),
                     "policy": dict(__import__("agent").DEFAULT_POLICY, **{k: v for k, v in (s.setting("policy", {}) or {}).items() if (v or "").strip()})}
     raise GoldError("غير موجود")
 
@@ -256,6 +262,11 @@ def post(app, u, path, d):
                     c["enabled"] = bool(d["telegram"]["enabled"])
                 if d["telegram"].get("unlink_all"):
                     c["staff"] = {}
+                if isinstance(c.get("channel"), dict):
+                    if "channel_auto" in d["telegram"]:
+                        c["channel"]["auto"] = bool(d["telegram"]["channel_auto"])
+                    if d["telegram"].get("channel_unlink"):
+                        c.pop("channel", None)
                 s.set_setting("telegram", c)
             if "policy" in d:
                 s.set_setting("policy", {k: str(d["policy"].get(k, ""))[:800] for k in ("returns", "warranty", "branches_near", "hours", "custom_orders", "pounds", "other")})

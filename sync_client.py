@@ -216,6 +216,10 @@ def run_once(s, timeout=25):
         owner = s.one("SELECT id FROM users WHERE role='owner' ORDER BY id LIMIT 1")
         if owner:
             s.set_prices(owner["id"], sp["k21_sell"], sp["k21_buy"], pound_sell=sp.get("pound_sell"), pound_buy=sp.get("pound_buy"))
+    if isinstance(res.get("interest"), dict):            # views / saves per piece from the website, for the pieces screen
+        s.set_setting("piece_interest", {"at": time.strftime("%Y-%m-%d %H:%M"),
+                                         "by_code": {str(k)[:20]: [int(v[0]), int(v[1])] for k, v in res["interest"].items()
+                                                     if isinstance(v, (list, tuple)) and len(v) == 2}})
     c["last_ok"] = time.strftime("%Y-%m-%d %H:%M"); c["last_error"] = None
     _save(s, c)
     return {"ok": True, "applied": len(res.get("applied", [])), "conflicts": res.get("conflicts", []), "pieces": res.get("pieces", [])}
