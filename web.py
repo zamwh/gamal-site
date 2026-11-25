@@ -172,9 +172,12 @@ class Server:
                 if getattr(self, "_cookie", None):
                     self.send_header("Set-Cookie", self._cookie)
                     self._cookie = None
-                self.end_headers()
-                if self.command != "HEAD":
-                    self.wfile.write(body)
+                try:
+                    self.end_headers()
+                    if self.command != "HEAD":
+                        self.wfile.write(body)
+                except (BrokenPipeError, ConnectionAbortedError, ConnectionResetError):
+                    pass      # the page stopped loading (reload, closed): nothing to send to, not an error
 
             def _file(self, path, ctype, cache="public, max-age=86400"):
                 if not os.path.isfile(path):
