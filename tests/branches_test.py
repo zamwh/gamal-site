@@ -4,6 +4,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); sys.path.ins
 import core, sync_client
 T = '/tmp/tst/br'; shutil.rmtree(T, ignore_errors=True); os.makedirs(T + '/srv'); PORT = 8101
 srv = subprocess.Popen([sys.executable, 'server.py', '--mode', 'demo', '--port', str(PORT), '--host', '127.0.0.1', '--data', T + '/srv', '--admin-password', 'Test-12345'], cwd=ROOT, stdout=open(T + '/srv.log', 'w'), stderr=subprocess.STDOUT); time.sleep(3)
+import sqlite3 as _sq, os as _os; _c = _sq.connect(_os.path.join(T + '/srv', 'demo.db')); _c.execute("INSERT OR REPLACE INTO settings VALUES ('storefront', '{\"only\": false}')"); _c.commit(); _c.close()   # every shop's pieces show in these tests
 B = f'http://127.0.0.1:{PORT}'; cj = http.cookiejar.CookieJar(); op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
 def call(path, d=None, o=None):
     r = urllib.request.Request(B + path, json.dumps(d).encode() if d is not None else None, {'Content-Type': 'application/json'})

@@ -5,6 +5,7 @@ ROOT = '/home/claude/gamal_pos'; DATA = '/tmp/tst/data'; PORT = 8097
 shutil.rmtree(DATA, ignore_errors=True); os.makedirs(DATA)
 srv = subprocess.Popen([sys.executable, 'server.py', '--mode', 'demo', '--port', str(PORT), '--host', '127.0.0.1', '--data', DATA, '--admin-password', 'Test-12345'], cwd=ROOT, stdout=open("/tmp/tst/srv.log","w"), stderr=subprocess.STDOUT)
 time.sleep(3)
+import sqlite3 as _sq; _c = _sq.connect(os.path.join(DATA, 'demo.db')); _c.execute("INSERT OR REPLACE INTO settings VALUES ('storefront', '{\"only\": false}')"); _c.commit(); _c.close()   # every shop's pieces show in these tests
 B = f'http://127.0.0.1:{PORT}'
 cj = http.cookiejar.CookieJar(); op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
 def call(path, data=None, opener=None):

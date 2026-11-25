@@ -792,7 +792,7 @@ class Store:
             raise GoldError("اكتب اسم المحوِّل وأرفق صورة إيصال التحويل")
         self.expire_reservations()
         p = self.piece(code)
-        if p["status"] != "available" or not p["show_online"]:
+        if p["status"] != "available" or not online_ok(self, p):
             raise GoldError("القطعة غير متاحة حالياً")
         if self.one("SELECT 1 FROM reservations WHERE piece_id=? AND status='pending'", (p["id"],)):
             raise GoldError("يوجد طلب آخر على هذه القطعة قيد المراجعة")
@@ -965,15 +965,29 @@ def storefront(s):
     Jarraan's main gate. Every shop's stock still shows; the branches stay in the system for later expansion.
     Settings may override: setting "storefront" = {"name", "address"}."""
     st = dict(s.setting("storefront", {}) or {})
-    if not st.get("address"):
+    if not st.get("branch_id") or not st.get("address"):
         rows = s.q("SELECT id, address FROM branches")
         gate = next((b for b in rows if "البوابة" in (b["address"] or "")), rows[0] if rows else None)
         st.setdefault("branch_id", gate["id"] if gate else None)
-        st["address"] = (gate["address"] if gate else "") or ""
-        if st["address"] and "إب" not in st["address"]:
-            st["address"] += "، إب"
+        if not st.get("address"):
+            st["address"] = (gate["address"] if gate else "") or ""
+            if st["address"] and "إب" not in st["address"]:
+                st["address"] += "، إب"
     st.setdefault("name", STOREFRONT_NAME)
+    st.setdefault("only", True)          # only this shop's pieces are shown to customers (off = every shop)
     return st
+
+
+def online_branch(s):
+    """The one shop whose pieces customers see, or None when every shop's pieces show."""
+    st = storefront(s)
+    return st.get("branch_id") if st.get("only", True) else None
+
+
+def online_ok(s, p, bid=False):
+    """May customers see this piece (website, assistant, channel)? bid: pass online_branch(s) when checking many."""
+    b = online_branch(s) if bid is False else bid
+    return bool(p["show_online"]) and (not b or p["branch_id"] == b)
 
 
 def showcase_state(p):

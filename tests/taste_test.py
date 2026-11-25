@@ -8,6 +8,7 @@ from taste import piece_values, seed_demo_traits
 
 d = tempfile.mkdtemp()
 s = core.Store("demo", d)
+s.set_setting("storefront", {"only": False})     # these tests use every shop's pieces
 seed_demo_traits(s)
 an = Analytics(os.path.join(d, "an.db"))
 ag = SalesAgent(s, threading.RLock(), an)

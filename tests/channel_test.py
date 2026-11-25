@@ -24,6 +24,7 @@ def check(name, ok, info=""):
 
 d = tempfile.mkdtemp()
 s = core.Store("demo", d)
+s.set_setting("storefront", {"only": False})     # these tests use every shop's pieces
 owner = s.login("owner", "123456")["id"]
 br = s.branches()[0]["id"]
 folder = os.path.join(s.base_dir, "media", s.mode); os.makedirs(folder, exist_ok=True)

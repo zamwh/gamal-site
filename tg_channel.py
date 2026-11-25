@@ -112,7 +112,7 @@ def ready(p, now=None, quiet_min=QUIET_MIN):
 
 
 def _postable(store, p):
-    return (p and p["status"] == "available" and p["show_online"] and not posted(store, p["code"])
+    return (p and p["status"] == "available" and core.online_ok(store, p) and not posted(store, p["code"])
             and any(core.piece_roles(p).values()))
 
 
@@ -134,17 +134,20 @@ def next_piece(store, now=None):
         return store.one("SELECT * FROM pieces WHERE code=?", (q[0],))
     if not ch.get("auto", True):
         return None
+    bid = core.online_branch(store)               # only the shop on show
     rows = store.q("""SELECT * FROM pieces WHERE status='available' AND show_online=1 AND COALESCE(media_at,'')>=?
-                      AND code NOT IN (SELECT code FROM channel_posts) ORDER BY media_at""", (ch.get("since") or "",))
+                      AND code NOT IN (SELECT code FROM channel_posts)""" + (" AND branch_id=?" if bid else "") + " ORDER BY media_at",
+                   (ch.get("since") or "", bid) if bid else (ch.get("since") or "",))
     return next((p for p in rows if ready(p, now)), None)
 
 
 def seed_candidates(store, limit=10):
     """Pieces already on the site, for a channel that starts empty: new arrivals first, then the latest."""
     today = dt.date.today().isoformat()
+    bid = core.online_branch(store)
     rows = store.q("""SELECT * FROM pieces WHERE status='available' AND show_online=1
-                      AND code NOT IN (SELECT code FROM channel_posts)
-                      ORDER BY (COALESCE(new_until,'')>=?) DESC, created_at DESC LIMIT 60""", (today,))
+                      AND code NOT IN (SELECT code FROM channel_posts)""" + (" AND branch_id=?" if bid else "") + """
+                      ORDER BY (COALESCE(new_until,'')>=?) DESC, created_at DESC LIMIT 60""", ((bid, today) if bid else (today,)))
     return [p["code"] for p in rows if any(core.piece_roles(p).values())][:limit]
 
 

@@ -75,7 +75,7 @@ class StaffAgent:
                     "by_branch": s.q("""SELECT b.name branch, COUNT(*) pieces, ROUND(SUM(p.weight),2) grams FROM pieces p
                                         JOIN branches b ON b.id=p.branch_id WHERE p.status='available' GROUP BY b.name"""),
                     "reserved": s.one("SELECT COUNT(*) n FROM pieces WHERE status='reserved'")["n"],
-                    "online": s.one("SELECT COUNT(*) n FROM pieces WHERE status='available' AND show_online=1")["n"],
+                    "online": sum(1 for p in s.q("SELECT * FROM pieces WHERE status='available'") if __import__("core").online_ok(s, p)),
                     "total_available": s.one("SELECT COUNT(*) n, ROUND(COALESCE(SUM(weight),0),2) g FROM pieces WHERE status='available'")}
         if name == "reservations":
             st = args.get("status")

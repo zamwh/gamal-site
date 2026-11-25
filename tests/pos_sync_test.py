@@ -3,6 +3,7 @@ import json, os, subprocess, sys, time, shutil, urllib.request, http.cookiejar
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); DATA = '/tmp/tst/data3'; PORT = 8099
 shutil.rmtree(DATA, ignore_errors=True); os.makedirs(DATA)
 srv = subprocess.Popen([sys.executable, 'server.py', '--mode', 'demo', '--port', str(PORT), '--host', '127.0.0.1', '--data', DATA, '--admin-password', 'Test-12345'], cwd=ROOT, stdout=open('/tmp/tst/srv3.log', 'w'), stderr=subprocess.STDOUT); time.sleep(3)
+import sqlite3 as _sq, os as _os; _c = _sq.connect(_os.path.join(DATA, 'demo.db')); _c.execute("INSERT OR REPLACE INTO settings VALUES ('storefront', '{\"only\": false}')"); _c.commit(); _c.close()   # every shop's pieces show in these tests
 B = f'http://127.0.0.1:{PORT}'; cj = http.cookiejar.CookieJar(); op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
 def call(path, d=None, o=None):
     r = urllib.request.Request(B + path, json.dumps(d).encode() if d is not None else None, {'Content-Type': 'application/json'})

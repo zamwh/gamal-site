@@ -20,7 +20,7 @@
     v: 2, demo: true, deposit_pct: 10, ai: false,
     prices: { k21: { sell: 52000, buy: 50000, chg: 500 }, pound: { sell: 416000, buy: 400000, chg: 4000 }, updated: '', rates: { sar: 140, usd: 535 } },
     history: [], links: { tiktok: 'https://www.tiktok.com/@almashraqi.gold8', instagram: 'https://www.instagram.com/almashreqi_gold', facebook: 'https://www.facebook.com/share/1JkbaD2t5t/', whatsapp: '+967770088801' },
-    branches: [{ n: 'الفرع الأول', addr: 'مركز جرعان — المحل رقم 6' }, { n: 'الفرع الثاني', addr: 'بجوار البوابة الرئيسية لمركز جرعان' }, { n: 'الفرع الثالث', addr: 'السبل — داخل ون مول' }],
+    branches: [{ n: 'جمال المشرقي للذهب والمجوهرات', addr: 'بجوار البوابة الرئيسية لمركز جرعان، إب', one: true }],
     policy: { deposit: 'الحجز بعربون 10% من قيمة القطعة يحفظها 24 ساعة من تأكيده ولا يثبّت سعر الذهب؛ السعر النهائي بسعر الذهب يوم إتمام البيع ويُخصم منه العربون. لا يُعد الحجز مؤكداً إلا بعد مراجعة المحاسب لوصول التحويل. الاستلام في الفرع فقط بفاتورة موقعة من الطرفين.', full: 'شراء بتحويل كامل قيمة القطعة: يثبت السعر بسعر الذهب وقت التحويل، ولا يُعد الشراء رسمياً إلا بعد مراجعة المحاسب لوصول المبلغ كاملاً. بعد التأكيد تستلم القطعة من الفرع بفاتورة رسمية موقعة من الطرفين.' },
     pieces: [
       ['D000001', 'طقم عروس متكامل بالورد', 'طقم', 148.6, 'set', 'فخم', 'عرس', 'الفرع الأول', 'طقم كامل: عقد بشراشيب، حلق، كف بخواتم، وحزام مدوّر.'],
@@ -293,7 +293,9 @@
 
   /* ---------- branches ---------- */
   function renderBranches() {
-    $('#brs').innerHTML = SITE.branches.map(function (b, i) { var map = b.map || 'https://maps.google.com/?q=' + encodeURIComponent('جمال المشرقي للذهب ' + b.addr + ' إب'); return '<div class="br rv' + (i ? ' d' + i : '') + '"><span class="n num">0' + (i + 1) + '</span><h3>' + esc(b.n) + '</h3><p>إب — ' + esc(b.addr) + '</p><div class="r"><a class="btn s" href="' + esc(map) + '" target="_blank" rel="noopener">الخريطة</a><a class="btn g s" href="#" data-link="whatsapp">راسلنا</a></div></div>' }).join('');
+    var one = SITE.branches.length === 1;
+    if ($('#brEye')) { $('#brEye').textContent = one ? 'محلنا' : 'فروعنا'; $('#brTtl').innerHTML = one ? 'بجوار البوابة الرئيسية <em>في إب</em>' : SITE.branches.length + ' فروع <em>في إب</em>' }
+    $('#brs').innerHTML = SITE.branches.map(function (b, i) { var map = b.map || 'https://maps.google.com/?q=' + encodeURIComponent('جمال المشرقي للذهب ' + b.addr + (/إب/.test(b.addr) ? '' : ' إب')); return '<div class="br rv' + (i ? ' d' + i : '') + '">' + (one ? '' : '<span class="n num">0' + (i + 1) + '</span>') + '<h3>' + esc(b.n) + '</h3><p>' + (/إب/.test(b.addr) ? '' : 'إب — ') + esc(b.addr) + '</p><div class="r"><a class="btn s" href="' + esc(map) + '" target="_blank" rel="noopener">الخريطة</a><a class="btn g s" href="#" data-link="whatsapp">راسلنا</a></div></div>' }).join('');
   }
 
   /* ---------- shortlist ---------- */
@@ -481,7 +483,7 @@
         '<div class="note">حوّل المبلغ ثم اضغط التالي لإرفاق صورة الإيصال.</div><button class="btn g full" id="toForm" style="margin-top:12px">حوّلت — التالي</button>';
     } else if (CK.step === 4) {
       body = '<label class="fld"><span>الاسم</span><input class="inp" id="fName" maxlength="80" autocomplete="name"></label><label class="fld"><span>رقم الجوال (واتساب)</span><input class="inp num" id="fPhone" maxlength="20" inputmode="tel" autocomplete="tel"></label>' +
-        '<label class="fld"><span>من أي فرع يريحك تستلمها؟</span><select class="inp" id="fPick">' + SITE.branches.map(function (b) { return '<option>' + esc(b.n + ' — ' + b.addr) + '</option>' }).join('') + '</select></label>' +
+        '<label class="fld"><span>' + (SITE.branches.length === 1 ? 'الاستلام من المحل' : 'من أي فرع يريحك تستلمها؟') + '</span><select class="inp" id="fPick">' + SITE.branches.map(function (b) { return '<option>' + esc(b.n + ' — ' + b.addr) + '</option>' }).join('') + '</select></label>' +
         '<label class="fld"><span>اسم المحوِّل كما في الإيصال</span><input class="inp" id="fPayer" maxlength="80"></label><label class="drop" id="drop"><input type="file" id="fRec" accept="image/*" hidden><span id="dropTx">اضغط لإرفاق صورة إيصال التحويل</span><img id="recPrev" class="hidden" alt=""></label>' +
         '<button class="btn g full" id="submit" style="margin-top:14px">أرسل الطلب للمراجعة</button><div class="err" id="ckErr"></div>';
     } else {

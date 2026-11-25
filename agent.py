@@ -511,7 +511,9 @@ class SalesAgent:
                 "new_arrival": __import__("core").showcase_state(p)["new"]}
 
     def _available(self):
-        return [p for p in self.store.list_pieces(status="available") if p["show_online"]]
+        import core
+        bid = core.online_branch(self.store)            # only the shop on show
+        return [p for p in self.store.list_pieces(status="available") if core.online_ok(self.store, p, bid)]
 
     def _match_kind(self, p, kind):
         if not kind:
@@ -746,7 +748,7 @@ class SalesAgent:
         if name == "piece_details":
             code = str(args.get("code", "")).upper().strip("[] ")
             p = self.store.piece(code)
-            if not p["show_online"] or p["status"] not in ("available", "reserved"):
+            if not __import__("core").online_ok(self.store, p) or p["status"] not in ("available", "reserved"):
                 return {"error": "القطعة غير متاحة الآن"}
             k = p.keys()
             return {"code": p["code"], "name": (p["title"] if "title" in k else None) or p["type"], "kind": p["type"],
@@ -760,7 +762,7 @@ class SalesAgent:
             st = ctx.get("state")
             code = (shopstate.resolve_ref(st, args.get("code", "")) if st else None) or str(args.get("code", "")).upper().strip("[] ")
             p = self.store.piece(code)
-            if not p["show_online"] or p["status"] != "available":
+            if not __import__("core").online_ok(self.store, p) or p["status"] != "available":
                 return {"error": "القطعة غير متاحة للحجز الآن"}
             ctx["offer"] = code
             if st:
@@ -987,7 +989,7 @@ class SalesAgent:
             for code in codes[:4]:
                 try:
                     p = self.store.piece(code)
-                    if p["show_online"] and p["status"] in ("available", "reserved"):
+                    if __import__("core").online_ok(self.store, p) and p["status"] in ("available", "reserved"):
                         pieces.append(self._public(p))
                 except Exception:
                     pass
@@ -1185,7 +1187,7 @@ class SalesAgent:
     def _status(self, code):
         try:
             p = self.store.piece(code)
-            return p["status"] if p["show_online"] else "hidden"
+            return p["status"] if __import__("core").online_ok(self.store, p) else "hidden"
         except Exception:
             return "missing"
 
@@ -1273,8 +1275,11 @@ class SalesAgent:
         import base64
         from taste import DIMS
         with self.lock:
+            bid = __import__("core").online_branch(self.store)       # only pieces customers can see get read
             rows = [p for p in self.store.q("SELECT * FROM pieces WHERE status IN ('available','reserved') AND show_online=1 "
-                                             "AND (traits IS NULL OR traits='') ORDER BY created_at DESC LIMIT ?", (limit,))]
+                                             + ("AND branch_id=? " if bid else "") +
+                                             "AND (traits IS NULL OR traits='') ORDER BY created_at DESC LIMIT ?",
+                                             ((bid, limit) if bid else (limit,)))]
         n = 0
         for p in rows:
             try:

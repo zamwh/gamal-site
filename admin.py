@@ -97,7 +97,9 @@ def get(app, u, path, q):
         s.require(u["id"], "owner")
         import pos_sync
         with app.lock:
-            return pos_sync.keys(s, u["id"])
+            bid = core.online_branch(s)          # the shop on show: its program is the one to link
+            return [dict(k, letter=chr(65 + i), shown=(k["branch_id"] == bid) if bid else True)
+                    for i, k in enumerate(pos_sync.keys(s, u["id"]))]
     if path == "/api/admin/me":
         return {"name": u["name"], "role": u["role"], "mode": s.mode}
     if path == "/api/admin/analytics":

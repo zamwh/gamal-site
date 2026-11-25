@@ -281,9 +281,10 @@
         '<button class="btn g full" id="svTg">حفظ</button></div></div>' +
         '<div class="g2"><div class="box"><h3>ربط برنامج المحل</h3><div class="sub">في برنامج المحل: الإعدادات، ثم «الفروع والربط». الصق رمز الفرع واضغط «ربط». بعدها أي قطعة تنضاف في البرنامج تنزل في الموقع، والبوت يطلب صورها.</div><div id="posKeys" class="sub">جاري التحميل…</div></div></div>';
       api('/api/admin/pos_keys').then(function (ks) {
-        $('#posKeys').innerHTML = ks.map(function (k, i) {
-          var code = 'GM:' + btoa(unescape(encodeURIComponent(JSON.stringify({ u: location.origin, k: k.key, p: String.fromCharCode(65 + i) }))));
-          return '<div style="margin:10px 0"><b>' + esc(k.branch) + '</b><div style="display:flex;gap:8px;margin-top:6px"><input class="inp" readonly value="' + esc(code) + '" style="direction:ltr;flex:1;font-size:12px"><button class="btn s g" data-cp="' + esc(code) + '">نسخ</button></div></div>';
+        var one = ks.filter(function (k) { return k.shown }).length === 1;
+        $('#posKeys').innerHTML = ks.filter(function (k) { return k.shown }).map(function (k) {
+          var code = 'GM:' + btoa(unescape(encodeURIComponent(JSON.stringify({ u: location.origin, k: k.key, p: k.letter }))));
+          return '<div style="margin:10px 0"><b>' + (one ? 'برنامج المحل (بجوار البوابة الرئيسية)' : esc(k.branch)) + '</b><div style="display:flex;gap:8px;margin-top:6px"><input class="inp" readonly value="' + esc(code) + '" style="direction:ltr;flex:1;font-size:12px"><button class="btn s g" data-cp="' + esc(code) + '">نسخ</button></div></div>';
         }).join('');
         mp.querySelectorAll('[data-cp]').forEach(function (b) { b.onclick = function () {
           var v = b.dataset.cp, done = function () { toast('تم النسخ') };

@@ -9,6 +9,7 @@ shutil.rmtree(DATA, ignore_errors=True); os.makedirs(DATA)
 srv = subprocess.Popen([sys.executable, 'server.py', '--mode', 'demo', '--port', str(PORT), '--host', '127.0.0.1', '--data', DATA,
                         '--admin-password', 'Test-12345'], cwd=ROOT, stdout=open('/tmp/tst/link_srv.log', 'w'), stderr=subprocess.STDOUT)
 time.sleep(3)
+import sqlite3 as _sq, os as _os; _c = _sq.connect(_os.path.join(DATA, 'demo.db')); _c.execute("INSERT OR REPLACE INTO settings VALUES ('storefront', '{\"only\": false}')"); _c.commit(); _c.close()   # every shop's pieces show in these tests
 B = f'http://127.0.0.1:{PORT}'
 op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
 def call(path, data=None):

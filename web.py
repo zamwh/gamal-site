@@ -7,6 +7,7 @@ outside any served folder, payment accounts revealed only after the terms are ac
 import base64
 import hashlib
 import hmac
+import core
 import json
 import os
 import re
@@ -102,8 +103,19 @@ class Server:
             return False
 
     # ---- payloads
+    def shops(self):
+        """Where customers can come: only the shop on show (by its shop name), or every shop when all are shown."""
+        s = self.app.store
+        st, bid = core.storefront(s), core.online_branch(s)
+        rows = s.branches()
+        if bid:
+            b = next((x for x in rows if x["id"] == bid), None) or {}
+            return [{"n": st["name"], "addr": st["address"], "phone": b.get("phone"), "map": b.get("map_url"), "one": True}]
+        return [{"n": b["name"], "addr": b["address"], "phone": b["phone"], "map": b["map_url"]} for b in rows]
+
     def site_payload(self):
         s = self.app.store
+        bid = core.online_branch(s)
         pr = s.current_prices()
         prev = s.one("SELECT * FROM prices ORDER BY created_at DESC, rowid DESC LIMIT 1 OFFSET 1")
         prices = None
@@ -118,20 +130,18 @@ class Server:
         ai = self.app.agent.cfg()
         return {"v": 2, "demo": s.mode == "demo", "shop": s.setting("shop"), "prices": prices, "history": hist,
                 "links": s.setting("links", {}), "deposit_pct": res["deposit_pct"],
-                "branches": [{"n": b["name"], "addr": b["address"], "phone": b["phone"], "map": b["map_url"]}
-                             for b in s.branches()],
+                "branches": self.shops(),
                 "pieces": [self.app.agent._public(p, p["price"]) for p in s.list_pieces(status="available")
-                           if p["show_online"]],
+                           if core.online_ok(s, p, bid)],
                 "policy": {"deposit": s.policy_text("deposit"), "full": s.policy_text("full")},
                 "ai": bool(ai.get("enabled") and ai.get("api_key"))}
 
     def piece_payload(self, code):
         s = self.app.store
         p = s.piece(code)
-        if not p["show_online"]:
+        if not core.online_ok(s, p):
             return {"code": p["code"], "status": "hidden"}
         d = self.app.agent._public(p)
-        import core
         roles = core.piece_roles(p)
         d.update({"photos": [self.app.agent._murl(f) for f in json.loads(p["photos"] or "[]")],
                   "gallery": [{"role": k, "url": self.app.agent._murl(roles[k])} for k in core.PHOTO_ROLES if roles[k]],
@@ -259,7 +269,9 @@ class Server:
                             return self._send(200, {"rows": app.store.q("SELECT turn, tool, args, result FROM ai_trace WHERE session=? ORDER BY id", (sess,))})
                     if path == "/api/avail":      # live stock: what the page may still offer right now
                         with app.lock:
-                            rows = app.store.q("SELECT code, status FROM pieces WHERE show_online=1 AND status IN ('available','reserved')")
+                            bid = core.online_branch(app.store)
+                            rows = app.store.q("SELECT code, status FROM pieces WHERE show_online=1 AND status IN ('available','reserved')"
+                                               + (" AND branch_id=?" if bid else ""), (bid,) if bid else ())
                             v = app.store.one("SELECT COALESCE(MAX(updated_at),'') AS v, COUNT(*) AS n FROM pieces")
                         return self._send(200, {"v": f"{v['v']}|{v['n']}", "available": [r["code"] for r in rows if r["status"] == "available"],
                                                 "reserved": [r["code"] for r in rows if r["status"] == "reserved"]})
@@ -343,7 +355,7 @@ class Server:
                             return self._send(400, {"error": "لازم توافق على الشروط"})
                         with app.lock:
                             p = app.store.piece(code)
-                            if p["status"] != "available" or not p["show_online"]:
+                            if p["status"] != "available" or not core.online_ok(app.store, p):
                                 raise GoldError("القطعة غير متاحة حالياً")
                             price = app.store.piece_price(p)["total"]
                             pct = float(app.store.setting("reservation")["deposit_pct"])

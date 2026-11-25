@@ -11,6 +11,7 @@ from taste import seed_demo_traits, traits_of
 random.seed(7)
 d = tempfile.mkdtemp()
 s = core.Store("demo", d)
+s.set_setting("storefront", {"only": False})     # these tests use every shop's pieces
 seed_demo_traits(s)
 ag = SalesAgent(s, threading.RLock())
 owner = s.login("owner", "123456")["id"]
