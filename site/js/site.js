@@ -159,14 +159,47 @@
 
   /* ---------- cards ---------- */
   function card(p, extra) {
-    var fav = inList(p.code);
-    return '<article class="card ' + (extra || '') + '" data-code="' + esc(p.code) + '"><div class="ph">' + (p.photo ? '<img loading="lazy" src="' + esc(p.photo) + '" alt="' + esc(p.title) + '">' : '') +
+    var fav = inList(p.code), g = (p.gallery && p.gallery.length ? p.gallery : [p.photo]).filter(Boolean), multi = g.length > 1;
+    // all the piece's photos side by side: swipe them inside the card (or use the arrows), without opening the piece
+    var strip = g.length ? '<div class="sw' + (multi ? ' multi' : '') + '">' + g.map(function (u) { return '<img loading="lazy" draggable="false" src="' + esc(u) + '" alt="' + esc(p.title) + '">' }).join('') + '</div>' : '';
+    if (multi) strip += '<div class="dots">' + g.map(function (u, i) { return '<i' + (i ? '' : ' class="on"') + '></i>' }).join('') + '</div>' +
+      '<button class="nv pv" dir="ltr" data-nv="-1" aria-label="الصورة السابقة">›</button><button class="nv nx" dir="ltr" data-nv="1" aria-label="الصورة التالية">‹</button>';
+    return '<article class="card ' + (extra || '') + '" data-code="' + esc(p.code) + '"><div class="ph">' + strip +
       '<span class="tag">' + p.karat + 'K</span>' + (p.status === 'reserved' ? '<span class="tag l">محجوزة</span>' : p.is_new ? '<span class="tag l nw">وصل حديثاً</span>' : '') +
       '<button class="fav' + (fav ? ' on' : '') + '" data-fav="' + esc(p.code) + '" aria-label="اختياراتي"><svg class="i"><use href="#s-heart"/></svg></button><span class="qv">شاهد القطعة</span></div>' +
       '<div class="bd"><h3>' + esc(p.title) + '</h3><div class="m"><span class="num">' + p.weight.toFixed(2) + '</span> جم · عيار 21</div><div class="pr">' + moneyH(p.price) + '</div></div></article>';
   }
+  function swipe(sw) {
+    var ph = sw.parentNode, dots = $$('.dots i', ph), n = dots.length, t, down = null;
+    var rtl = function () { return getComputedStyle(sw).direction === 'rtl' };
+    var idx = function () { return Math.max(0, Math.min(n - 1, Math.round(Math.abs(sw.scrollLeft) / (sw.clientWidth || 1)))) };
+    var go = function (k) { sw.scrollTo({ left: (rtl() ? -1 : 1) * k * sw.clientWidth, behavior: 'smooth' }) };
+    sw.addEventListener('scroll', function () {
+      clearTimeout(t);
+      t = setTimeout(function () { var k = idx(); dots.forEach(function (d, j) { d.classList.toggle('on', j === k) }) }, 50);
+    }, { passive: true });
+    $$('[data-nv]', ph).forEach(function (b) { b.onclick = function (e) { e.preventDefault(); e.stopPropagation(); go(Math.max(0, Math.min(n - 1, idx() + Number(b.dataset.nv)))) } });
+    // a mouse can drag the photos too (fingers scroll on their own); a drag never opens the piece
+    sw.addEventListener('pointerdown', function (e) { if (e.pointerType === 'mouse' && !e.button) down = { x: e.clientX, l: sw.scrollLeft, moved: false } });
+    sw.addEventListener('pointermove', function (e) {
+      if (!down) return;
+      var dx = e.clientX - down.x;
+      if (!down.moved && Math.abs(dx) > 6) { down.moved = true; sw.classList.add('drag'); try { sw.setPointerCapture(e.pointerId) } catch (x) {} }
+      if (down.moved) sw.scrollLeft = down.l - dx;
+    });
+    var up = function () {
+      if (!down) return;
+      var moved = down.moved; down = null; sw.classList.remove('drag');
+      if (moved) { sw.dataset.dragged = '1'; go(idx()); setTimeout(function () { delete sw.dataset.dragged }, 80) }
+    };
+    sw.addEventListener('pointerup', up); sw.addEventListener('pointercancel', up);
+  }
   function bindCards(root, via) {
-    $$('.card', root).forEach(function (c) { c.onclick = function (e) { if (e.target.closest('[data-fav]')) return; if (via === 'ai') T('ai_detail_open', c.dataset.code, null, 1); location.hash = 'p-' + c.dataset.code } });
+    $$('.sw.multi', root).forEach(swipe);
+    $$('.card', root).forEach(function (c) { c.onclick = function (e) {
+      if (e.target.closest('[data-fav]') || e.target.closest('[data-nv]')) return;
+      var sw = e.target.closest('.sw'); if (sw && sw.dataset.dragged) return;
+      if (via === 'ai') T('ai_detail_open', c.dataset.code, null, 1); location.hash = 'p-' + c.dataset.code } });
     $$('[data-fav]', root).forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); toggleList(b.dataset.fav, via); b.classList.toggle('on', inList(b.dataset.fav)) } });
   }
   function renderNew() {

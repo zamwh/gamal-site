@@ -941,3 +941,22 @@ html[dir=ltr] .i.ar{transform:scaleX(-1)}
 .tbl td.thc{width:52px}.tbl td.thc img{width:44px;height:44px;object-fit:cover;border-radius:8px;display:block}
 @media(max-width:560px){.pslot small{display:none}}
 .tag.l.nw{background:linear-gradient(135deg,#ecd29a,#c79b45);color:#2a1d08;border-color:transparent;font-weight:600}
+
+/* photos swipe inside the card on the list (like the big shops): fingers swipe, a mouse drags or uses the arrows */
+.card .ph .sw{display:flex;width:100%;height:100%;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.card .ph .sw::-webkit-scrollbar{display:none}
+.card .ph .sw img{flex:0 0 100%;scroll-snap-align:start;scroll-snap-stop:always;user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
+.card .ph .sw.drag{scroll-snap-type:none;cursor:grabbing}
+.card:hover .ph .sw.multi img{transform:none}
+.card .ph .dots{position:absolute;z-index:3;bottom:12px;left:0;right:0;display:flex;justify-content:center;gap:5px;pointer-events:none;transition:bottom .5s var(--out)}
+.card .ph .dots i{width:6px;height:6px;border-radius:3px;background:rgba(255,255,255,.5);transition:width .3s,background .3s}
+.card .ph .dots i.on{width:16px;background:#f3dca2}
+.card:hover .ph .dots{bottom:66px}
+.card .ph .nv{position:absolute;z-index:4;top:50%;width:34px;height:34px;margin-top:-17px;border-radius:50%;border:1px solid rgba(243,220,162,.25);background:rgba(10,8,6,.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:#f3dca2;font-size:22px;line-height:1;display:grid;place-items:center;padding:0 0 3px;cursor:pointer;opacity:0;transition:opacity .4s}
+.card .ph .nv.pv{right:10px}
+.card .ph .nv.nx{left:10px}
+.card:hover .ph .nv{opacity:1}
+.card .qv,.card .tag{pointer-events:none}
+@media (hover:none){.card .ph .nv{display:none}.card:hover .ph .dots{bottom:12px}}
+.rail .card .ph .sw{overflow:hidden}
+.rail .card .ph .dots,.rail .card .ph .nv{display:none}

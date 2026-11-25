@@ -131,10 +131,17 @@ class Server:
         return {"v": 2, "demo": s.mode == "demo", "shop": s.setting("shop"), "prices": prices, "history": hist,
                 "links": s.setting("links", {}), "deposit_pct": res["deposit_pct"],
                 "branches": self.shops(),
-                "pieces": [self.app.agent._public(p, p["price"]) for p in s.list_pieces(status="available")
-                           if core.online_ok(s, p, bid)],
+                "pieces": [dict(self.app.agent._public(p, p["price"]), gallery=self.gallery(p))
+                           for p in s.list_pieces(status="available") if core.online_ok(s, p, bid)],
                 "policy": {"deposit": s.policy_text("deposit"), "full": s.policy_text("full")},
                 "ai": bool(ai.get("enabled") and ai.get("api_key"))}
+
+    def gallery(self, p):
+        """A piece's photos for the swipe strip inside its card: the card photo first, then the close-up and the original."""
+        roles = core.piece_roles(p)
+        first = core.card_photo(p)
+        files = [first] + [roles[k] for k in core.PHOTO_ROLES if roles[k] and roles[k] != first] if first else []
+        return [self.app.agent._murl(f) for f in dict.fromkeys(files)]
 
     def piece_payload(self, code):
         s = self.app.store
