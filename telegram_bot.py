@@ -36,10 +36,12 @@ class Bot(threading.Thread):
                                      {"Content-Type": "application/json"})
         return json.loads(urllib.request.urlopen(req, timeout=timeout).read())
 
-    def send(self, token, chat, text, buttons=None):
+    def send(self, token, chat, text, buttons=None, markup=None):
         d = {"chat_id": chat, "text": text[:4000], "disable_web_page_preview": True}
         if buttons:
             d["reply_markup"] = {"inline_keyboard": [[b] for b in buttons]}
+        elif markup:
+            d["reply_markup"] = markup
         try:
             self.call(token, "sendMessage", d)
         except Exception as e:
@@ -363,6 +365,20 @@ class Bot(threading.Thread):
         self.send(token, chat, "أهلاً بك. هذا الحساب خاص بإدارة محل جمال المشرقي للذهب والمجوهرات.\n"
                                "تابع قطعنا الجديدة في قناتنا، وللاستفسار تواصل مع فريق المبيعات.", btn or None)
 
+    def _menu_once(self, token):
+        """New report buttons: every linked staff account gets them once, without having to ask."""
+        import staff_menu
+        with self.app.lock:
+            c = cfg(self.app.store)
+            if c.get("menu_v") == staff_menu.VERSION:
+                return
+            c["menu_v"] = staff_menu.VERSION
+            self.app.store.set_setting("telegram", c)
+            chats = list((c.get("staff") or {}).keys())
+        for chat in chats:
+            self.send(token, chat, "وصلت أزرار التقارير تحت: المبيعات، المخزون، الفواتير، الحجوزات، اهتمام الزبائن، وغيرها.",
+                      markup=staff_menu.keyboard())
+
     # ---------- loop
     def run(self):
         while True:
@@ -377,6 +393,7 @@ class Bot(threading.Thread):
                 if not self.username:
                     me = self.call(token, "getMe")
                     self.username = me["result"].get("username", "")
+                    self._menu_once(token)
                 self.status = "running"
                 r = self.call(token, "getUpdates", {"offset": self.offset, "timeout": 25,
                                                     "allowed_updates": ["message", "callback_query", "my_chat_member"]}, timeout=40)
@@ -439,8 +456,24 @@ class Bot(threading.Thread):
             return self._save_photo(token, chat, msg, target[0], target[1])
         if not chat or not text:
             return
-        if staff and text in ("/photos", "/صور"):
+        if staff and text in ("/photos", "/صور", "قطع بدون صور"):
             return self._pending_list(token, chat)
+        if staff and text == "قناة المحل":
+            return self._channel_cmd(token, chat, uid, "/channel")
+        if staff and text in ("/start", "/menu", "/القائمة"):
+            import staff_menu
+            return self.send(token, chat, "اختر التقرير من الأزرار تحت، أو اكتب أي سؤال عن المحل والوكيل يجاوبك.",
+                             markup=staff_menu.keyboard())
+        if staff:
+            import staff_menu
+            if text in staff_menu.BUTTONS:
+                try:
+                    with app.lock:
+                        rep = staff_menu.report(app, text)
+                except Exception as e:
+                    print("report:", text, e, flush=True)
+                    rep = "ما قدرت أطلع التقرير الحين."
+                return self.send(token, chat, rep or "ما فيه بيانات.")
         if staff and (text in ("/channel", "/قناة") or text.startswith("ch:")):
             return self._channel_cmd(token, chat, uid, text)
         if staff and text.startswith("/post"):
@@ -471,9 +504,10 @@ class Bot(threading.Thread):
                     c["link_code"] = f"{random.randint(100000, 999999)}"      # one use
                     app.store.set_setting("telegram", c)
                     app.store.db.commit()
+                import staff_menu
                 self.send(token, chat, "تم ربطك. يوصلك هنا كل بيع وكل حجز وتنبيهات الشراء، وكل قطعة جديدة تطلب صورها.\n"
-                                       "اسألني عن المبيعات والمخزون والحجوزات واهتمام الزبائن بالقطع.\n"
-                                       "/photos القطع اللي ناقصها صور\n/channel قناة المحل\n/customer تجربة كزبون، /staff للرجوع")
+                                       "التقارير في الأزرار تحت، وأي سؤال ثاني اكتبه والوكيل يجاوبك.\n"
+                                       "/customer تجربة المستشار كزبون، /staff للرجوع", markup=staff_menu.keyboard())
             else:
                 self._admin_fail[uid] = fails + [time.time()]
                 self.send(token, chat, "الرمز غير صحيح.")

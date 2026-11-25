@@ -91,12 +91,11 @@ class StaffAgent:
         if name == "website_and_ai":
             a, b = self._range(args.get("date_from"), args.get("date_to"))
             out = {"from": a, "to": b}
-            if self.analytics:
-                with self.analytics.lock:
-                    k = self.analytics.overview(a, b)["kpi"]
-                    out["website"] = {x: k.get(x) for x in ("visitors", "sessions", "piece_views", "ai_chat", "shortlist", "requests", "whatsapp")}
-                    out["ai_cost_usd"] = round(self.analytics._one("SELECT COALESCE(SUM(cost),0) c FROM ai_usage WHERE day BETWEEN ? AND ?", (a, b))["c"], 4)
-                    out["ai_messages"] = self.analytics._one("SELECT COUNT(*) n FROM ai_usage WHERE day BETWEEN ? AND ?", (a, b))["n"]
+            if self.analytics:          # the analytics methods take their own lock (taking it here too froze the thread)
+                k = self.analytics.overview(a, b)["kpi"]
+                out["website"] = {x: k.get(x) for x in ("visitors", "sessions", "piece_views", "ai_chat", "shortlist", "requests", "whatsapp")}
+                out["ai_cost_usd"] = round(self.analytics._one("SELECT COALESCE(SUM(cost),0) c FROM ai_usage WHERE day BETWEEN ? AND ?", (a, b))["c"], 4)
+                out["ai_messages"] = self.analytics._one("SELECT COUNT(*) n FROM ai_usage WHERE day BETWEEN ? AND ?", (a, b))["n"]
             out["handoffs"] = s.one("SELECT COUNT(*) n FROM handoffs WHERE substr(ts,1,10) BETWEEN ? AND ?", (a, b))["n"]
             return out
         if name == "piece_interest":
