@@ -25,14 +25,19 @@ CREATE TABLE IF NOT EXISTS notifications (
   body TEXT, ref TEXT, seen INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS channel_posts (
   code TEXT PRIMARY KEY, chat_id TEXT NOT NULL, message_id INTEGER NOT NULL, photos INTEGER NOT NULL DEFAULT 1,
-  posted_at TEXT NOT NULL, sold INTEGER NOT NULL DEFAULT 0, markup TEXT);
+  posted_at TEXT NOT NULL, sold INTEGER NOT NULL DEFAULT 0, markup TEXT, reactions INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS channel_likes (
+  code TEXT NOT NULL, who TEXT NOT NULL, ts TEXT NOT NULL, PRIMARY KEY (code, who));
 """
 
 
 def ensure(s):
     s.db.executescript(SCHEMA)
-    if "markup" not in {r[1] for r in s.db.execute("PRAGMA table_info(channel_posts)")}:
+    have = {r[1] for r in s.db.execute("PRAGMA table_info(channel_posts)")}
+    if "markup" not in have:
         s.db.execute("ALTER TABLE channel_posts ADD COLUMN markup TEXT")     # the buttons under each channel post
+    if "reactions" not in have:
+        s.db.execute("ALTER TABLE channel_posts ADD COLUMN reactions INTEGER NOT NULL DEFAULT 0")   # emoji reactions on it
 
 
 def _norm_phone(p):

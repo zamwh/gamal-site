@@ -7,9 +7,12 @@ Posting: a piece is posted by itself once it has its display (velvet) photo: at 
 or after a quiet 10 minutes, so the website page has every photo by the time customers open it. At most one post a
 minute. The post is one photo (Telegram allows no buttons under an album) with two buttons under it: the sales team
 on WhatsApp (a ready message names the piece) and the piece's page on the website, where it can be bought.
-Sold: the caption changes to "تم البيع" and only the sales button stays.
+Sold: the caption changes to "تم البيع" and the one button becomes «أبغى مثلها»: a customer shows interest with
+one tap (counted once per person, no chat, no WhatsApp) and the owner sees what people want, to stock by it.
+Emoji reactions on every post are counted too (Telegram sends the totals to the bot, a few minutes late).
 The bot itself is for the shop's staff only; customers see the channel."""
 import datetime as dt
+import hashlib
 import html
 import json
 import os
@@ -145,6 +148,23 @@ def seed_candidates(store, limit=10):
     return [p["code"] for p in rows if any(core.piece_roles(p).values())][:limit]
 
 
+def live_posts(store):
+    """Posts the bot thinks are in the channel and still offered (checked against Telegram before republishing)."""
+    return store.q("SELECT * FROM channel_posts WHERE message_id>0 AND sold=0")
+
+
+def forget(store, codes):
+    """These posts are gone from the channel (deleted by hand) or never made it: the pieces can be posted again."""
+    for c in codes:
+        store.db.execute("DELETE FROM channel_posts WHERE code=?", (c,))
+    store.db.execute("DELETE FROM channel_posts WHERE message_id=0")
+    ch = get(store)
+    if ch:
+        ch["tries"], ch["pause_until"] = {}, 0
+        save(store, ch)
+    store.db.commit()
+
+
 def enqueue(store, codes, front=False):
     ch = get(store)
     if not ch.get("id"):
@@ -185,14 +205,37 @@ def wa_link(store, p):
     return f"https://wa.me/{num}?text=" + urllib.parse.quote(msg)
 
 
+def likes(store, code):
+    return store.one("SELECT COUNT(*) n FROM channel_likes WHERE code=?", (code,))["n"]
+
+
+def like_label(n):
+    return "❤️ أبغى مثلها" + (f" · {n}" if n else "")
+
+
+def add_like(store, code, user_id):
+    """One tap of «أبغى مثلها»: counted once per person (kept as a one-way fingerprint, not the account)."""
+    who = hashlib.sha256(f"{store.setting('secret', '') or ''}|{user_id}".encode()).hexdigest()[:20]
+    cur = store.db.execute("INSERT OR IGNORE INTO channel_likes (code, who, ts) VALUES (?,?,?)", (code, who, core.now()))
+    store.db.commit()
+    return cur.rowcount == 1, likes(store, code)
+
+
+def set_reactions(store, chat_id, message_id, total):
+    store.db.execute("UPDATE channel_posts SET reactions=? WHERE chat_id=? AND message_id=?", (int(total), str(chat_id), int(message_id)))
+    store.db.commit()
+
+
 def buttons(store, p, base, sold=False):
-    """Under the post: the sales team on WhatsApp, and the piece on the website (gone once sold)."""
+    """Under the post: the sales team on WhatsApp and the piece on the website; once sold, «أبغى مثلها» only."""
+    if sold:
+        return {"inline_keyboard": [[{"text": like_label(likes(store, p["code"])), "callback_data": f"lk:{p['code']}"}]]}
     rows = []
     wa = wa_link(store, p)
     if wa:
-        rows.append([{"text": "تواصل مع فريق المبيعات", "url": wa}])
-    if base and not sold:
-        rows.append([{"text": "اعرضها واشترِها من الموقع", "url": f"{base.rstrip('/')}/p/{p['code']}"}])
+        rows.append([{"text": "💬 تواصل مع فريق المبيعات", "url": wa}])
+    if base:
+        rows.append([{"text": "🛍️ اعرضها واشترِها من الموقع", "url": f"{base.rstrip('/')}/p/{p['code']}"}])
     return {"inline_keyboard": rows}
 
 
@@ -214,6 +257,8 @@ def caption(store, p, sold=False):
     if br and not sold:
         lines.append(e(br))
     lines.append(f"رقم القطعة {e(p['code'])}")
+    if sold:
+        lines += ["", "عجبتك؟ اضغط «أبغى مثلها»، ورأيك يحدد البضاعة الجاية."]
     return "\n".join(lines)
 
 

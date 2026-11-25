@@ -26,7 +26,7 @@ TOOLS = [
      "parameters": {"type": "object", "properties": {}}}},
     {"type": "function", "function": {"name": "website_and_ai", "description": "زوار الموقع ومشاهدات القطع ومحادثات المستشار وتكلفة الذكاء الاصطناعي في فترة.",
      "parameters": {"type": "object", "properties": {"date_from": {"type": "string"}, "date_to": {"type": "string"}}}}},
-    {"type": "function", "function": {"name": "piece_interest", "description": "اهتمام الزبائن بالقطع المعروضة: كم شخص فتح كل قطعة (من الموقع أو من قناة التليجرام) وكم شخص حافظها، مرتبة من الأكثر. تفيد لمعرفة القطع اللي عليها طلب وما انباعت.",
+    {"type": "function", "function": {"name": "piece_interest", "description": "اهتمام الزبائن: كم شخص فتح كل قطعة في الموقع وكم حافظها، وكم ضغط «أبغى مثلها» تحت القطع المباعة في القناة، وتفاعلات القناة. تفيد لمعرفة وش يطلبه الناس ووش ينشرى.",
      "parameters": {"type": "object", "properties": {"limit": {"type": "integer"}}}}},
     {"type": "function", "function": {"name": "prices_today", "description": "سعر الذهب المعتمد اليوم وأسعار الصرف.", "parameters": {"type": "object", "properties": {}}}},
     {"type": "function", "function": {"name": "find_piece", "description": "بحث عن قطعة برمزها أو اسمها: حالتها وسعرها وفرعها.",
@@ -106,8 +106,13 @@ class StaffAgent:
                 v = pi.get(p["code"]) or [0, 0]
                 rows.append(dict(p, opened_by=v[0], saved_by=v[1]))
             rows.sort(key=lambda r: (r["opened_by"] + 3 * r["saved_by"]), reverse=True)
-            return {"note": "opened_by = أشخاص فتحوا القطعة، saved_by = أشخاص حافظينها الحين، من يوم نزلت",
-                    "pieces": rows[:int(args.get("limit") or 15)]}
+            return {"note": "opened_by = أشخاص فتحوا القطعة، saved_by = أشخاص حافظينها الحين، من يوم نزلت. "
+                            "want_like_it = ضغطوا «أبغى مثلها» تحت قطعة انباعت في القناة. channel_reactions = تفاعلات القناة على المنشور",
+                    "pieces": rows[:int(args.get("limit") or 15)],
+                    "want_like_it": s.q("""SELECT p.code, COALESCE(p.title,p.type) name, p.type kind, COUNT(*) n FROM channel_likes l
+                                           JOIN pieces p ON p.code=l.code GROUP BY p.code ORDER BY n DESC LIMIT 10"""),
+                    "channel_reactions": s.q("""SELECT p.code, COALESCE(p.title,p.type) name, p.status, c.reactions FROM channel_posts c
+                                               JOIN pieces p ON p.code=c.code WHERE c.reactions>0 ORDER BY c.reactions DESC LIMIT 10""")}
         if name == "prices_today":
             return s.current_prices() or {"error": "ما فيه سعر معتمد اليوم"}
         if name == "find_piece":

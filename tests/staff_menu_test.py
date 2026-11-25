@@ -50,7 +50,12 @@ cbq = lambda who, data, mid=55: {"update_id": 2, "callback_query": {"id": "q1", 
 edits = lambda: [x for m, x in calls if m == "editMessageText"]
 bot.handle("T", msg(111, "/start"))
 kb = (sent(111)[-1].get("reply_markup") or {}).get("keyboard") if sent(111) else None
-check("7 staff /start: four section buttons stay under the chat", kb and [b["text"] for r in kb for b in r] == ["التقارير", "التنبيهات", "القطع والصور", "قناة المحل"], kb)
+check("7 staff /start: five section buttons stay under the chat",
+      kb and [b["text"] for r in kb for b in r] == ["📊 التقارير", "🔔 التنبيهات", "💎 القطع والصور", "📢 قناة المحل", "❤️ اهتمامات العملاء"], kb)
+bot.handle("T", msg(111, "❤️ اهتمامات العملاء"))
+ik2 = (sent(111)[-1].get("reply_markup") or {}).get("inline_keyboard") or []
+check("7b the button with its emoji opens customer interests, with its own options",
+      {b["callback_data"] for r in ik2 for b in r} >= {"i:want", "i:react", "r:int", "i:kind", "r:dem"}, ik2)
 bot.handle("T", msg(111, "التقارير"))
 ik = (sent(111)[-1].get("reply_markup") or {}).get("inline_keyboard") or []
 check("8 the reports section opens its options inside the chat", any(b["callback_data"] == "r:today" for r in ik for b in r), ik)

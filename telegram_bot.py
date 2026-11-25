@@ -181,13 +181,14 @@ class Bot(threading.Thread):
         """The staff sections (keyboard under the chat) and their options (inside the chat). True when handled."""
         import staff_menu
         app = self.app
-        if text in staff_menu.OPTIONS:                              # a section button
+        sec = staff_menu.section_name(text)
+        if sec == "قناة المحل":
+            self._channel_cmd(token, chat, uid, "/channel")
+            return True
+        if sec:                                                      # a section button
             with app.lock:
                 muted = uid in (cfg(app.store).get("muted") or [])
-            self.send(token, chat, staff_menu.INTRO[text], markup=staff_menu.section_kb(text, muted if text == "التنبيهات" else None))
-            return True
-        if text == "قناة المحل":
-            self._channel_cmd(token, chat, uid, "/channel")
+            self.send(token, chat, staff_menu.INTRO[sec], markup=staff_menu.section_kb(sec, muted if sec == "التنبيهات" else None))
             return True
         if text in ("p:none", "p:part"):
             self._pending_list(token, chat, "none" if text == "p:none" else "partial", mid)
@@ -205,8 +206,7 @@ class Bot(threading.Thread):
             name = staff_menu.SECTION_OF.get(text)
             try:
                 with app.lock:
-                    rep = (staff_menu.notifications(app) if text == "n:list" else staff_menu.latest_pieces(app) if text == "p:latest"
-                           else staff_menu.report(app, staff_menu.REPORT_CB.get(text, text)))
+                    rep = staff_menu.render(app, text)
                     muted = uid in (cfg(app.store).get("muted") or [])
             except Exception as e:
                 print("report:", text, e, flush=True)
@@ -284,9 +284,61 @@ class Bot(threading.Thread):
             with self.app.lock:
                 tg_channel.set_markup(self.app.store, r["code"], kb)
 
+    def _verify_posts(self, token, codes=None):
+        """Which recorded posts were deleted from the channel by hand. Asks Telegram to set the same buttons again:
+        "not modified" means the post is there, "not found" means it's gone. Nothing visible changes."""
+        import tg_channel
+        with self.app.lock:
+            rows = [r for r in tg_channel.live_posts(self.app.store) if codes is None or r["code"] in codes]
+        gone = []
+        for r in rows:
+            try:
+                kb = json.loads(r["markup"]) if r.get("markup") else {"inline_keyboard": []}
+                self.call(token, "editMessageReplyMarkup", {"chat_id": r["chat_id"], "message_id": r["message_id"], "reply_markup": kb})
+            except urllib.error.HTTPError as e:
+                body = e.read().decode(errors="ignore").lower()
+                if "not found" in body or "message_id_invalid" in body or "can't be edited" in body:
+                    gone.append(r["code"])
+            except Exception as e:
+                print("verify post:", e, flush=True)
+        return gone
+
+    def _on_like(self, token, q):
+        """«أبغى مثلها» pressed under a sold piece in the channel: counted once per person, a short thank-you,
+        and the number on the button goes up. Anyone can press it; nothing else opens."""
+        import tg_channel
+        code = (q.get("data") or "")[3:].strip().upper()[:20]
+        app = self.app
+        with app.lock:
+            known = app.store.one("SELECT code FROM pieces WHERE code=?", (code,))
+            new, n = tg_channel.add_like(app.store, code, (q.get("from") or {}).get("id")) if known else (False, 0)
+            kb = tg_channel.buttons(app.store, app.store.piece(code), self._site(app), sold=True) if known else None
+        try:
+            self.call(token, "answerCallbackQuery", {"callback_query_id": q["id"], "text": (
+                "وصل طلبك، شكراً لك. رأيك يحدد البضاعة الجاية." if new else "طلبك مسجل من قبل، شكراً لك.")})
+        except Exception:
+            pass
+        m = q.get("message") or {}
+        if new and kb and m.get("message_id"):
+            try:
+                self.call(token, "editMessageReplyMarkup", {"chat_id": m["chat"]["id"], "message_id": m["message_id"], "reply_markup": kb})
+                with app.lock:
+                    tg_channel.set_markup(app.store, code, kb)
+            except Exception as e:
+                print("like count:", e, flush=True)
+
+    def _on_reactions(self, r):
+        """Telegram's reaction totals on a channel post (anonymous, grouped, a few minutes late)."""
+        import tg_channel
+        total = sum(int(x.get("total_count") or 0) for x in r.get("reactions") or [])
+        with self.app.lock:
+            tg_channel.set_reactions(self.app.store, (r.get("chat") or {}).get("id"), r.get("message_id") or 0, total)
+
     def _channel_tick(self, token, force=False):
         import tg_channel
-        if not self.username or (not force and time.time() - self._ch_last < tg_channel.EVERY_S):
+        with self.app.lock:
+            every = 20 if tg_channel.get(self.app.store).get("queue") else tg_channel.EVERY_S
+        if not self.username or (not force and time.time() - self._ch_last < every):
             return None
         self._ch_last = time.time()
         with self.app.lock:
@@ -366,22 +418,34 @@ class Bot(threading.Thread):
                 "أي قطعة جديدة تكتمل صورها تنزل في القناة لحالها، وإذا انباعت يتعدل منشورها إلى «تم البيع».")
         if not can_post:
             text += "\n\nتنبيه: البوت ما عنده صلاحية نشر الرسائل في القناة. فعّلها من إعدادات المشرفين."
-        btn = [{"text": f"انشر القطع الموجودة الحين ({n})", "callback_data": "ch:seed"}] if n else None
+        btn = [{"text": f"📤 انشر القطع الموجودة الحين ({n})", "callback_data": "ch:seed"}] if n else None
         self.send(token, chat, text, btn)
 
     def _channel_cmd(self, token, chat, uid, text):
         import tg_channel
         app = self.app
         with app.lock:
+            linked_now = bool(tg_channel.get(app.store).get("id"))
+        if text.startswith("ch:") and not linked_now:
+            return self.send(token, chat, "القناة مو مربوطة، أرسل /channel")
+        if text == "ch:seed":
+            gone = self._verify_posts(token)
+            with app.lock:
+                tg_channel.forget(app.store, gone)
+                n = tg_channel.seed(app.store)
+            return self.send(token, chat, (f"تمام، بتنزل {n} قطعة في القناة، وحدة كل نص دقيقة تقريباً." if n else "كل القطع المعروضة منشورة في القناة.")
+                             + (f"\n{len(gone)} منشور انحذف من القناة، فبتنزل قطعته من جديد." if gone else ""))
+        with app.lock:
             s = app.store
             pe, cur = tg_channel.pending(s), tg_channel.get(s)
-            if text == "ch:seed":
-                n = tg_channel.seed(s) if cur.get("id") else 0
-                return self.send(token, chat, f"تمام، بتنزل {n} قطعة في القناة، وحدة كل دقيقة." if n else "ما فيه قطع جاهزة للنشر.")
-            if text.startswith("ch:auto:") and cur.get("id"):
+            auto = None
+            if text.startswith("ch:auto:"):
                 tg_channel.set_auto(s, text.endswith(":1"))
-                cur = tg_channel.get(s)
-                return self.send(token, chat, "النشر التلقائي شغال." if cur.get("auto") else "وقفت النشر التلقائي. تقدر تنشر قطعة بنفسك: /post ورقم القطعة")
+                auto = tg_channel.get(s).get("auto")
+        if auto is not None:                          # Telegram is called outside the lock, so the site never waits on it
+            return self.send(token, chat, "▶️ النشر التلقائي شغال." if auto else "⏸️ وقفت النشر التلقائي. تقدر تنشر قطعة بنفسك: /post ورقم القطعة")
+        with app.lock:
+            s = app.store
             if pe.get("id") and pe.get("id") != cur.get("id"):
                 tg_channel.link(s, {"id": pe["id"], "title": pe.get("title"), "username": pe.get("username")}, uid)
                 linked = pe.get("title") or ""
@@ -395,10 +459,8 @@ class Bot(threading.Thread):
                                           "1. سوّ قناة في تليجرام.\n"
                                           f"2. من إعدادات القناة: المشرفين، ثم إضافة مشرف، وابحث عن @{self.username or 'البوت'} واحفظ.\n"
                                           "وترتبط لحالها، ويوصلك تأكيد هنا.")
-        with app.lock:
-            n = len(tg_channel.seed_candidates(app.store))
-        btn = ([{"text": f"انشر القطع الموجودة ({n})", "callback_data": "ch:seed"}] if n else []) + \
-              [{"text": "وقف النشر التلقائي" if st["auto"] else "شغّل النشر التلقائي", "callback_data": "ch:auto:" + ("0" if st["auto"] else "1")}]
+        btn = [{"text": "📤 انشر القطع الموجودة (والمحذوفة من القناة)", "callback_data": "ch:seed"},
+               {"text": "⏸️ وقف النشر التلقائي" if st["auto"] else "▶️ شغّل النشر التلقائي", "callback_data": "ch:auto:" + ("0" if st["auto"] else "1")}]
         self.send(token, chat, f"قناة المحل: «{st['title']}»\nنزل فيها {st['posted']} قطعة"
                   + (f"، وباقي {st['queued']} بالدور" if st["queued"] else "") + ".\n"
                   + ("النشر التلقائي شغال." if st["auto"] else "النشر التلقائي موقف.")
@@ -439,7 +501,7 @@ class Bot(threading.Thread):
             self.app.store.set_setting("telegram", c)
             chats = list((c.get("staff") or {}).keys())
         for chat in chats:
-            self.send(token, chat, "رتبت الأزرار: تحت أربعة أقسام (التقارير، التنبيهات، القطع والصور، قناة المحل)، وكل قسم يفتح خياراته هنا في المحادثة.",
+            self.send(token, chat, "✨ رتبت الأزرار تحت: التقارير، التنبيهات، القطع والصور، قناة المحل، واهتمامات العملاء. وكل قسم يفتح خياراته هنا في المحادثة.",
                       markup=staff_menu.keyboard())
 
     # ---------- loop
@@ -459,7 +521,8 @@ class Bot(threading.Thread):
                     self._menu_once(token)
                 self.status = "running"
                 r = self.call(token, "getUpdates", {"offset": self.offset, "timeout": 25,
-                                                    "allowed_updates": ["message", "callback_query", "my_chat_member"]}, timeout=40)
+                                                    "allowed_updates": ["message", "callback_query", "my_chat_member",
+                                                                        "message_reaction_count"]}, timeout=40)
                 for u in r.get("result", []):
                     self.offset = u["update_id"] + 1
                     try:
@@ -481,6 +544,10 @@ class Bot(threading.Thread):
     def handle(self, token, u):
         if u.get("my_chat_member"):
             return self._on_member(token, u["my_chat_member"])
+        if u.get("message_reaction_count"):
+            return self._on_reactions(u["message_reaction_count"])
+        if u.get("callback_query") and (u["callback_query"].get("data") or "").startswith("lk:"):
+            return self._on_like(token, u["callback_query"])
         if u.get("callback_query"):
             q = u["callback_query"]
             self.call(token, "answerCallbackQuery", {"callback_query_id": q["id"]})
@@ -540,7 +607,14 @@ class Bot(threading.Thread):
                     p = None
                 why = ("القناة مو مربوطة، أرسل /channel" if not ch.get("id") else "اكتب رقم القطعة: /post D000123" if not code
                        else f"ما لقيت قطعة برقم {code}." if not p else "القطعة مو معروضة في الموقع أو انباعت." if p["status"] != "available" or not p["show_online"]
-                       else "نزلت في القناة قبل." if tg_channel.posted(app.store, code) else "القطعة ما لها صور." if not any(__import__("core").piece_roles(p).values()) else "")
+                       else "القطعة ما لها صور." if not any(__import__("core").piece_roles(p).values()) else "")
+                was = bool(tg_channel.posted(app.store, code)) if not why else False
+            if was:
+                gone = self._verify_posts(token, [code])
+                with app.lock:
+                    tg_channel.forget(app.store, gone)
+                    if tg_channel.posted(app.store, code):
+                        why = "منشورها موجود في القناة."
             if why:
                 return self.send(token, chat, why)
             return self.send(token, chat, "نزلت في القناة." if self._post_piece(token, code) else "ما قدرت أنشرها الحين، وبحاول مرة ثانية.")
@@ -566,7 +640,9 @@ class Bot(threading.Thread):
                 self.send(token, chat, "الرمز غير صحيح.")
             return
         if not staff:                                 # the bot is the shop's tool; customers follow the channel
-            return self._public_reply(token, chat)
+            if (msg.get("chat") or {}).get("type") == "private":
+                self._public_reply(token, chat)
+            return
         if staff and text in ("/customer", "/staff"):
             self.mode[chat] = text[1:]
             self.send(token, chat, "وضع الزبون: كلمني كأنك زبون." if text == "/customer" else "رجعنا للوكيل الداخلي.")

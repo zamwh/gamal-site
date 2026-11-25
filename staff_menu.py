@@ -7,24 +7,38 @@ import datetime as dt
 import ops
 
 # the keyboard under the chat: one button per section; each opens its own options inside the chat
-SECTIONS = [["التقارير", "التنبيهات"], ["القطع والصور", "قناة المحل"]]
+SECTIONS = [["📊 التقارير", "🔔 التنبيهات"], ["💎 القطع والصور", "📢 قناة المحل"], ["❤️ اهتمامات العملاء"]]
 # section -> options (label, callback). Pressing an option rewrites the section's message in place.
 OPTIONS = {
-    "التقارير": [("مبيعات اليوم", "r:today"), ("مبيعات أمس", "r:yday"), ("آخر 7 أيام", "r:week"), ("هذا الشهر", "r:month"),
-                 ("المخزون الحالي", "r:stock"), ("آخر الفواتير", "r:inv"), ("الأكثر اهتماماً", "r:int"),
-                 ("زوار الموقع اليوم", "r:web"), ("طلبات ما توفرت", "r:dem"), ("سعر الذهب اليوم", "r:price")],
-    "التنبيهات": [("آخر التنبيهات", "n:list"), ("تنبيه الشراء", "r:restock"), ("الحجوزات المفتوحة", "r:res")],
-    "القطع والصور": [("قطع بدون صور", "p:none"), ("ناقصها مخمل أو قريبة", "p:part"), ("آخر القطع المضافة", "p:latest")],
+    "التقارير": [("📅 مبيعات اليوم", "r:today"), ("⏮️ مبيعات أمس", "r:yday"), ("🗓️ آخر 7 أيام", "r:week"), ("📆 هذا الشهر", "r:month"),
+                 ("📦 المخزون الحالي", "r:stock"), ("🧾 آخر الفواتير", "r:inv"), ("🌐 زوار الموقع اليوم", "r:web"),
+                 ("💰 سعر الذهب اليوم", "r:price")],
+    "التنبيهات": [("🔔 آخر التنبيهات", "n:list"), ("🛒 تنبيه الشراء", "r:restock"), ("📌 الحجوزات المفتوحة", "r:res")],
+    "القطع والصور": [("📷 قطع بدون صور", "p:none"), ("✨ ناقصها مخمل أو قريبة", "p:part"), ("🆕 آخر القطع المضافة", "p:latest")],
+    "اهتمامات العملاء": [("❤️ طلبوا مثلها", "i:want"), ("👍 تفاعل القناة", "i:react"), ("👀 مشاهدات الموقع", "r:int"),
+                          ("🏷️ الاهتمام حسب النوع", "i:kind"), ("🔎 طلبات ما توفرت", "r:dem")],
 }
-INTRO = {"التقارير": "التقارير: اختر من تحت، ويطلع التقرير هنا.",
-         "التنبيهات": "التنبيهات: يوصلك هنا كل بيع وكل حجز وتنبيه الشراء.",
-         "القطع والصور": "القطع والصور: اختر من تحت."}
+INTRO = {"التقارير": "📊 التقارير: اختر من تحت، ويطلع التقرير هنا.",
+         "التنبيهات": "🔔 التنبيهات: يوصلك هنا كل بيع وكل حجز وتنبيه الشراء.",
+         "القطع والصور": "💎 القطع والصور: اختر من تحت.",
+         "اهتمامات العملاء": "❤️ اهتمامات العملاء: وش يعجب الزبائن ووش يطلبونه، عشان تقرر وش تنزّل من بضاعة."}
 SECTION_OF = {cb: name for name, opts in OPTIONS.items() for _, cb in opts}
 REPORT_CB = {"r:today": "مبيعات اليوم", "r:yday": "مبيعات أمس", "r:week": "مبيعات آخر 7 أيام", "r:month": "مبيعات هذا الشهر",
              "r:stock": "المخزون الحالي", "r:inv": "آخر الفواتير", "r:int": "الأكثر اهتماماً", "r:web": "زوار الموقع اليوم",
              "r:dem": "طلبات ما توفرت", "r:price": "سعر الذهب اليوم", "r:restock": "تنبيه الشراء", "r:res": "الحجوزات"}
 BUTTONS = set(REPORT_CB.values())       # typing a report's name still works
-VERSION = 2          # bump when the buttons change: linked staff get the new keyboard once
+VERSION = 3          # bump when the buttons change: linked staff get the new keyboard once
+
+
+def section_name(text):
+    """A section button's text, with or without its emoji (older keyboards had none)."""
+    t = (text or "").strip()
+    for name in list(OPTIONS) + ["قناة المحل"]:
+        if t == name or t.endswith(" " + name):
+            return name
+    return None
+
+
 DAYS = ["الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"]
 RES_AR = {"pending": "بانتظار التأكيد", "active": "مؤكد", "done": "تم", "completed": "تم", "expired": "انتهى",
           "cancelled": "ملغي", "rejected": "مرفوض"}
@@ -39,9 +53,70 @@ def section_kb(name, muted=None):
     """Inline options of a section, two a row."""
     opts = list(OPTIONS.get(name, []))
     if name == "التنبيهات" and muted is not None:
-        opts.append(("شغّل التنبيهات عندي", "n:on") if muted else ("وقّف التنبيهات عندي", "n:off"))
+        opts.append(("🔊 شغّل التنبيهات عندي", "n:on") if muted else ("🔕 وقّف التنبيهات عندي", "n:off"))
     rows = [opts[i:i + 2] for i in range(0, len(opts), 2)]
     return {"inline_keyboard": [[{"text": t, "callback_data": cb} for t, cb in row] for row in rows]}
+
+
+def _piece_line(p):
+    return f"{p['title'] or p['type']} {p['code']}"
+
+
+def wanted(app):
+    rows = app.store.q("""SELECT p.code, p.title, p.type, p.weight, p.status, COUNT(*) n FROM channel_likes l JOIN pieces p ON p.code=l.code
+                          GROUP BY p.code ORDER BY n DESC, MAX(l.ts) DESC LIMIT 12""")
+    if not rows:
+        return "❤️ طلبوا مثلها\nما أحد طلب للحين. الزر يطلع تحت كل قطعة تنباع في القناة."
+    return "\n".join(["❤️ طلبوا مثلها (من زر «أبغى مثلها» في القناة)"] +
+                     [f"{_piece_line(r)} · {_g(r['weight'])} جم: {r['n']} طلب" for r in rows])
+
+
+def reactions(app):
+    rows = app.store.q("""SELECT p.code, p.title, p.type, p.status, c.reactions n FROM channel_posts c JOIN pieces p ON p.code=c.code
+                          WHERE c.reactions>0 ORDER BY c.reactions DESC LIMIT 12""")
+    if not rows:
+        return "👍 تفاعل القناة\nما فيه تفاعل للحين. يوصل البوت عدد التفاعلات بعد دقائق من حدوثها."
+    st = {"sold": " (انباعت)", "available": "", "reserved": " (محجوزة)"}
+    return "\n".join(["👍 تفاعل القناة على كل قطعة"] + [f"{_piece_line(r)}{st.get(r['status'], '')}: {r['n']} تفاعل" for r in rows])
+
+
+def by_kind(app):
+    """Interest per kind of piece, so the owner sees which kinds to stock more of."""
+    s = app.store
+    kinds = {}
+    def k(t):
+        return kinds.setdefault(t or "غير محدد", {"want": 0, "react": 0, "views": 0, "saves": 0, "sold": 0})
+    for r in s.q("SELECT p.type, COUNT(*) n FROM channel_likes l JOIN pieces p ON p.code=l.code GROUP BY p.type"):
+        k(r["type"])["want"] += r["n"]
+    for r in s.q("SELECT p.type, SUM(c.reactions) n FROM channel_posts c JOIN pieces p ON p.code=c.code GROUP BY p.type"):
+        k(r["type"])["react"] += r["n"] or 0
+    for r in s.q("""SELECT p.type, COUNT(*) n FROM invoice_items ii JOIN invoices i ON i.id=ii.invoice_id JOIN pieces p ON p.id=ii.piece_id
+                    WHERE i.kind='sale' AND i.status='ok' AND i.created_at>=? GROUP BY p.type""",
+                 ((dt.date.today() - dt.timedelta(days=90)).isoformat(),)):
+        k(r["type"])["sold"] += r["n"]
+    pi = app.analytics.piece_interest() if getattr(app, "analytics", None) else {}
+    if pi:
+        types = {r["code"]: r["type"] for r in s.q("SELECT code, type FROM pieces")}
+        for code, (v, sv) in pi.items():
+            if code in types:
+                x = k(types[code]); x["views"] += v; x["saves"] += sv
+    rows = sorted(kinds.items(), key=lambda kv: (kv[1]["want"] * 5 + kv[1]["saves"] * 3 + kv[1]["react"] + kv[1]["views"] * 0.2 + kv[1]["sold"] * 2), reverse=True)
+    rows = [(t, x) for t, x in rows if any(x.values())]
+    if not rows:
+        return "🏷️ الاهتمام حسب النوع\nما فيه بيانات للحين."
+    out = ["🏷️ الاهتمام حسب النوع (الأعلى أول)"]
+    for t, x in rows[:10]:
+        parts = [f"{x['want']} طلبوا مثلها" if x["want"] else "", f"{x['react']} تفاعل" if x["react"] else "",
+                 f"{x['views']} شافوها" if x["views"] else "", f"{x['saves']} حفظوها" if x["saves"] else "",
+                 f"انباع {x['sold']} في 3 شهور" if x["sold"] else ""]
+        out.append(f"{t}: " + " · ".join(p for p in parts if p))
+    return "\n".join(out)
+
+
+def render(app, key):
+    """Any option or report name -> its text (caller holds the lock)."""
+    fn = {"n:list": notifications, "p:latest": latest_pieces, "i:want": wanted, "i:react": reactions, "i:kind": by_kind}.get(key)
+    return fn(app) if fn else report(app, REPORT_CB.get(key, key))
 
 
 def notifications(app):
@@ -174,8 +249,8 @@ def demand(app):
 def interest(app):
     rows = [x for x in app.staff.tool("piece_interest", {"limit": 8}).get("pieces") or [] if x["opened_by"] or x["saved_by"]]
     if not rows:
-        return "الأكثر اهتماماً\nما فيه مشاهدات للحين."
-    return "\n".join(["الأكثر اهتماماً (من يوم نزلت القطعة)"] +
+        return "👀 مشاهدات الموقع\nما فيه مشاهدات للحين."
+    return "\n".join(["👀 مشاهدات الموقع (من يوم نزلت القطعة)"] +
                      [f"{x['name']} {x['code']}: شافها {x['opened_by']} · حفظها {x['saved_by']}" for x in rows])
 
 

@@ -7,6 +7,8 @@ Telegram itself is replaced by a recorder (no token here): the test checks what 
 12-13 sold: the post becomes "تم البيع" and keeps only the sales button, from a branch sale too
 14-17 the bot is staff-only: customers get a short note (no AI), the website address change fixes old buttons,
       /admin without a code explains, wrong codes are limited
+22-26 «أبغى مثلها» under sold pieces (once per person), reactions counted, the owner's interest reports,
+      republishing posts deleted from the channel
 18-21 interest: people who opened a piece / keep it saved, sent to the shop program and shown in its pieces list
 """
 import io, json, os, shutil, sys, tempfile, threading, time, urllib.error
@@ -34,9 +36,12 @@ app.analytics = Analytics(os.path.join(d, "an.db")); app.agent = SalesAgent(s, a
 app.public_url = "https://shop.example"
 s.set_setting("public_url", "https://shop.example")
 bot = telegram_bot.Bot(app); bot.username = "AlmshrqiGoldBot"
-calls, uploads, fail = [], [], {"n": 0}
+calls, uploads, fail, deleted = [], [], {"n": 0}, set()
 def fake_call(token, method, data=None, timeout=35):
-    calls.append((method, data or {})); return {"ok": True, "result": {}}
+    calls.append((method, data or {}))
+    if method == "editMessageReplyMarkup" and (data or {}).get("message_id") in deleted:
+        raise urllib.error.HTTPError("u", 400, "Bad Request", {}, io.BytesIO(b'{"ok":false,"description":"Bad Request: message to edit not found"}'))
+    return {"ok": True, "result": {}}
 def fake_upload(token, method, fields, files):
     if fail["n"]:
         fail["n"] -= 1
@@ -121,8 +126,9 @@ inv = s.create_sale(owner, [{"code": p["code"]}], "زبون", "")
 time.sleep(0.5)
 ed = [x for m, x in calls if m == "editMessageCaption"]
 sold_kb = (ed[0].get("reply_markup") or {}).get("inline_keyboard", []) if ed else []
-check("12 sold: caption becomes \"تم البيع\", the website button goes, the sales button stays",
-      ed and "تم البيع" in ed[0]["caption"] and len(sold_kb) == 1 and "wa.me" in sold_kb[0][0]["url"]
+check("12 sold: caption becomes \"تم البيع\" with the «أبغى مثلها» line; one button, «أبغى مثلها», no contact",
+      ed and "تم البيع" in ed[0]["caption"] and "عجبتك؟" in ed[0]["caption"] and len(sold_kb) == 1
+      and sold_kb[0][0].get("callback_data") == f"lk:{p['code']}" and "أبغى مثلها" in sold_kb[0][0]["text"]
       and tg_channel.posted(s, p["code"])["sold"] == 1, ed)
 k = dict(s.setting("pos_keys", {}) or {}); k[br] = "testkey123"; s.set_setting("pos_keys", k)
 calls.clear()
@@ -159,6 +165,43 @@ check("17 /admin without a code explains; wrong codes stop after five tries",
       "اكتب /admin ومعه الرمز" in t777[0] and t777.count("الرمز غير صحيح.") == 5 and "محاولات كثيرة" in t777[-1], t777)
 check("17b site addresses a request made up never reach the channel",
       tg_channel.site_host_ok(s, "abc-def.trycloudflare.com") and not tg_channel.site_host_ok(s, "evil.example.com"))
+
+# ---- «أبغى مثلها» and reactions
+sold_post = tg_channel.posted(s, p["code"])
+def like(who):
+    return {"update_id": 9, "callback_query": {"id": f"q{who}", "from": {"id": who}, "data": f"lk:{p['code']}",
+            "message": {"chat": {"id": CH["id"], "type": "channel"}, "message_id": sold_post["message_id"]}}}
+calls.clear()
+bot.handle("T", like(901))
+ans = [x for m, x in calls if m == "answerCallbackQuery"]
+ed = [x for m, x in calls if m == "editMessageReplyMarkup"]
+check("22 a customer presses «أبغى مثلها» in the channel: a thank-you, the count on the button becomes 1, nothing posted",
+      ans and "وصل طلبك" in ans[0]["text"] and ed and "· 1" in json.dumps(ed[0]["reply_markup"], ensure_ascii=False)
+      and not [x for m, x in calls if m == "sendMessage"], (ans, ed))
+calls.clear(); bot.handle("T", like(901)); bot.handle("T", like(902))
+ans = [x["text"] for m, x in calls if m == "answerCallbackQuery"]
+check("23 the same person counts once; another person counts", "مسجل من قبل" in ans[0] and tg_channel.likes(s, p["code"]) == 2, ans)
+bot.handle("T", {"update_id": 10, "message_reaction_count": {"chat": {"id": CH["id"], "type": "channel"},
+             "message_id": tg_channel.posted(s, p3["code"])["message_id"], "date": 0,
+             "reactions": [{"type": {"type": "emoji", "emoji": "❤"}, "total_count": 7}, {"type": {"type": "emoji", "emoji": "👍"}, "total_count": 3}]}})
+check("24 reactions on a post are counted", tg_channel.posted(s, p3["code"])["reactions"] == 10)
+import staff_menu
+with app.lock:
+    w, rx, kind = staff_menu.wanted(app), staff_menu.reactions(app), staff_menu.by_kind(app)
+check("25 the owner sees it: who wants one like it, reactions, interest per kind",
+      "2 طلب" in w and "10 تفاعل" in rx and "طقم" in kind and "طلبوا مثلها" in kind, (w, rx, kind))
+# ---- republish after posts were deleted from the channel by hand
+deleted.add(tg_channel.posted(s, p3["code"])["message_id"])
+calls.clear()
+bot._channel_cmd("T", 111, "111", "ch:seed")
+q = tg_channel.get(s).get("queue") or []
+check("26 posts deleted by hand are found and their pieces go out again; sold and existing posts are left alone",
+      not tg_channel.posted(s, p3["code"]) and p3["code"] in q and p["code"] not in q and tg_channel.posted(s, p["code"])
+      and any("انحذف من القناة" in x["text"] for x in sent_to(111)), (q, sent_to(111)[-1:]))
+uploads.clear()
+for _ in range(len(q) + 1):
+    tick()
+check("26b and are posted again", tg_channel.posted(s, p3["code"]) and tg_channel.posted(s, p3["code"])["message_id"] > 0)
 
 # ---- interest
 an = app.analytics
