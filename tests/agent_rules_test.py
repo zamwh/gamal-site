@@ -101,6 +101,9 @@ check("3s two questions are caught", "questions" in probs("وش المناسبة
 out = SR.check_reply("هذي قطعة:\n[[D000001]]", dict(E, no_cards=True))
 check("3t no cards where the reply must not show pieces", not out["codes"] and "[[" not in out["text"], out)
 check("3u taste never claimed from browsing", "taste" in probs("واضح إنك تحب الشغل الناعم"))
+check("3v an invented stock story is caught («كانت متاحة وخلصت»), a plain «ما عندنا الحين» is fine",
+      "stock_story" in probs("الخواتم اللي كانت متاحة بالموقع خلصت") and "stock_story" not in probs("ما عندنا خواتم الحين"))
+check("3w ...unless the system said a piece was sold", "stock_story" not in probs("القطعة اللي تسأل عنها انباعت كلها", sold_ok=True))
 
 # ------------------------------------------------------------------ 4. the whole path, with a scripted stand-in for the model
 d = tempfile.mkdtemp()

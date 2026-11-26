@@ -949,6 +949,7 @@ class SalesAgent:
                 "deposit_ok": "deposit" in r["intents"] and facts["deposit"]["enabled"],
                 "custom_ok": bool((facts.get("policy") or {}).get("custom_orders")),
                 "found_one": bool(ctx.get("only_one")), "found": ctx.get("found") or [], "discovery": discovery,
+                "sold_ok": bool(self._sold_ref(message)) or "انباعت" in dynamic or "بيعت" in dynamic,
                 "asking": not has(m, W_BRANCH + W_POLICY + W_PRICE + ["كيف عرفت", "ليش"]) and len(m.split()) > 1}
 
     def _unmet(self, ctx, p):

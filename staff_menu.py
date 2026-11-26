@@ -315,7 +315,7 @@ def report(app, text):
 PROBLEM_AR = {"number": "رقم مو من النظام", "scarcity": "استعجال أو ندرة", "promise": "وعد المحل ما يسويه", "taste": "ادعاء معرفة الذوق",
               "jargon": "كلمات داخلية", "banned": "كلمة ممنوعة", "relative": "ذكر قرابة", "branch": "ذكر فروع",
               "karat": "عيار غير 21", "entity": "نوع قطعة غلط", "repeat": "تكرار نفس الرد", "questions": "أكثر من سؤال",
-              "hidden": "ما عرض القطع اللي لقاها"}
+              "hidden": "ما عرض القطع اللي لقاها", "stock_story": "قصة مخزون مخترعة"}
 
 
 def quality(app):

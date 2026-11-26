@@ -477,6 +477,9 @@ SCARCITY = _rx(["اخر قطعه", "اخر واحده", "اخر واحد", "ما
                 "الوحيده اللي عندنا", "الوحيد اللي عندنا", "تخلص بسرعه", "بتخلص", "عليها طلب", "عليه طلب",
                 "الحق عليها", "الحق عليه", "قبل لا تروح", "قبل ما تروح", "قبل لا تنباع", "قبل ما تنباع",
                 "قبل ما تخلص", "قبل لا تخلص", "فرصه ما تتعوض"])
+# a story about stock the system never told: "the rings we had ran out"
+STOCK_STORY = _rx(["خلصت", "خلص", "نفدت", "نفذت", "انتهت الكميه", "خلصت الكميه", "كانت متوفره", "كانت متاحه", "كانت موجوده",
+                   "انباعت كلها", "خلص المخزون", "نزلت وخلصت"])
 TASTE = ["ذوقك", "اختيارك", "اخترت", "قلت قبل", "ذكرت انك", "واضح انك تحب", "واضح انك تميل", "شكلك تحب", "اعرف انك تحب"]
 JARGON = ["حضور", "تكوين", "متناظر", "طابع", "اللغه البصريه", "تفاصيل غنيه",
           # how the system works is not the customer's business
@@ -499,7 +502,7 @@ PROMISES = {
     "return": re.compile(_EDGE + r"(?:و)?(ترجعها|ترجعه|نرجع لك|نسترجع|استرجاع|ترجع لك الفلوس)" + _END),
 }
 KARAT_OTHER = re.compile(r"عيار\s*(18|22|24)|(18|22|24)\s*(قيراط|عيار)|ذهب\s*(18|22|24)")
-SEVERE = {"number", "scarcity", "promise", "karat", "banned", "branch", "entity", "taste", "relative"}
+SEVERE = {"number", "scarcity", "promise", "karat", "banned", "branch", "entity", "taste", "relative", "stock_story"}
 
 
 def _negated(t, start):
@@ -547,6 +550,10 @@ def check_reply(text, env):
     m = SCARCITY.search(" " + plain + " ")
     if m and not (env.get("found_one") and "الوحيد" in m.group(0)):
         probs.append(("scarcity", "لا تقل آخر قطعة ولا الكمية محدودة ولا أي استعجال: النظام ما قال كذا."))
+    if not env.get("sold_ok"):
+        st_ = STOCK_STORY.search(" " + plain + " ")
+        if st_ and not _negated(" " + plain + " ", st_.start()):
+            probs.append(("stock_story", "لا تقول إن شي كان متوفر وخلص أو انباع: النظام ما قال كذا. قل بس «ما عندنا الحين»."))
     # 3) taste the customer never stated, internal words
     said = env.get("customer") or ""
     taste = [w for w in TASTE if w in plain and w not in said]
