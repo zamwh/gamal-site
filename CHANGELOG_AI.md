@@ -1,5 +1,6 @@
 # Changelog — AI assistants (text and voice)
 
+- 2026-11-26 (21:35) — No repeated pieces when the customer asks for something else; the asked kind first and closest to the budget, with an honest note when far below it; louder voice on iPhone (with a safe fallback); new voices echo / ballad / coral.
 - 2026-11-26 (21:20) — Voice test mode (no per-person or openings limit, only the day cap; reasons shown; admin button); changing the voice no longer ends the call. A stated budget shows the pieces closest to it first. Yemeni/Gulf dialect only (Levantine and Egyptian words banned) in voice and text.
 - 2026-11-26 (21:10) — Voice on for everyone (test phase: the owner and the shop owner), with an on/off button in the admin; staff testing limited only by the day cap; staff are told why the microphone is hidden; the voice state is checked each time the chat opens. Chat chip «وين فروعكم؟» → «وين موقعكم؟» (one shop).
 - 2026-11-26 (21:00) — Voice: OpenAI's standby replaces closing on every pause (no lost words; quiet time at 2¢/min; full close after a minute of quiet); standby time is billed at its own rate in the caps. Three named voices for the customer («سالم», «فارس», «ريم») behind «تغيير الصوت»; the assistant takes the chosen name, «ريم» speaks in the feminine.

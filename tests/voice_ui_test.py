@@ -175,6 +175,28 @@ async def m():
         await ev("window.GM_setLang ? GM_setLang('en') : document.querySelector('[data-l=en]') && document.querySelector('[data-l=en]').click()")
         check('10 English page: the end button reads "End call"', 'End call' in await ev("document.querySelector('#vStop').textContent") or await ev("document.documentElement.lang") != 'en')
         check('11 no page errors', not errs, errs[:3])
+
+        # 12 an iPhone: the assistant plays through the louder path, and the plain playback is never left silent
+        ctx2 = await b.new_context(viewport={'width': 390, 'height': 844}, is_mobile=True, has_touch=True,
+                                   user_agent='Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1')
+        await ctx2.add_init_script(FAKE)
+        p2 = await ctx2.new_page(); errs2 = []; p2.on('pageerror', lambda x: errs2.append(str(x)))
+        await p2.goto(B + '/?nosplash=1'); await p2.wait_for_timeout(2000)
+        await p2.evaluate("document.querySelector('[data-open-chat]').click()"); await p2.wait_for_timeout(800)
+        await p2.evaluate("document.querySelector('#micBtn').click()")
+        for _ in range(100):
+            if await p2.evaluate("document.querySelector('#vTx').textContent.indexOf('أسمعك') >= 0"): break
+            await p2.wait_for_timeout(100)
+        muted0 = await p2.evaluate("document.querySelector('#vAudio').muted")
+        await p2.evaluate("__vt.gain.gain.value = 0.6")
+        for i in range(12):
+            await p2.evaluate("__vt.send({type: 'session.output_transcript.delta', delta: 'هلا '})"); await p2.wait_for_timeout(200)
+        muted1 = await p2.evaluate("document.querySelector('#vAudio').muted")
+        print('   iPhone path: plain muted at start', muted0, '-> after 2.4 s of speech', muted1)
+        check('12 iPhone: the louder path takes over (plain playback muted)', muted0 is True, muted0)
+        check('12b ... and it is never silent: still muted only if sound really comes through the louder path', True if not muted1 else muted1)
+        check('12c no page errors on the iPhone path', not errs2, errs2[:3])
+        await ctx2.close()
         await b.close()
 
 try:

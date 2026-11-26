@@ -6,7 +6,7 @@
     "لحظة أشوف لك…": "One moment…", "أول ما تتكلم، أرجع أسمعك": "Just speak, I'll be right back", "إنهاء المكالمة": "End call",
     "كلّم المستشار بصوتك": "Talk to the advisor",
     "وين موقعكم؟": "Where are you located?", "تغيير الصوت": "Change voice", "اختر الصوت": "Choose a voice", "سالم": "Salem", "فارس": "Fares", "ريم": "Reem",
-    "هادئ": "Calm", "حيوي": "Lively", "صوت نسائي": "Female voice", "تكلّم متى ما حبيت، أنا معك": "Speak anytime, I'm here",
+    "هادئ": "Calm", "حيوي": "Lively", "صوت عميق": "Deep voice", "صوت دافئ": "Warm voice", "صوت نسائي": "Female voice", "تكلّم متى ما حبيت، أنا معك": "Speak anytime, I'm here",
     "اسمٌ رائد في عالم": "A leading name in", "الذهب والمجوهرات": "gold and jewellery", "اكتشف المجموعة": "Discover the collection",
     "تصاميم حصرية بروح الجمال المشرقي، مختارة بعناية لتليق بذوقكم وبأجمل مناسباتكم.": "Exclusive designs with an Eastern soul, chosen with care for your taste and your finest occasions.",
     "ذهب عيار 21 · بسعر يوم الشراء": "21K gold · priced on the day you buy", "بكم ذهبك اليوم؟": "What is your gold worth today?", "سجل الأسعار": "Price history",

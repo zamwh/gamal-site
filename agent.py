@@ -221,6 +221,11 @@ def has(t, words):
     return any(w in t for w in words)
 
 
+# "something else" (not the same pieces again), as customers say it (normalized: no hamza, ى -> ي)
+ANOTHER = ["غيره", "غيرها", "غير هذا", "غير هذي", "غير هذه", "ثاني", "ثانيه", "اخر", "اخري", "بديل", "بدال", "بدل هذا",
+           "مو هذا", "مو هذي", "مش هذا", "مش هذي", "ما عجبني", "ما عجبتني", "ماعجبني", "جديد", "شي ثاني"]
+
+
 KINDS = {"طقم": ["طقم", "اطقم", "طقوم", "شبكه"], "عقد": ["عقد", "قلاده", "عقود", "كردان"], "حلق": ["حلق", "اقراط", "قرط"],
          "خاتم": ["خاتم", "خواتم", "دبله", "محبس"], "أسورة": ["اسوره", "اساور", "غويش", "بنجري", "سوار"],
          "كف": ["كف", "كفوف"], "حزام": ["حزام", "احزمه"], "سلسلة": ["سلسله", "سلاسل", "تعليقه"],
@@ -577,15 +582,15 @@ class SalesAgent:
         if near:
             sort = "near"
         pool = [p for p in within if p["code"] not in shown] or ([p for p in within] if sort != "taste" else [])
-        near_budget = bool(budget) and sort == "taste" and not args.get("similar_to_code")
-        if near_budget:                                # a stated budget: pieces close to it first, not the cheapest
-            band = [p for p in pool if p["price"] >= float(budget) * 0.6]
-            if band:
-                pool = band
         # asked for a necklace: real necklaces first; a set that has a necklace in it only after them
         k_ = norm(kind) if kind else ""
         other = (lambda p: 0) if not kind else \
             (lambda p: 0 if norm(p["type"]) == k_ or (k_ in ("سلسله", "سلسلة") and "طقم" not in norm(p["type"])) else 1)
+        near_budget = bool(budget) and sort == "taste" and not args.get("similar_to_code")
+        if near_budget:                                # a stated budget: the asked kind first, closest to the budget, not the cheapest
+            base = [p for p in pool if not other(p)] or pool
+            band = [p for p in base if p["price"] >= float(budget) * 0.6]
+            pool = band or base
         if sort != "taste":
             key = {"price_asc": lambda p: p["price"], "price_desc": lambda p: -p["price"],
                    "weight_asc": lambda p: p["weight"], "weight_desc": lambda p: -p["weight"],
@@ -637,6 +642,10 @@ class SalesAgent:
         elif sort != "taste" and items:
             out["note"] = "الترتيب حقيقي على كل القطع المتاحة المطابقة؛ الأول هو " + {"price_asc": "الأرخص", "price_desc": "الأغلى",
                           "weight_asc": "الأخف", "weight_desc": "الأثقل"}[sort] + " فعلاً."
+        if items and near_budget and max(it["price"] for it in items) < float(budget) * 0.6:
+            out["note_budget"] = (f"أغلى المتاح من هذا النوع ضمن ميزانيته {max(it['price'] for it in items):,.0f}، وهي أقل بكثير من ميزانيته "
+                                  f"{float(budget):,.0f}. قلها بصراحة، واقترح يكمّلها بقطعة ثانية توصله لميزانيته، أو نوع أقرب لها "
+                                  "(مثل طقم كامل)، وإذا يبغى ابحث له.")
         if not items and over:
             out["outside_budget"] = [dict(self._brief(p), over_by=round(p["price"] - float(budget))) for p in over]
             out["note"] = "ما فيه قطعة ضمن الميزانية بهذه الشروط. outside_budget أقرب الأسعار فوقها؛ لا تعرضها على إنها ضمن الميزانية، قل الفرق بصراحة."
@@ -666,7 +675,7 @@ class SalesAgent:
             out = self.search_products(args, ctx.get("state"), ctx.get("profile"), ctx.get("facts") or {},
                                        exclude_shown=not args.get("include_shown"))
             if not out.get("items") and out.get("other_categories_available") is not None and out.get("within_budget_total") \
-                    and not has(ctx.get("msg") or "", ["غيره", "غيرها", "غير هذا", "غير هذي", "ثاني", "ثانيه"]):
+                    and not has(norm(ctx.get("msg") or ""), ANOTHER):
                 # he asked for this kind again (not "anything else"): show what we have, saying he saw it before
                 again = self.search_products(dict(args, count=args.get("count") or 2), ctx.get("state"), ctx.get("profile"),
                                              ctx.get("facts") or {}, exclude_shown=False)
@@ -907,7 +916,9 @@ class SalesAgent:
         args = {k: v for k, v in {"kind": req.get("category") or f.get("kind"), "occasion": f.get("occasion"),
                                   "max_price": req.get("budget") or f.get("budget"), "near_weight": f.get("weight"),
                                   "count": 2}.items() if v}
-        return [i["code"] for i in self.search_products(args, st, prof, f, exclude_shown=False).get("items", [])]
+        items = self.search_products(args, st, prof, f).get("items", []) or \
+            self.search_products(args, st, prof, f, exclude_shown=False).get("items", [])
+        return [i["code"] for i in items]
 
     PRICE_Q = re.compile(r"(كم|بكم)\s*(سعر|سعرها|سعره|يطلع|تطلع|تكلف|يكلف|قيمه|قيمتها|حقها|حقه|الاجمالي)|السعر\s*كم|كم\s*بالدولار|"
                          r"كم\s*بالسعودي|بالدولار\s*كم|بالسعودي\s*كم")

@@ -783,6 +783,26 @@
     opening: false, ending: false, resume: false, rd: false, miss: 0, told: false, lab: false, asking: false, txT: null,
     vv: '', vlist: [], sb: 0, paused: false, pAt: 0, sbMs: 0 };
   var micBtn = $('#micBtn'), vdock = $('#vdock'), orbW = $('#vOrbW'), chatEl = $('#chat');
+  var IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  // an iPhone plays a call quietly (or from the earpiece) while the microphone is on: the assistant plays through a
+  // louder path there, and if no sound comes through it the plain one takes over again
+  function vBoost(stream) {
+    var au = $('#vAudio'); if (!IOS || !V.ac || !V.ac.createMediaStreamSource) return;
+    try {
+      if (V.bst) { try { V.bst.src.disconnect() } catch (e) { } }
+      var src = V.ac.createMediaStreamSource(stream), g = V.ac.createGain(), cp = V.ac.createDynamicsCompressor(), an = V.ac.createAnalyser();
+      g.gain.value = 2.4; cp.threshold.value = -12; cp.knee.value = 6; cp.ratio.value = 6; cp.attack.value = 0.003; cp.release.value = 0.2;
+      an.fftSize = 512; src.connect(g); g.connect(cp); cp.connect(V.ac.destination); cp.connect(an);
+      V.bst = { src: src, an: an, ok: false, wait: 0, buf: new Float32Array(512) }; au.muted = true;
+      if (V.ac.state === 'suspended') V.ac.resume();
+    } catch (e) { V.bst = null; au.muted = false }
+  }
+  function vBoostCheck() {
+    var b = V.bst; if (!b || b.ok || !V.aSpeaking || !b.an.getFloatTimeDomainData) return;
+    b.an.getFloatTimeDomainData(b.buf); for (var s = 0, i = 0; i < b.buf.length; i++) s += b.buf[i] * b.buf[i];
+    if (Math.sqrt(s / b.buf.length) > 0.002) { b.ok = true; return }
+    b.wait += 50; if (b.wait > 1500) { try { b.src.disconnect() } catch (e) { } V.bst = null; $('#vAudio').muted = false }
+  }
   function vSet(st, txt) {
     V.st = st; if (!vdock) return; vdock.dataset.st = st;
     var el = $('#vTx'); if (!el || el.dataset.t === txt) return; el.dataset.t = txt;
@@ -829,6 +849,7 @@
     if (V.on || V.asking) { vStop('user'); return }
     if (!V.told) { V.told = true; addMsg('بيطلب منك المتصفح إذن المايكروفون عشان تكلمني بصوتك. اسمح له، وتكلم براحتك.', 'a') }
     V.asking = true; V.rd = false; vcShow(); vSet('dial', 'يتصل…');
+    try { if (IOS && navigator.audioSession) navigator.audioSession.type = 'play-and-record' } catch (e) { }
     navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }).then(function (s) {
       var still = V.asking; V.asking = false;
       if (!still) { s.getTracks().forEach(function (t) { t.stop() }); return }          // ended while the phone was asking
@@ -845,6 +866,7 @@
     var floor = 0, warm = 0, on = 0, off = 0;
     V.vt = setInterval(function () {
       if (V.ac.state === 'suspended') V.ac.resume();
+      vBoostCheck();
       an.getFloatFrequencyData(bins); var band = 0, all = 0;
       for (var i = 1; i < bins.length; i++) { var p = Math.pow(10, bins[i] / 10); all += p; if (i >= lo && i <= hi) band += p }
       if (warm < 10) { floor = (floor * warm + band) / (warm + 1); warm++; return }      // half a second to learn the room
@@ -874,7 +896,7 @@
     if (!quietly) vSet('dial', resume ? nm.name + (nm.g === 'f' ? ' ترجع تسمعك…' : ' يرجع يسمعك…') : 'يتصل…');
     var mine = tr0.clone(), pc = new RTCPeerConnection(), dc = pc.createDataChannel('oai-events');
     pc.addTrack(mine, new MediaStream([mine])); V.pc = pc; V.dc = dc; V.tr = mine;
-    pc.ontrack = function (e) { var au = $('#vAudio'); au.srcObject = e.streams[0]; au.play().catch(function () { }) };
+    pc.ontrack = function (e) { var au = $('#vAudio'); au.srcObject = e.streams[0]; au.muted = false; au.play().catch(function () { }); vBoost(e.streams[0]) };
     dc.onmessage = function (e) { var m; try { m = JSON.parse(e.data) } catch (x) { return } vEvent(m) };
     pc.onconnectionstatechange = function () { if (pc.connectionState === 'failed' && V.pc === pc) vDrop('net') };
     pc.createOffer().then(function (o) { return pc.setLocalDescription(o) }).then(function () { return vIce(pc, 2500) }).then(function () {
@@ -955,6 +977,7 @@
     if (!V.on) { if (V.asking || (vdock && !vdock.hidden)) { V.asking = false; vcHide() } return }
     V.on = false; vClose(reason || 'end');
     clearInterval(V.vt); V.vt = null; try { V.ac && V.ac.close() } catch (e) { } V.ac = null; V.an = null; V.speaking = false;
+    V.bst = null; $('#vAudio').muted = false; try { if (IOS && navigator.audioSession) navigator.audioSession.type = 'auto' } catch (e) { }
     if (V.mic) V.mic.getTracks().forEach(function (t) { t.stop() }); V.mic = null;
     micBtn.classList.remove('on'); micBtn.setAttribute('aria-pressed', 'false'); V.st = 'off'; vcHide();
   }

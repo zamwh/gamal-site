@@ -35,7 +35,7 @@ One button: «إنهاء المكالمة». Staff see OpenAI's own reason in th
   The stage shows standby as a resting orb and «تكلّم متى ما حبيت، أنا معك».
 - **Three voices, each with its own name** (the customer chooses with «تغيير الصوت» next to «إنهاء المكالمة»; the
   choice is remembered on that phone; during a call it reconnects with the new voice in about a second):
-  «سالم» `ash` (man, calm, the default) · «فارس» `verse` (man, lively) · «ريم» `marin` (woman). The assistant introduces
+  «سالم» `echo` (deep, the default) · «فارس» `ballad` (warm) · «ريم» `coral` (woman). (First set, 21:00: ash / verse / marin.) The assistant introduces
   itself by that name once, and «ريم» speaks of herself in the feminine.
 
 ## Test mode, budget, dialect (2026-11-26, 21:20, after the owner's test)
@@ -47,6 +47,17 @@ One button: «إنهاء المكالمة». Staff see OpenAI's own reason in th
   voice). "The cheapest" when asked still works.
 - Dialect: Yemeni or Gulf only, in words and pronunciation; Levantine and Egyptian words are banned by name, in the
   voice instructions and in the text assistant's.
+
+## Owner's test, 21:26: repeats, budget, loudness, voices
+- The same necklace came back three times when he asked for something else: the checker's fallback cards ignored the
+  pieces already shown, and "شيء آخر / ما عجبني / بديل..." were not read as "something else". Both fixed.
+- A 10 million budget for necklaces showed 4 million: the asked kind now comes first and, inside it, the closest to the
+  budget; when even the highest is far below the budget the assistant says so plainly and offers to reach the budget
+  (a second piece, or a full set).
+- Too quiet on iPhone (Safari plays a call quietly or from the earpiece while the microphone is on): on iPhone the
+  assistant plays through a louder path (gain 2.4 with a limiter); if no sound comes through it within 1.5 s of
+  speech, the plain playback takes over. The audio session is set to play-and-record during the call.
+- New voices: «سالم» `echo` (deep, default), «فارس» `ballad` (warm), «ريم» `coral` (woman).
 
 ## Caps (settings key `voice`)
 | Setting | Default | Meaning |

@@ -27,7 +27,7 @@ LIVE_URL = "https://api.openai.com/v1/live/sessions"
 DEFAULT = {
     "public": True,               # the microphone for everyone; the owner switches it off/on from the admin («المساعد الصوتي»)
     "model": "gpt-live-1",
-    "voice": "ash",               # the default of the three voices below («سالم»)
+    "voice": "echo",              # the default of the three voices below («سالم»)
     "per_customer_usd": 0.10,     # the most one customer can cost in a day
     "buyer_usd": 0.25,            # ... once he is buying (asked to buy, opened the purchase step)
     "daily_usd": 1.5,             # all voice calls in a day
@@ -48,9 +48,9 @@ DEFAULT = {
 
 # the customer picks one of these from the call screen («تغيير الصوت»); each has its own name and manner
 VOICES = [
-    {"id": "ash", "name": "سالم", "g": "m", "sub": "هادئ", "style": "رجل هادي وواثق"},
-    {"id": "verse", "name": "فارس", "g": "m", "sub": "حيوي", "style": "رجل بشوش وحيوي وواثق"},
-    {"id": "marin", "name": "ريم", "g": "f", "sub": "صوت نسائي", "style": "بنت هادية وواثقة"},
+    {"id": "echo", "name": "سالم", "g": "m", "sub": "صوت عميق", "style": "رجل هادي وواثق"},
+    {"id": "ballad", "name": "فارس", "g": "m", "sub": "صوت دافئ", "style": "رجل بشوش ودافئ وواثق"},
+    {"id": "coral", "name": "ريم", "g": "f", "sub": "صوت نسائي", "style": "بنت هادية وواثقة"},
 ]
 VOICE_BY_ID = {x["id"]: x for x in VOICES}
 

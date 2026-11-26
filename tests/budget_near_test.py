@@ -22,6 +22,21 @@ p2 = [it.get("price") for it in (r2 or {}).get("items", [])]
 check('2  asked for the cheapest: still the cheapest', p2 == sorted(p2), p2)
 r3 = search(kind="طقم", count=2)
 check('3  no budget: unchanged (by taste)', (r3 or {}).get("sorted_by") == "taste", (r3 or {}).get("sorted_by"))
+# 6-8 owner, 21:26: "three times I asked for something else and it showed the same necklace"; "10 million, it brought 4"
+import agent as AG
+st = shopstate.new_state()
+first = ag.search_products({"kind": "عقد", "max_price": 10_000_000, "count": 1}, st)["items"]
+for it in first:
+    st["shown"].append({"code": it["code"], "rejected": False})
+c = {"facts": {"kind": "عقد", "budget": 10_000_000}}
+again = ag._safe_pieces(c, st, {})
+check('6  the fallback cards never repeat a piece he already saw (while others are left)', first and again and first[0]["code"] not in again, (first[0]["code"] if first else None, again))
+check('7  "شيء آخر" / "ما عجبني" / "غيره" count as asking for something else', all(AG.has(AG.norm(x), AG.ANOTHER) for x in ("ابغى شيء آخر", "ما عجبني", "وريني غيره", "في شي ثاني؟"))
+      and not AG.has(AG.norm("ابغى عقد صغير"), AG.ANOTHER))
+r4 = ag.search_products({"kind": "عقد", "max_price": 10_000_000, "count": 2}, shopstate.new_state())
+check('8  necklaces far below a 10 million budget: the highest first, and a note to say it and help reach the budget',
+      r4["items"] and r4["items"][0]["price"] == max(p["price"] for p in ag._available() if p["type"] == "عقد") and "note_budget" in r4,
+      [i["price"] for i in r4["items"]])
 import voice, agent
 ins = voice.PERSONA
 check('4  voice: Yemeni or Gulf only, Levantine and Egyptian words banned', "ممنوع الشامي والمصري" in ins and "دلوقتي" in ins and "هلق" in ins)

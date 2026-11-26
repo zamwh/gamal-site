@@ -55,7 +55,7 @@ try:
     sent = SEEN[-1]["body"]["session"] if SEEN else {}
     check('4  a call opens; the key stays on the server', o.get("ok") and o.get("sdp") == "v=0 answer" and SEEN[-1]["auth"] == "Bearer sk-test", o)
     check('5  GPT-Live with client delegation and a male voice', sent.get("model") == "gpt-live-1" and sent.get("delegation", {}).get("type") == "client"
-          and sent.get("audio", {}).get("output", {}).get("voice") == "ash" and "«سالم»" in sent.get("instructions", ""), sent.get("delegation"))
+          and sent.get("audio", {}).get("output", {}).get("voice") == "echo" and "«سالم»" in sent.get("instructions", ""), sent.get("delegation"))
     check('5b standby: idle after 8 s of no words, wakes on real speech only', sent.get("idle_timeout_s") == 8
           and sent.get("wake_policy") == {"type": "speech", "vad_threshold": 0.6}, (sent.get("idle_timeout_s"), sent.get("wake_policy")))
     check('5c with standby the phone closes only after a minute of quiet', o.get("standby_s") == 8 and o.get("close_after_ms") == 60000, o)
@@ -122,12 +122,12 @@ try:
         v.close(x["call"], None, "end")
     # the customer picks one of three voices; each has its own name and manner
     app.store.set_setting("voice", {"public": True})
-    o6 = v.open("vis10", "chat10", "v=0 offer", "1.1.1.5", False, False, "marin")
+    o6 = v.open("vis10", "chat10", "v=0 offer", "1.1.1.5", False, False, "coral")
     se = SEEN[-1]["body"]["session"]
-    check('17e a customer picks «ريم»: the woman voice, her name, speaking as a woman', o6.get("ok") and se["audio"]["output"]["voice"] == "marin"
+    check('17e a customer picks «ريم»: the woman voice, her name, speaking as a woman', o6.get("ok") and se["audio"]["output"]["voice"] == "coral"
           and "«ريم»" in se["instructions"] and "بصيغة المؤنث" in se["instructions"] and "رجل هادي" not in se["instructions"], o6.get("voice"))
     o7 = v.open("vis11", "chat11", "v=0 offer", "1.1.1.6", False, False, "nova-hack")
-    check('17f a voice outside the three is ignored (the default «سالم»)', SEEN[-1]["body"]["session"]["audio"]["output"]["voice"] == "ash")
+    check('17f a voice outside the three is ignored (the default «سالم»)', SEEN[-1]["body"]["session"]["audio"]["output"]["voice"] == "echo")
     st9 = v.status("vis12", "1.1.1.7", False)
     check('17h every customer gets the three named voices', [x["name"] for x in st9.get("voices", [])] == ["سالم", "فارس", "ريم"]
           and [x["g"] for x in st9["voices"]] == ["m", "m", "f"], st9.get("voices"))
