@@ -196,6 +196,9 @@ async def m():
         check('12 iPhone: the louder path takes over (plain playback muted)', muted0 is True, muted0)
         check('12b ... and it is never silent: still muted only if sound really comes through the louder path', True if not muted1 else muted1)
         check('12c no page errors on the iPhone path', not errs2, errs2[:3])
+        note = await p2.evaluate("document.querySelector('#msgs').innerText")
+        check('12d test phase: the chat says which way the voice plays on this phone', 'للتجربة: صوت المستشار يمر بالمكبّر' in note
+              or 'للتجربة: جوالك ما قبل المكبّر' in note, note[-90:])
         await ctx2.close()
         await b.close()
 

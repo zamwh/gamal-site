@@ -57,6 +57,11 @@ One button: «إنهاء المكالمة». Staff see OpenAI's own reason in th
 - Too quiet on iPhone (Safari plays a call quietly or from the earpiece while the microphone is on): on iPhone the
   assistant plays through a louder path (gain 2.4 with a limiter); if no sound comes through it within 1.5 s of
   speech, the plain playback takes over. The audio session is set to play-and-record during the call.
+- Still too quiet (21:50): on iPhone the louder path now runs on a fresh audio context made when the call's sound
+  arrives (known WebKit workaround: it brings the sound back from the earpiece to the loudspeaker), gain 4 (about
+  +12 dB) with a limiter that only stops clipping; then the context made at the tap; then the plain playback. In the
+  test phase the chat says once which way the voice plays on that phone. iPhone also keeps a separate call volume:
+  the side volume buttons during the call raise it.
 - New voices: «سالم» `echo` (deep, default), «فارس» `ballad` (warm), «ريم» `coral` (woman).
 
 ## Caps (settings key `voice`)

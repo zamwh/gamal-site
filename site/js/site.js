@@ -786,22 +786,34 @@
   var IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   // an iPhone plays a call quietly (or from the earpiece) while the microphone is on: the assistant plays through a
   // louder path there, and if no sound comes through it the plain one takes over again
-  function vBoost(stream) {
-    var au = $('#vAudio'); if (!IOS || !V.ac || !V.ac.createMediaStreamSource) return;
+  function vBoost(stream, second) {
+    if (!IOS) return;
+    var au = $('#vAudio'), AC = window.AudioContext || window.webkitAudioContext;
+    vBoostOff();
     try {
-      if (V.bst) { try { V.bst.src.disconnect() } catch (e) { } }
-      var src = V.ac.createMediaStreamSource(stream), g = V.ac.createGain(), cp = V.ac.createDynamicsCompressor(), an = V.ac.createAnalyser();
-      g.gain.value = 2.4; cp.threshold.value = -12; cp.knee.value = 6; cp.ratio.value = 6; cp.attack.value = 0.003; cp.release.value = 0.2;
-      an.fftSize = 512; src.connect(g); g.connect(cp); cp.connect(V.ac.destination); cp.connect(an);
-      V.bst = { src: src, an: an, ok: false, wait: 0, buf: new Float32Array(512) }; au.muted = true;
-      if (V.ac.state === 'suspended') V.ac.resume();
-    } catch (e) { V.bst = null; au.muted = false }
+      // first a fresh audio context (on iPhone this also brings the call back from the earpiece to the loudspeaker),
+      // then the one made at the tap on the microphone
+      var ac = second ? V.pac : new AC(); if (!ac) throw 0;
+      if (ac.state === 'suspended') ac.resume();
+      var src = ac.createMediaStreamSource(stream), g = ac.createGain(), lim = ac.createDynamicsCompressor(), an = ac.createAnalyser();
+      g.gain.value = 4;                                          // about 12 dB louder
+      lim.threshold.value = -3; lim.knee.value = 0; lim.ratio.value = 20; lim.attack.value = 0.001; lim.release.value = 0.1;   // only stops clipping
+      an.fftSize = 512; src.connect(g); g.connect(lim); lim.connect(ac.destination); lim.connect(an);
+      V.bst = { ac: ac, own: !second, src: src, an: an, ok: false, wait: 0, buf: new Float32Array(512), stream: stream, second: !!second };
+      au.muted = true;
+    } catch (e) { V.bst = null; au.muted = false; if (!second && V.pac) vBoost(stream, true) }
   }
-  function vBoostCheck() {
+  function vBoostOff() { var b = V.bst; V.bst = null; if (!b) return; try { b.src.disconnect() } catch (e) { } if (b.own) { try { b.ac.close() } catch (e) { } } }
+  function vBoostCheck() {                                     // while the assistant talks: is the louder path really sounding?
     var b = V.bst; if (!b || b.ok || !V.aSpeaking || !b.an.getFloatTimeDomainData) return;
     b.an.getFloatTimeDomainData(b.buf); for (var s = 0, i = 0; i < b.buf.length; i++) s += b.buf[i] * b.buf[i];
-    if (Math.sqrt(s / b.buf.length) > 0.002) { b.ok = true; return }
-    b.wait += 50; if (b.wait > 1500) { try { b.src.disconnect() } catch (e) { } V.bst = null; $('#vAudio').muted = false }
+    if (Math.sqrt(s / b.buf.length) > 0.002) { b.ok = true; vNote(true); return }
+    b.wait += 50;
+    if (b.wait > 1500) { var st = b.stream, sec = b.second; vBoostOff(); if (!sec && V.pac) vBoost(st, true); else { $('#vAudio').muted = false; vNote(false) } }
+  }
+  function vNote(loud) {                                       // test phase: say once which way the voice plays on this phone
+    if (V.noted || !(V.test || V.lab)) return; V.noted = true;
+    addMsg(loud ? 'للتجربة: صوت المستشار يمر بالمكبّر في جوالك.' : 'للتجربة: جوالك ما قبل المكبّر، والصوت يمشي بالطريقة العادية. ارفع صوت الجوال من الأزرار وقت المكالمة.', 'a');
   }
   function vSet(st, txt) {
     V.st = st; if (!vdock) return; vdock.dataset.st = st;
@@ -849,7 +861,7 @@
     if (V.on || V.asking) { vStop('user'); return }
     if (!V.told) { V.told = true; addMsg('بيطلب منك المتصفح إذن المايكروفون عشان تكلمني بصوتك. اسمح له، وتكلم براحتك.', 'a') }
     V.asking = true; V.rd = false; vcShow(); vSet('dial', 'يتصل…');
-    try { if (IOS && navigator.audioSession) navigator.audioSession.type = 'play-and-record' } catch (e) { }
+    if (IOS && !V.pac) { try { V.pac = new (window.AudioContext || window.webkitAudioContext)(); V.pac.resume() } catch (e) { V.pac = null } }   // made in the tap: allowed to play
     navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }).then(function (s) {
       var still = V.asking; V.asking = false;
       if (!still) { s.getTracks().forEach(function (t) { t.stop() }); return }          // ended while the phone was asking
@@ -977,7 +989,7 @@
     if (!V.on) { if (V.asking || (vdock && !vdock.hidden)) { V.asking = false; vcHide() } return }
     V.on = false; vClose(reason || 'end');
     clearInterval(V.vt); V.vt = null; try { V.ac && V.ac.close() } catch (e) { } V.ac = null; V.an = null; V.speaking = false;
-    V.bst = null; $('#vAudio').muted = false; try { if (IOS && navigator.audioSession) navigator.audioSession.type = 'auto' } catch (e) { }
+    vBoostOff(); $('#vAudio').muted = false; try { V.pac && V.pac.close() } catch (e) { } V.pac = null;
     if (V.mic) V.mic.getTracks().forEach(function (t) { t.stop() }); V.mic = null;
     micBtn.classList.remove('on'); micBtn.setAttribute('aria-pressed', 'false'); V.st = 'off'; vcHide();
   }
