@@ -248,7 +248,7 @@ class Voice:
         left_s = int(left / self._per_s(c))
         return max(0, min(left_s, int(c["max_call_s"]) - int(now - float(row["started"]))))
 
-    def delegate(self, cid, text):
+    def delegate(self, cid, text, picks=None):
         c = self.cfg()
         row = self._row(cid)
         if not row or row["ended"]:
@@ -257,7 +257,8 @@ class Voice:
         if not text:
             return {"say": "ما فهمت عليك زين، ممكن تعيدها؟", "pieces": [], "misheard": True,
                     "left_s": self._left_s(row, time.time(), c)}
-        res = self.agent.chat(row["session"], text, row["visitor"] if not row["visitor"].startswith("ip:") else None) or {}
+        who = row["visitor"] if not row["visitor"].startswith("ip:") else None
+        res = (self.agent.chat(row["session"], text, who, picks) if picks is not None else self.agent.chat(row["session"], text, who)) or {}
         buyer = bool(res.get("offer")) or res.get("stage") in ("ready", "closing")
         with self.lock, self.app.lock:
             self.store.db.execute("UPDATE voice_calls SET turns=turns+1, buyer=MAX(buyer,?) WHERE id=?",

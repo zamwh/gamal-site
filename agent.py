@@ -79,6 +79,7 @@ CORE_PROMPT = """أنت "مستشار جمال المشرقي" في موقع م�
 - هو يرتّب القطع حسب طلبه ويستبعد المباع واللي رفضه. اعتمد ترتيبه، ولا تعرض كل اللي رجع.
 - "الأرخص"، "أخف"، "أصغر"، "أكبر": استخدم sort. لا تقل "هذا الأرخص" إلا من نتيجة مرتبة بالسعر.
 - إذا رفض شي ("بدون شراشيب"، "أرخص من هذا"، "أخف من هذا"): مرّره شرطاً (exclude_features / cheaper_than_code / lighter_than_code / max_weight)، ولا تعرض قطعة تخالفه أبداً.
+- "أبغى أثقل" أو "أوزن": heavier_than_code بآخر قطعة عرضتها أو اللي يقصدها، ونفس النوع؛ اعرض الأقرب لها من الأثقل، ولا تعرض أخف أو بنفس الوزن.
 - "سلسلة" قطعة لحالها، مو طقم. إذا قال "مش طقم" لا تعرض طقم لين يطلبه هو.
 - الهدية: ابدأ بالأخف والأرخص. "وش الجديد": new_only=true، ولا تقل عن قطعة جديدة إلا إذا new_arrival=true.
 - إذا رجع البحث قطع اعرض الأقرب، ولا تقل "ما عندي" والقطع موجودة. وإذا ما تطابق طلبه تماماً قل الفرق بجملة صادقة.
@@ -146,6 +147,7 @@ TOOLS = [
             "cheaper_than": {"type": "number", "description": "سعر قطعة سابقة؛ يرجع فقط الأرخص منها"},
             "cheaper_than_code": {"type": "string", "description": "رمز قطعة عرضتها؛ يرجع فقط الأرخص منها فعلاً"},
             "lighter_than_code": {"type": "string", "description": "رمز قطعة عرضتها؛ يرجع فقط الأخف منها"},
+            "heavier_than_code": {"type": "string", "description": "رمز قطعة عرضتها؛ يرجع فقط الأثقل منها، الأقرب لها أول"},
             "similar_to_code": {"type": "string", "description": "رمز قطعة أعجبته؛ يرتب حسب الشبه بها"},
             "new_only": {"type": "boolean", "description": "true إذا سأل عن الجديد أو اللي وصل حديثاً: يرجع القطع المسجلة \"وصل حديثاً\" فقط"},
             "required_features": {"type": "array", "items": {"type": "string", "enum": ["وحدات متكررة", "تكوين مركزي", "متدرج", "طبقات", "متناظر", "شراشيب", "ورود", "تخريم"]},
@@ -517,13 +519,15 @@ class SalesAgent:
         need = set(args.get("required_features") or [])
         wmax = args.get("max_weight") or req.get("weight_max")
         cheaper = float(args["cheaper_than"]) if args.get("cheaper_than") else None
-        lighter = None
+        lighter = heavier = None
         try:
             if args.get("cheaper_than_code"):
                 cp = ref(args["cheaper_than_code"])
                 cheaper = self.store.piece_price(cp)["total"]
             if args.get("lighter_than_code"):
                 lighter = ref(args["lighter_than_code"])["weight"]
+            if args.get("heavier_than_code"):
+                heavier = ref(args["heavier_than_code"])["weight"]
         except Exception:
             pass
         rejected = set(shopstate.rejected_codes(st)) | set(prof["rejected"])
@@ -544,6 +548,8 @@ class SalesAgent:
                 return "not_cheaper"
             if lighter is not None and p["weight"] >= lighter:
                 return "not_lighter"
+            if heavier is not None and p["weight"] <= heavier:
+                return "not_heavier"
             if wmax and p["weight"] > float(wmax):
                 return "weight"
             if p["code"] in rejected:
@@ -562,6 +568,8 @@ class SalesAgent:
         within = [p for p in eligible if not budget or p["price"] <= float(budget)]
         over = sorted([p for p in eligible if budget and p["price"] > float(budget)], key=lambda p: p["price"])[:2]
         sort = args.get("sort") or "taste"
+        if heavier is not None and sort in ("taste", "weight_desc"):
+            sort = "weight_asc"                       # "heavier": the next step up first, not the heaviest in the shop
         n = max(1, min(5, int(args.get("count") or 2)))
         near = float(args["near_weight"]) if args.get("near_weight") else None
         if near:
@@ -603,13 +611,17 @@ class SalesAgent:
             items.append(it)
         out = {"items": items, "sorted_by": sort, "eligible_total": len(eligible), "within_budget_total": len(within),
                "params": {"kind": kind, "budget": budget, "excluded": sorted(nofeat), "required": sorted(need),
-                          "cheaper_than": cheaper, "lighter_than": lighter, "max_weight": wmax, "sort": sort,
+                          "cheaper_than": cheaper, "lighter_than": lighter, "heavier_than": heavier, "max_weight": wmax, "sort": sort,
                           "occasion": occ, "dropped": dropped},
                "profile_known": stated_taste}
         if near and items:
             exact = any(abs(i["w"] - near) < 0.05 for i in items)
             out["note"] = (f"هذي الأقرب لوزن {near:g} جم. " + ("فيه قطعة بنفس الوزن." if exact else
                            "ما فيه قطعة بنفس الوزن بالضبط: قل الفرق من diff_g بالضبط، ولا تقل إن وزنها " + f"{near:g}."))
+        elif heavier is not None and items:
+            out["note"] = f"كلها أثقل من القطعة اللي قارن بها ({heavier:g} جم)، الأقرب لها أول. قل إنها أثقل، ولا تقل إنها الأثقل في المحل."
+        elif heavier is not None:
+            out["note"] = "ما فيه قطعة أثقل منها بهذه الشروط. قلها بصراحة، واعرض عليه يغير النوع أو الميزانية."
         elif sort != "taste" and items:
             out["note"] = "الترتيب حقيقي على كل القطع المتاحة المطابقة؛ الأول هو " + {"price_asc": "الأرخص", "price_desc": "الأغلى",
                           "weight_asc": "الأخف", "weight_desc": "الأثقل"}[sort] + " فعلاً."
@@ -631,10 +643,14 @@ class SalesAgent:
                 for p in avail:
                     kinds[p["type"]] = kinds.get(p["type"], 0) + 1
                 out["other_categories_available"] = kinds
+        if heavier is not None and not items:
+            out["note"] = "ما فيه قطعة أثقل منها بهذه الشروط. قلها بصراحة، واعرض عليه يغير النوع أو الميزانية."
         return out
 
     def _tool(self, name, args, ctx):
         if name == "search_pieces":
+            if ctx.get("heavier_ref") and not (args.get("heavier_than_code") or args.get("lighter_than_code") or args.get("near_weight")):
+                args = dict(args, heavier_than_code=ctx["heavier_ref"])    # he asked for heavier: never lighter or the same again
             out = self.search_products(args, ctx.get("state"), ctx.get("profile"), ctx.get("facts") or {},
                                        exclude_shown=not args.get("include_shown"))
             if not out.get("items") and out.get("other_categories_available") is not None and out.get("within_budget_total") \
@@ -989,8 +1005,73 @@ class SalesAgent:
                     ex.remove(name)
         req["excluded_kinds"] = ex
 
-    def chat(self, session, message, visitor=None):
+    @staticmethod
+    def _heaviest_last(st):
+        """The heaviest piece of the last batch shown: what "heavier" is measured against when he names none."""
+        shown = st.get("shown") or []
+        if not shown:
+            return None
+        last = max(e.get("batch", 0) for e in shown)
+        batch = [e for e in shown if e.get("batch", 0) == last and e.get("weight")]
+        return max(batch, key=lambda e: float(e["weight"]))["code"] if batch else None
+
+    KIND_LABEL = {norm(k): v for k, v in {"طقم": "أطقم كاملة", "عقد": "عقود", "كردان": "كردانات", "أسورة": "أساور",
+                                          "اسوره": "أساور", "خاتم": "خواتم", "حلق": "حلق", "سلسلة": "سلاسل",
+                                          "حزام": "أحزمة", "جنيه": "جنيهات ذهب"}.items()}
+
+    def _kind_question(self, c, st, r, t, loop):
+        """A budget but no kind yet, and nothing shown: ask what he wants, from what the shop really has (owner's request)."""
+        budget = c["facts"].get("budget") or st["request"].get("budget")
+        if not budget or st["shown"] or loop.get("kind_asked"):
+            return None
+        if c["facts"].get("kind") or st["request"].get("category") or r.get("kinds"):
+            return None
+        if set(r["intents"]) & {"injection", "complaint", "human", "discount", "account"} or SR.ANY_PICK.search(" " + t + " "):
+            return None
+        kinds = []
+        for p in self._available():
+            k = self.KIND_LABEL.get(norm(p["type"] or ""), p["type"])
+            if k and k not in kinds:
+                kinds.append(k)
+        if not kinds:
+            return None
+        return f"تمام، ميزانيتك تقريباً {float(budget):,.0f} ريال يمني. وش تحب بالضبط: {'، ولا '.join(kinds[:6])}؟"
+
+    def _picks_answer(self, picks, facts):
+        """The customer's own shortlist (sent by his browser): how many pieces, their weight and their total, by the system."""
+        import core as _core
+        if picks is None:
+            return "ما أشوف اختياراتك من هنا. افتح «اختياراتي» (زر القلب فوق) وتشوف القطع ومجموعها."
+        codes = [x for x in dict.fromkeys(re.sub(r"[^A-Za-z0-9]", "", str(x)).upper()[:20] for x in picks[:40]) if x]
+        if not codes:
+            return "اختياراتك فاضية الحين. أي قطعة تعجبك اضغط القلب اللي عليها وتنضاف، وأقول لك مجموعها."
+        have, gone = [], 0
+        for code in codes:
+            try:
+                p = self.store.piece(code)
+            except Exception:
+                gone += 1
+                continue
+            if p["status"] in ("available", "reserved") and _core.online_ok(self.store, p):
+                have.append((p, self.store.piece_price(p)["total"]))
+            else:
+                gone += 1
+        if not have:
+            return "القطع اللي في اختياراتك ما عادت متاحة الحين. تحب أطلع لك قطع قريبة منها؟"
+        n = len(have)
+        count = "قطعة وحدة" if n == 1 else "قطعتين" if n == 2 else f"{n} قطع" if n <= 10 else f"{n} قطعة"
+        names = "، ".join(f"«{p['title'] or p['type']}»" for p, _ in have[:4]) + (" وغيرها" if n > 4 else "")
+        w = f"{sum(float(p['weight']) for p, _ in have):,.1f}".rstrip("0").rstrip(".")
+        basis = "على سعر الذهب اليوم" if facts.get("price_today") else "على آخر سعر ذهب مسجل"
+        txt = f"في اختياراتك {count}: {names}.\nالوزن الإجمالي {w} جرام، والمجموع {sum(v for _, v in have):,.0f} ريال يمني {basis}."
+        if gone:
+            txt += "\nوفيه " + ("قطعة وحدة" if gone == 1 else "قطعتين" if gone == 2 else f"{gone} قطع") + \
+                   " في اختياراتك ما عادت متاحة، فما حسبتها."
+        return txt
+
+    def chat(self, session, message, visitor=None, picks=None):
         t0 = time.time()
+        heavier_ref = None
         message = (message or "").strip()[:600]
         session = re.sub(r"[^A-Za-z0-9_-]", "", session or "")[:40] or "anon"
         visitor = re.sub(r"[^A-Za-z0-9_-]", "", visitor or "")[:40] or None
@@ -1073,6 +1154,23 @@ class SalesAgent:
                         self.analytics.log_ai(session, "-", "canned", stage, "tpl:piece_price", 0, 0, 0, 0.0,
                                               int((time.time() - t0) * 1000), need)
                     return {"text": ptxt, "pieces": [], "stage": stage, "canned": True, "suggest": self._suggest(c)}
+            # ---- "what do my picks come to?" (his shortlist, sent by his browser) and "a budget, what would you bring me?"
+            ktxt, kname = None, None
+            if SR.PICKS.search(" " + t + " ") and not r["faq"]:
+                ktxt, kname = self._picks_answer(picks, facts), "tpl:picks"
+            else:
+                ktxt = self._kind_question(c, st, r, t, loop)
+                if ktxt:
+                    kname = "tpl:kind_question"
+                    loop["kind_asked"] = st["turn"]
+            if ktxt:
+                self._log(session, message, ktxt, kname, 0, 0, 0)
+                self._save_ctx(session, c)
+                self.taste.save(pkey, prof)
+                self.store.db.commit()
+                if self.analytics:
+                    self.analytics.log_ai(session, "-", "canned", stage, kname, 0, 0, 0, 0.0, int((time.time() - t0) * 1000), need)
+                return {"text": ktxt, "pieces": [], "stage": stage, "canned": True, "suggest": self._suggest(c)}
             # ---- the model's turn, unless it is off, capped or the chat is very long
             why = "limit" if c["msgs"] > int(cfg["session_msg_limit"]) else ("off" if not (cfg.get("enabled") and cfg.get("api_key")) else None)
             if not why:
@@ -1094,6 +1192,11 @@ class SalesAgent:
             bridal = c["facts"].get("occasion") in ("عرس", "خطوبة")
             mom, discovery = SR.moment(r, known, bool(st["shown"]), ref_code, pre, self._sold_ref(message), bridal,
                                        "browse_strong" in r["selling"], repeat, no_cards)
+            if st["shown"] and SR.HEAVIER.search(" " + t + " "):      # "heavier": measured against what he means or the last batch
+                heavier_ref = ref_code or self._heaviest_last(st)
+                if heavier_ref:
+                    mom += ("\n\nيبغى قطع أثقل من اللي شافها: استدعِ search_pieces بنفس النوع (الفلتر heavier_than_code ينضاف تلقائياً "
+                            f"على [[{heavier_ref}]])، واعرض أقرب قطعتين أثقل منها. لا تعرض قطعة أخف أو بنفس الوزن.")
             dynamic = self._dynamic(c, stage, prof, session, facts, consent, mom)
             if ref_code:
                 e = shopstate.find(st, ref_code)
@@ -1107,7 +1210,7 @@ class SalesAgent:
             cfg = dict(cfg, extra=dict(cfg.get("extra") or {}, tool_choice="none"))
         t_in = t_cached = t_out = 0
         ctx = {"msg": t, "session": session, "visitor": visitor, "profile": prof, "facts": c["facts"], "shown": list(c["shown"]),
-               "state": st, "tool_texts": []}
+               "state": st, "tool_texts": [], "heavier_ref": heavier_ref}
         text = ""
         try:
             for rnd in range(5):

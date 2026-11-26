@@ -372,7 +372,8 @@ class Server:
                             return self._send(200, v.open(str(data.get("visitor", ""))[:40], str(data.get("session", "")),
                                                           str(data.get("sdp", "")), self._vip(), staff, bool(data.get("resume"))))
                         if path == "/api/voice/delegate":
-                            return self._send(200, v.delegate(call, str(data.get("text", ""))))
+                            picks = data.get("picks") if isinstance(data.get("picks"), list) else None
+                            return self._send(200, v.delegate(call, str(data.get("text", "")), picks))
                         if path == "/api/voice/beat":
                             return self._send(200, v.beat(call))
                         if path == "/api/voice/close":
@@ -382,7 +383,8 @@ class Server:
                     if path == "/api/chat":
                         if server.limited(ip, "chat"):
                             return self._send(429, {"error": "رسائل كثيرة، انتظر دقيقة"})
-                        return self._send(200, app.agent.chat(str(data.get("session", "")), str(data.get("message", "")), str(data.get("visitor", "") or "")))
+                        picks = data.get("picks") if isinstance(data.get("picks"), list) else None   # his shortlist, from his browser
+                        return self._send(200, app.agent.chat(str(data.get("session", "")), str(data.get("message", "")), str(data.get("visitor", "") or ""), picks))
                     if path == "/api/terms":
                         if server.limited(ip, "terms"):
                             return self._send(429, {"error": "محاولات كثيرة"})

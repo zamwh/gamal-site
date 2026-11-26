@@ -731,7 +731,7 @@
       })();
     };
     if (!ONLINE || !SITE.ai) { setTimeout(function () { done(localReply(t)) }, 700); return }
-    fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session: CHAT_ID, visitor: (window.T && window.T.visitor) || '', message: t }) })
+    fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session: CHAT_ID, visitor: (window.T && window.T.visitor) || '', message: t, picks: LIST.slice(0, 40) }) })
       .then(function (r) { return r.json() }).then(done).catch(function () { done(localReply(t)) });
   }
   $('#chatForm').onsubmit = function (e) { e.preventDefault(); send($('#chatIn').value) };
@@ -824,7 +824,7 @@
     V.pend++; vSet('live', 'لحظة أشوف لك…');
     setTimeout(function () {                                   // the customer's words reach us a moment after the request
       var text = V.uText.trim(); V.uText = '';
-      vPost('delegate', { call: V.call, text: text }).then(function (d) {
+      vPost('delegate', { call: V.call, text: text, picks: LIST.slice(0, 40) }).then(function (d) {
         V.pend = Math.max(0, V.pend - 1);
         if (d.misheard) { V.miss++; if (V.miss >= 2) { d.say = 'ما فهمت عليك زين. ممكن تكتب لي طلبك هنا في المحادثة؟'; V.miss = 0 } } else V.miss = 0;
         vSend({ type: 'session.commentary.append', event_id: 'r' + Date.now(), delegation_id: id, content: d.say || '' });

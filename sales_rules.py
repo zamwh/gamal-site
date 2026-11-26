@@ -499,6 +499,10 @@ PROMISES = {
 }
 KARAT_OTHER = re.compile(r"عيار\s*(18|22|24)|(18|22|24)\s*(قيراط|عيار)|ذهب\s*(18|22|24)")
 SEVERE = {"number", "scarcity", "promise", "karat", "banned", "branch", "entity", "taste", "relative", "stock_story", "making"}
+# (on normalised text) "heavier than what I saw", "what do my picks come to", "you choose for me"
+HEAVIER = re.compile(r"(اثقل|اوزن|وزن اكبر|وزن اعلى|اكبر وزن|اكثر وزن|اكبر شوي|اكبر منها|اكبر منه|اكبر من هذ)")
+PICKS = re.compile(r"(اختياراتي|اختياري|سلتي|السله|سله المشتريات|مفضلتي|المفضله|قائمتي|اللي اضفت|اللي حفظت|اللي اخترت)")
+ANY_PICK = re.compile(r"(اي شي|اي حاجه|اختار لي|اختر لي|انت اختار|على ذوقك|اللي تشوفه|اللي تختاره)")
 # the making charge is internal: no amount after the word, no "gold × weight + making" split of a price
 MAKING = re.compile(r"مصنعي\w*[\s:=،]*(?:هي|حقها|حقه|عليها|عليه|تبلغ|تقريبا|بـ|ب)?\s*[\d٠-٩]"
                     r"|[×x\*]\s*(?:ال)?وزن|(?:ال)?وزن\w*\s*[×x\*]|\+\s*(?:ال)?مصنعي|قيمه الذهب\s*[:=]?\s*[\d٠-٩]")
