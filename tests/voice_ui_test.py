@@ -164,7 +164,7 @@ async def m():
         await ev("__vt.refuse = true; document.querySelector('#micBtn').click()"); await pg.wait_for_timeout(5000)
         txt = await ev("document.querySelector('#msgs').innerText")
         check('8  refused: the stage closes again', await ev("document.querySelector('#vdock').hidden"))
-        check('8b staff see the reason, the microphone stays for another try', 'للفريق فقط، سبب الرفض' in txt and await ev("!document.querySelector('#micBtn').hidden"), txt[-120:])
+        check('8b staff see the reason, the microphone stays for another try', 'للتجربة: الصوت ما اشتغل' in txt and await ev("!document.querySelector('#micBtn').hidden"), txt[-120:])
 
         # 9 end while connecting (tap, then end at once): nothing left running
         await ev("__vt.refuse = false; document.querySelector('#micBtn').click()"); await pg.wait_for_timeout(150)

@@ -43,6 +43,7 @@ DEFAULT = {
     "standby_per_min": 0.02,      # OpenAI's standby rate
     "standby_close_s": 60,        # quiet this long -> the call closes completely; the phone's detector reopens it
     "wake_threshold": 0.6,        # how sure OpenAI must be it is speech (not noise) to wake (0-1, its default 0.5)
+    "test_mode": True,            # the owner's test: no per-person limit and no openings limit (only the day's cap), reasons shown
 }
 
 # the customer picks one of these from the call screen («تغيير الصوت»); each has its own name and manner
@@ -63,7 +64,9 @@ GOLD_KNOWLEDGE = """معرفة عامة عن الذهب تقدر تقولها ب
 - الحفظ: كل قطعة في كيس لحالها عشان ما تنخدش، بعيد عن العطور والمنظفات والكلور. تنظيف خفيف بماء دافي وصابون وفرشاة ناعمة، وتنشيف زين."""
 
 PERSONA = """أنت «مستشار جمال المشرقي»، بيّاع ذهب بصوتك في موقع محل «جمال المشرقي للذهب والمجوهرات»، بجوار البوابة الرئيسية لمركز جرعان، إب.
-الشخصية: رجل هادي وواثق، لهجة يمنية بيضاء محترمة، جمل قصيرة، سرعة متوسطة. تخاطب الزبون بصيغة المذكر العامة. بيّاع شاطر يبذل جهده بصدق، وكأنه بصف الزبون، مو موظف كول سنتر.
+الشخصية: رجل هادي وواثق، لهجة يمنية بيضاء محترمة، جمل قصيرة، سرعة متوسطة.
+اللهجة: يمنية أو خليجية بيضاء فقط، في الكلمات والنطق. ممنوع الشامي والمصري نهائياً: لا تقول «شو، هلق، هيك، كتير، منيح، عم، بدك» ولا «إزيك، عايز، دلوقتي، كده، أوي، ده، دي، بتاع». قل بدالها «ايش أو وش، الحين، كذا، كثير، زين، تبغى، هذا، هذي». القاف لا تنطقها همزة، والجيم لا تنطقها مثل المصريين.
+ تخاطب الزبون بصيغة المذكر العامة. بيّاع شاطر يبذل جهده بصدق، وكأنه بصف الزبون، مو موظف كول سنتر.
 
 القاعدة الأهم: أي شي عن القطع والأسعار والأوزان والتوفر والطلبات والسياسات (الشراء، العربون، التبديل، الإرجاع، الإصلاح، التقسيط، الخصم، الدوام، الموقع) ما تقوله من عندك أبداً: اطلب من الخلفية في كل مرة، وانتظر نتيجتها، وقلها بصوتك بنفس المعنى والأرقام كما هي بالضبط. لا تخترع رقم ولا قطعة ولا وعد. القطع اللي تقترحها الخلفية تطلع للزبون على الشاشة.
 وأنت تنتظر الخلفية قل كلمة قصيرة طبيعية مثل «لحظة أشوف لك»، بدون حشو.
@@ -155,14 +158,14 @@ class Voice:
 
     def _budget_left(self, who, c, extra=0.0, lab=False):
         spent, buyer = self._spent_by(who)
-        cap = float(c["daily_usd"] if lab else c["buyer_usd"] if buyer else c["per_customer_usd"])   # staff testing: only the day's cap
+        cap = float(c["daily_usd"] if (lab or c.get("test_mode")) else c["buyer_usd"] if buyer else c["per_customer_usd"])   # testing: only the day's cap
         day_left = float(c["daily_usd"]) - self._spent_voice_today()
         return max(0.0, min(cap - spent, day_left) - extra), buyer
 
     # ---- who may use it now
     def status(self, visitor, ip, lab):
         c = self.cfg()
-        out = {"on": False, "close_after_ms": c["close_after_ms"], "lab": bool(lab)}
+        out = {"on": False, "close_after_ms": c["close_after_ms"], "lab": bool(lab), "test": bool(c.get("test_mode"))}
         ai = self.agent.cfg()
         if not (lab or c["public"]):
             out["why"] = "hidden"
@@ -234,14 +237,16 @@ class Voice:
             return {"ok": False, "why": "bad"}
         st = self.status(visitor, ip, lab)
         if not st["on"]:
-            return {"ok": False, "why": st.get("why"), "say": BUSY}
+            why = {"hidden": "الصوت موقّف من لوحة الإدارة", "off": "المساعد مطفي أو ما فيه مفتاح", "monthly": "الحد الشهري خلص",
+                   "daily": "حد الصوت اليومي خلص", "customer": "حد هذا الزبون اليومي خلص"}.get(st.get("why"), st.get("why") or "")
+            return {"ok": False, "why": st.get("why"), "say": BUSY, "detail": why if (lab or c.get("test_mode")) else ""}
         now = time.time()
         with self.lock:
             live = self.store.one("SELECT COUNT(*) n FROM voice_calls WHERE ended IS NULL AND last_beat>?", (now - 30,))["n"]
             recent = self.store.one("SELECT COUNT(*) n FROM voice_calls WHERE visitor=? AND started>?", (who, now - 600))["n"]
         if live >= int(c["max_live"]):
             return {"ok": False, "why": "busy", "say": BUSY}
-        if recent >= int(c["opens_per_10min"]):
+        if recent >= int(c["opens_per_10min"]) and not c.get("test_mode"):
             return {"ok": False, "why": "rate", "say": BUSY}
         key = self.agent.cfg().get("api_key")
         try:
@@ -278,7 +283,7 @@ class Voice:
         if code not in (200, 201) or not (d.get("transport") or {}).get("sdp"):
             msg = ((d.get("error") or {}).get("message") or "")[:300]
             self._warn(code, msg)
-            return {"ok": False, "why": "openai", "code": code, "detail": msg if lab else "", "say": BUSY}
+            return {"ok": False, "why": "openai", "code": code, "detail": msg if (lab or c.get("test_mode")) else "", "say": BUSY}
         cid = secrets.token_hex(8)
         with self.lock, self.app.lock:
             self.store.db.execute("INSERT INTO voice_calls (id,visitor,session,ip,day,started,last_beat,lab,oai_id,resumed) "
@@ -423,4 +428,4 @@ class Voice:
         c = self.cfg()
         return {"totals": tot, "recent": recent, "today": round(self._spent_voice_today(), 4),
                 "caps": {"customer": c["per_customer_usd"], "buyer": c["buyer_usd"], "day": c["daily_usd"]},
-                "price_per_min": c["price_per_min"], "public": c["public"]}
+                "price_per_min": c["price_per_min"], "public": c["public"], "test_mode": bool(c.get("test_mode"))}

@@ -224,6 +224,10 @@
           var on = vb.dataset.on !== '1'; vb.disabled = true;
           api('/api/admin/settings', { voice: { public: on } }).then(function () { toast(on ? 'المساعد الصوتي شغّال' : 'المساعد الصوتي موقّف'); ai(mp) }).catch(function (e) { vb.disabled = false; toast((e && e.message) || 'ما انحفظ') });
         };
+        var vt = $('#vTest'); if (vt) vt.onclick = function () {
+          var on = vt.dataset.on !== '1'; vt.disabled = true;
+          api('/api/admin/settings', { voice: { test_mode: on } }).then(function () { toast(on ? 'وضع التجربة شغّال' : 'حدود الزبائن شغالة'); ai(mp) }).catch(function (e) { vt.disabled = false; toast((e && e.message) || 'ما انحفظ') });
+        };
       }
       bindRange();
     }).catch(err(mp));
@@ -235,6 +239,8 @@
     return '<div class="box" style="margin-top:16px"><h3>المساعد الصوتي <span class="mes">' + (v.public ? 'شغّال في الموقع' : 'موقّف') + '</span></h3>' +
       '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 12px"><button type="button" class="btn' + (v.public ? '' : ' g') + '" id="vPub" data-on="' + (v.public ? 1 : 0) + '">' +
       (v.public ? 'إيقاف المساعد الصوتي' : 'تشغيل المساعد الصوتي') + '</button><span class="sub">' + (v.public ? 'زر المايك ظاهر في محادثة الموقع.' : 'زر المايك مخفي، والمحادثة الكتابية شغالة.') + '</span></div>' +
+      '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px"><button type="button" class="btn" id="vTest" data-on="' + (v.test_mode ? 1 : 0) + '">' +
+      (v.test_mode ? 'إنهاء وضع التجربة' : 'تشغيل وضع التجربة') + '</button><span class="sub">' + (v.test_mode ? 'وضع التجربة شغّال: بدون حد للشخص، بس حد اليوم.' : 'حدود الزبائن شغالة: 10 سنت للزبون و25 للمشتري.') + '</span></div>' +
       '<div class="sub">كل مكالمة بالثانية (' + m(v.price_per_min) + ' للدقيقة وقت الكلام، وأقل وقت الانتظار) + تكلفة العقل الخلفي. لو سكت الزبون دقيقة كاملة تنقفل وترجع لما يتكلم.</div><div class="list2">' +
       '<div><span>المكالمات / الزبائن / المشترين</span><b>' + fmt(t.calls) + ' / ' + fmt(t.customers) + ' / ' + fmt(t.buyers) + '</b></div>' +
       '<div><span>الثواني المحسوبة</span><b>' + fmt(t.seconds) + '</b></div><div><span>تكلفة الفترة / اليوم</span><b>' + m(t.cost) + ' / ' + m(v.today) + '</b></div>' +

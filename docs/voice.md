@@ -38,6 +38,16 @@ One button: «إنهاء المكالمة». Staff see OpenAI's own reason in th
   «سالم» `ash` (man, calm, the default) · «فارس» `verse` (man, lively) · «ريم» `marin` (woman). The assistant introduces
   itself by that name once, and «ريم» speaks of herself in the feminine.
 
+## Test mode, budget, dialect (2026-11-26, 21:20, after the owner's test)
+- Changing the voice ended the call with "busy": the owner (not signed in) had used a customer's 10¢ for the day, so the
+  reconnect was refused. Now `test_mode` (on, with a button in the admin next to the on/off button): no per-person
+  limit and no openings limit, only the day's cap; any refusal says why in the chat; the microphone stays. Changing
+  the voice also hands the old call back at once, so the new one never waits on it.
+- A stated budget: the pieces closest to it first (never above it), not the cheapest (`search_products`, also for
+  voice). "The cheapest" when asked still works.
+- Dialect: Yemeni or Gulf only, in words and pronunciation; Levantine and Egyptian words are banned by name, in the
+  voice instructions and in the text assistant's.
+
 ## Caps (settings key `voice`)
 | Setting | Default | Meaning |
 |---|---|---|

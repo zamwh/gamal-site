@@ -46,7 +46,7 @@ try:
     app.store.set_setting("ai", {"enabled": True, "api_key": "sk-test"})
     st = v.status("vis1", "1.2.3.4", True)
     check('3  staff testing: on, only the day cap (1.5 $ = 1800 s)', st["on"] and st["budget_s"] in (1799, 1800), st)
-    app.store.set_setting("voice", {"public": True})
+    app.store.set_setting("voice", {"public": True, "test_mode": False})
     st = v.status("vis9", "9.9.9.9", False)
     check('3b a customer (once public): 10 cents = 120 seconds', st["on"] and st["budget_s"] == 120, st)
     app.store.set_setting("voice", {})
@@ -91,7 +91,7 @@ try:
     # caps
     app.store.db.execute("INSERT INTO voice_calls (id,visitor,session,ip,day,started,last_beat,ended,cost) VALUES ('x1','vis2','c2','',?,?,?,?,0.10)",
                          (v._today(), time.time(), time.time(), time.time())); app.store.db.commit()
-    app.store.set_setting("voice", {"public": True})
+    app.store.set_setting("voice", {"public": True, "test_mode": False})
     st = v.status("vis2", "5.6.7.8", False)
     app.store.set_setting("voice", {})
     check('15 a customer who used his 10 cents: no microphone today', not st["on"] and st.get("why") == "customer", st)
@@ -154,12 +154,20 @@ try:
     check('19 a vanished call is billed up to its last heartbeat (+10 s), not until now', 49 <= s["billed_s"] <= 51, s)
 
     # too many openings in ten minutes (a larger customer cap here, so the opening limit is what stops it)
-    app.store.set_setting("voice", {"per_customer_usd": 1.0})
+    app.store.set_setting("voice", {"per_customer_usd": 1.0, "test_mode": False})
     for i in range(12):
         r = v.open("vis8", "chat8", "v=0 offer", "1.1.1.4", True)
         if r.get("ok"):
             v.close(r["call"], None, "quiet")
     check('20 at most 10 openings per customer in ten minutes', r.get("why") == "rate", r)
+    app.store.set_setting("voice", {"per_customer_usd": 1.0, "test_mode": True})
+    r = v.open("vis8", "chat8", "v=0 offer", "1.1.1.4", False)
+    check('20b test mode: no openings limit, and a refusal would say why', r.get("ok"), r.get("why"))
+    if r.get("ok"): v.close(r["call"], None, "end")
+    app.store.set_setting("voice", {"public": False, "test_mode": True})
+    r = v.open("vis8", "chat8", "v=0 offer", "1.1.1.4", False)
+    check('20c switched off in test mode: the reason is given', not r.get("ok") and "لوحة الإدارة" in r.get("detail", ""), r)
+    app.store.set_setting("voice", {"per_customer_usd": 1.0})
 
     rep = v.report(v._today(), v._today())
     check('21 the owner\'s report lists the calls with seconds and cost', rep["totals"]["calls"] >= 5 and rep["recent"] and "seconds" in rep["recent"][0], rep["totals"])

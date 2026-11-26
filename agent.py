@@ -69,6 +69,8 @@ CORE_PROMPT = """أنت "مستشار جمال المشرقي" في موقع م�
 
 الأسلوب:
 - رد بلغة الزبون: عربي بلهجة يمنية/خليجية بيضاء ودودة (بصيغة المذكر العامة)، أو إنجليزي راقٍ وبسيط إذا كتب بالإنجليزي.
+- ممنوع الشامي والمصري: لا «شو، هلق، هيك، كتير، منيح، بدك» ولا «إزيك، عايز، دلوقتي، كده، أوي، بتاع». قل «ايش/وش، الحين، كذا، كثير، زين، تبغى».
+- الزبون قال ميزانية: اعرض الأقرب لها (search_products يرتبها كذا)، مو الأرخص.
 - ردود قصيرة: سطر إلى ثلاثة. سؤال واحد بالكثير، ومو كل رد لازم ينتهي بسؤال.
 - كلام بيّاع ذهب ملموس من شكل القطعة الحقيقي: شغل ناعم، مليان، ثقيل، خفيف، فيه شراشيب، وردة بالوسط، طويل، قصير. بدون تكديس صفات وبدون كلام إعلانات.
 - لا تكرر نفس الافتتاحية أو نفس الوصف بين ردودك، ولا تبدأ كل رد بـ"أبشر". لا تسأل عن شي النظام كاتبه لك في "ما نعرفه عن الزبون".
@@ -575,6 +577,11 @@ class SalesAgent:
         if near:
             sort = "near"
         pool = [p for p in within if p["code"] not in shown] or ([p for p in within] if sort != "taste" else [])
+        near_budget = bool(budget) and sort == "taste" and not args.get("similar_to_code")
+        if near_budget:                                # a stated budget: pieces close to it first, not the cheapest
+            band = [p for p in pool if p["price"] >= float(budget) * 0.6]
+            if band:
+                pool = band
         # asked for a necklace: real necklaces first; a set that has a necklace in it only after them
         k_ = norm(kind) if kind else ""
         other = (lambda p: 0) if not kind else \
@@ -593,10 +600,15 @@ class SalesAgent:
                     prof = tmp
                 except Exception:
                     pass
-            ranked, _ = self.taste.rank(prof, [p for p in pool if not other(p)], lambda p: True, None, occ, (), n)
-            if len(ranked) < n:
-                more, _ = self.taste.rank(prof, [p for p in pool if other(p)], lambda p: True, None, occ, (), n - len(ranked))
-                ranked = list(ranked) + list(more)
+            if near_budget and not [p for p in pool if p["price"] >= float(budget) * 0.6]:
+                ranked = [(0, p, []) for p in sorted(pool, key=lambda p: (other(p), -p["price"]))][:n]   # all far below: the highest
+            else:
+                ranked, _ = self.taste.rank(prof, [p for p in pool if not other(p)], lambda p: True, None, occ, (), n)
+                if len(ranked) < n:
+                    more, _ = self.taste.rank(prof, [p for p in pool if other(p)], lambda p: True, None, occ, (), n - len(ranked))
+                    ranked = list(ranked) + list(more)
+            if near_budget:
+                ranked = sorted(ranked, key=lambda r: (other(r[1]), -r[1]["price"]))
         stated_taste = any((v or {}).get("src") == "stated" for v in (prof.get("liked") or {}).values()) or any(
             (e or {}).get("src") == "stated" and (e or {}).get("s", 0) > 0
             for d in (prof.get("dims") or {}).values() for e in d.values())

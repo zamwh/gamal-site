@@ -795,7 +795,7 @@
     if (!micBtn || location.protocol.indexOf('http') !== 0 || !navigator.mediaDevices || !window.RTCPeerConnection) return;
     fetch('/api/voice/status?v=' + encodeURIComponent((window.T && window.T.visitor) || ''), { cache: 'no-store' })
       .then(function (r) { return r.json() }).then(function (d) {
-        micBtn.hidden = !(d && d.on) && !V.on; V.lab = !!(d && d.lab); if (d && d.close_after_ms) V.closeMs = d.close_after_ms;
+        micBtn.hidden = !(d && d.on) && !V.on; V.lab = !!(d && d.lab); V.test = !!(d && d.test); if (d && d.close_after_ms) V.closeMs = d.close_after_ms;
         if (d && !d.on && d.lab && d.why && !V.whyTold && chatEl.classList.contains('open')) {   // staff: say why there is no microphone
           V.whyTold = true; addMsg('للفريق فقط: زر الصوت مخفي الحين، ' + ({ hidden: 'لأنه موقّف من لوحة الإدارة', off: 'لأن المساعد مطفي أو ما فيه مفتاح', monthly: 'لأن الحد الشهري خلص', daily: 'لأن حد الصوت اليومي خلص', customer: 'لأن حدك اليومي خلص' }[d.why] || d.why) + '.', 'a');
         }
@@ -934,14 +934,16 @@
     V.pc = V.dc = V.tr = V.call = null; V.aSpeaking = false; V.pend = 0; V.quiet = 0; V.uBub = V.aBub = null; V.paused = false; V.sbMs = 0; clearInterval(V.bt);
     var fin = false, done = function (usage) { if (fin) return; fin = true; try { pc.close() } catch (e) { } try { tr.stop() } catch (e) { } if (call) vPost('close', { call: call, usage: usage || null, reason: reason, standby_ms: sbms }).catch(function () { }) };
     if (usage0 !== undefined) done(usage0);
+    else if (reason === 'voice') { try { dc.send(JSON.stringify({ type: 'session.close' })) } catch (e) { } done(null) }
     else { try { dc.send(JSON.stringify({ type: 'session.close' })) } catch (e) { } dc.onmessage = function (e) { var m; try { m = JSON.parse(e.data) } catch (x) { return } if (m.type === 'session.closed') done(m.usage || (m.message && m.message.usage)) }; setTimeout(function () { done(null) }, 4000) }
     if (V.on && reason !== 'voice') vSet('idle', 'أول ما تتكلم، أرجع أسمعك');
   }
   function vDrop(why, say, detail) {
     var pc = V.pc; V.pc = V.dc = V.call = null; V.opening = false; try { pc && pc.close() } catch (e) { } try { V.tr && V.tr.stop() } catch (e) { } V.tr = null;
     if (why === 'net') { addMsg('الاتصال ضعيف شوي. جرب مرة ثانية، أو اكتب لي هنا وأنا أرد عليك.', 'a'); vStop('net'); return }
-    vStop('limit'); if (why !== 'bad') { if (!V.lab) micBtn.hidden = true; addMsg(say || BUSY_V, 'a') }
-    if (V.lab && detail) addMsg('للفريق فقط، سبب الرفض: ' + detail, 'a');          // staff testing: OpenAI's own words
+    var keep = V.lab || V.test;                                // testing: keep the microphone and say why
+    vStop('limit'); if (why !== 'bad') { if (!keep) micBtn.hidden = true; if (!(keep && detail)) addMsg(say || BUSY_V, 'a') }
+    if (keep && detail) addMsg('للتجربة: الصوت ما اشتغل، ' + detail + '.', 'a');
   }
   // the customer's budget is nearly spent: say it plainly (never "a limit was reached") and carry on in writing
   function vEnd() {
