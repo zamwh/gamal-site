@@ -43,9 +43,10 @@
   function moneyH(yer, cur) { return '<span class="num">' + fmt(conv(yer, cur)) + '</span><span class="cur">' + curLbl(cur) + '</span>' }
   $$('#cur button').forEach(function (b) { b.onclick = function () { CUR = b.dataset.c; try { localStorage.setItem('gm_cur', CUR) } catch (e) { } renderAll(); route() } });
 
-  /* ---------- theme: dark by default ---------- */
-  var mode = 'night'; /* day mode paused */
-  function applyMode() { document.documentElement.classList.toggle('day', mode === 'day'); $('meta[name=theme-color]').content = mode === 'day' ? '#f5f0e6' : '#070605' }
+  /* ---------- theme: dark by default; day mode is the visitor's choice, remembered on this device ---------- */
+  var mode = 'night';
+  try { if (localStorage.getItem('gm_mode3') === 'day') mode = 'day' } catch (e) { }
+  function applyMode() { document.documentElement.classList.toggle('day', mode === 'day'); $('meta[name=theme-color]').content = mode === 'day' ? '#f5f0e6' : '#070605'; $('#modeBtn').setAttribute('aria-label', mode === 'day' ? 'الوضع الليلي' : 'الوضع النهاري') }
   $('#modeBtn').onclick = function () { mode = mode === 'day' ? 'night' : 'day'; try { localStorage.setItem('gm_mode3', mode) } catch (e) { } applyMode() };
   applyMode();
 
@@ -59,22 +60,106 @@
     });
   }
 
-  /* ---------- price ribbon & quotes ---------- */
+  /* ---------- price card: sell big, buy small, the pound below; "how much is your gold today" and the price history inside ---------- */
+  var AR_D = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  var AR_M = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+  function arWhen(s) {   // the shop's own clock, as typed: "2026-11-23 19:11:41" → "الاثنين 23 نوفمبر · 7:11 م"
+    var m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/); if (!m) return '';
+    var d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])), h = +m[4];
+    return AR_D[d.getUTCDay()] + ' ' + (+m[3]) + ' ' + AR_M[+m[2] - 1] + ' · ' + (h % 12 || 12) + ':' + m[5] + ' ' + (h < 12 ? 'ص' : 'م');
+  }
+  function arDay(s) { var m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? (+m[3]) + ' ' + AR_M[+m[2] - 1] : String(s || '') }
+  var PC = { tab: 'calc', unit: 'g', qty: '10' }, calcSent = false;
+  var IC_PLUS = '<svg class="i" viewBox="0 0 24 24"><path d="M12 6v12M6 12h12"/></svg>', IC_MINUS = '<svg class="i" viewBox="0 0 24 24"><path d="M6 12h12"/></svg>';
+  function priceCardHTML(sx) {
+    var p = SITE.prices, k = p.k21, pd = p.pound, n = function (v) { return '<span class="num">' + fmt(conv(v)) + '</span>' };
+    var fresh = p.updated && p.updated.slice(0, 10) === new Date().toISOString().slice(0, 10), when = p.updated ? arWhen(p.updated) : '';
+    var hist = (SITE.history || []).slice(-7).reverse();
+    return '<div class="g2pc-h"><div><span class="eyebrow">بورصة الذهب</span><h2>سعر <em>اليوم</em></h2></div>' +
+      (when ? '<span class="g2pc-up"><span>' + (fresh ? 'آخر تحديث' : 'آخر سعر سجّله المحل') + '</span><br>' + esc(when) + '</span>' : '') + '</div>' +
+      '<div class="g2pc-g"><div class="g2pc-r1"><span>جرام عيار 21</span>' + (k.chg ? '<span class="g2pc-chg' + (k.chg < 0 ? ' dn' : '') + '">' + (k.chg > 0 ? '▲ ' : '▼ ') + n(Math.abs(k.chg)) + '</span>' : '') + '</div>' +
+      '<div class="g2pc-r2"><div class="g2pc-sell"><span>بيع</span><b class="num">' + fmt(conv(k.sell)) + '</b><span>' + curLbl() + '</span></div>' +
+      '<div class="g2pc-buy"><span>شراء</span><b class="num">' + fmt(conv(k.buy)) + '</b></div></div></div>' +
+      '<div class="g2pc-pd"><span>الجنيه الذهب</span><span class="g2pc-pv"><span>بيع</span>' + n(pd.sell) + '<i></i><span>شراء</span>' + n(pd.buy) + '</span></div>' +
+      '<div class="g2-tabs" role="tablist" aria-label="أدوات السعر"><button type="button" role="tab" data-tab="calc">بكم ذهبك اليوم؟</button><button type="button" role="tab" data-tab="hist">سجل الأسعار</button></div>' +
+      '<div class="g2-pan" data-pan="calc" role="tabpanel"><div class="g2-units"><button type="button" data-u="g">بالجرام</button><button type="button" data-u="p">بالجنيه</button></div>' +
+      '<div class="g2-step"><button type="button" data-q="1" aria-label="زيادة">' + IC_PLUS + '</button><label><input type="number" inputmode="decimal" min="0" step="any"><span></span></label><button type="button" data-q="-1" aria-label="إنقاص">' + IC_MINUS + '</button></div>' +
+      '<div class="g2-pre"></div><div class="g2-res"><small>قيمة ذهبك (عيار 21) اليوم تقريباً</small><b></b><span class="g2-rate"></span></div>' +
+      '<p class="g2-note">الأسعار تقديرية وليست نهائية، وقد يختلف السعر حسب حالة الذهب. ونقيّم كل قطعة في المحل بما تستحق.</p></div>' +
+      '<div class="g2-pan g2-hist" data-pan="hist" role="tabpanel" hidden><div class="g2pc-r1"><span>سعر بيع الجرام</span><span>' + curLbl() + '</span></div>' +
+      '<svg class="spark" id="g2sp' + sx + '" preserveAspectRatio="none" aria-hidden="true"></svg>' +
+      hist.map(function (h) { return '<div class="g2-hrow"><span>' + esc(arDay(h.d)) + '</span>' + n(h.v) + '</div>' }).join('') +
+      (hist.length < 2 ? '<p class="g2-note">يظهر رسم السعر بعد تسجيل أسعار أكثر من يوم.</p>' : '') + '</div>';
+  }
+  function pcUpdate(root) {
+    var p = SITE.prices, pound = PC.unit === 'p', rate = pound ? p.pound.buy : p.k21.buy;
+    var q = parseFloat(String(PC.qty).replace('٫', '.').replace(',', '.')) || 0;
+    $('.g2-res b', root).innerHTML = q > 0 ? moneyH(q * rate) : '—';
+    $('.g2-rate', root).innerHTML = '<span>على سعر الشراء</span> ' + moneyH(rate) + ' <span>' + (pound ? 'للجنيه' : 'للجرام') + '</span>';
+    var inp = $('.g2-step input', root); if (document.activeElement !== inp) inp.value = PC.qty;
+    inp.setAttribute('aria-label', pound ? 'عدد الجنيهات' : 'الوزن بالجرام'); $('.g2-step label span', root).textContent = pound ? 'جنيه' : 'جرام';
+    $('.g2-pre', root).innerHTML = (pound ? [1, 2, 5, 10] : [5, 10, 20, 50]).map(function (v) { var on = +PC.qty === v; return '<button type="button" data-pre="' + v + '" class="' + (on ? 'on' : '') + '" aria-pressed="' + on + '">' + v + ' ' + (pound ? 'جنيه' : 'جرام') + '</button>' }).join('');
+    $$('.g2-units button', root).forEach(function (b) { var on = b.dataset.u === PC.unit; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on) });
+    $$('.g2-tabs button', root).forEach(function (b) { var on = b.dataset.tab === PC.tab; b.classList.toggle('on', on); b.setAttribute('aria-selected', on) });
+    $$('.g2-pan', root).forEach(function (x) { x.hidden = x.dataset.pan !== PC.tab });
+  }
+  function bindPriceCard(root) {
+    root.onclick = function (e) {
+      var b = e.target.closest('button'); if (!b || !root.contains(b)) return;
+      if (b.dataset.tab) PC.tab = b.dataset.tab;
+      else if (b.dataset.u) { if (PC.unit !== b.dataset.u) { PC.unit = b.dataset.u; PC.qty = PC.unit === 'p' ? '1' : '10' } }
+      else if (b.dataset.q) PC.qty = String(Math.max(0, Math.round(((parseFloat(PC.qty) || 0) + Number(b.dataset.q)) * 100) / 100));
+      else if (b.dataset.pre) PC.qty = b.dataset.pre;
+      else return;
+      pcUpdate(root); if (PC.tab === 'hist') spark($('.spark', root));
+      if (!calcSent && !b.dataset.tab) { calcSent = true; T('calc_use') }
+    };
+    var inp = $('.g2-step input', root);
+    inp.addEventListener('input', function () { PC.qty = inp.value; pcUpdate(root); if (!calcSent && inp.value) { calcSent = true; T('calc_use') } });
+    pcUpdate(root);
+  }
   function renderTicker() {
     var p = SITE.prices; if (!p) return;
-    function it(l, o) { return '<div class="tk"><span>' + l + '</span><i>بيع</i><b class="num">' + fmt(conv(o.sell)) + '</b><i>' + curLbl() + '</i><i>شراء</i><span class="num">' + fmt(conv(o.buy)) + '</span>' + (o.chg ? '<span class="chg">' + (o.chg > 0 ? '▲ ' : '▼ ') + fmt(Math.abs(o.chg)) + '</span>' : '') + '</div><div class="tk"><span class="dia"></span></div>' }
-    var one = it('جرام عيار 21', p.k21) + it('الجنيه الذهب', p.pound);
-    $('#track').innerHTML = one + one + one + one;
-    $('#hp21').innerHTML = moneyH(p.k21.sell); $('#hpP').innerHTML = moneyH(p.pound.sell);
-    var q = function (l, o) { return '<div class="q"><small>' + l + (o.chg ? ' · <span class="chg">' + (o.chg > 0 ? '▲ ' : '▼ ') + fmt(Math.abs(o.chg)) + ' عن أمس</span>' : '') + '</small><div class="sell"><span class="lb">بيع</span>' + moneyH(o.sell) + '</div><div class="buy">شراء <b class="num">' + fmt(conv(o.buy)) + '</b> ' + curLbl() + '</div></div>' };
-    var html = q('جرام عيار 21', p.k21) + q('الجنيه الذهب', p.pound);
-    $('#quotesHome').innerHTML = html; $('#quotesGold').innerHTML = html;
-    if (p.updated) {   // prices are set by the shop by hand: say when, and say plainly if they are not from today
-      var day = p.updated.slice(0, 10), today = new Date().toISOString().slice(0, 10), when = p.updated.slice(0, 16).replace('T', ' ');
-      var note = day === today ? 'يحدّثها المحل يدوياً، آخر تحديث ' + when + '، وقد تتغير خلال اليوم.' : 'آخر سعر سجّله المحل بتاريخ ' + when + '، وقد يختلف سعر اليوم. تأكد على واتساب.';
-      $('#upd').textContent = note; $('#upd2').textContent = note;
+    if ($('#hp21')) { $('#hp21').innerHTML = moneyH(p.k21.sell); $('#hpP').innerHTML = moneyH(p.pound.sell) }
+    [['#priceHome', 'H'], ['#priceGold', 'G']].forEach(function (x) { var root = $(x[0]); if (!root) return; root.innerHTML = priceCardHTML(x[1]); bindPriceCard(root); spark($('.spark', root)) });
+    if (p.updated && $('#upd2')) {   // prices are set by the shop by hand: say when, and say plainly if they are not from today
+      var when = arWhen(p.updated), today = p.updated.slice(0, 10) === new Date().toISOString().slice(0, 10);
+      $('#upd2').textContent = today ? 'أسعار المحل اليوم، يحدّثها المحل يدوياً (آخر تحديث ' + when + ') وقد تتغير خلال اليوم.' : 'آخر سعر سجّله المحل ' + when + '، وقد يختلف سعر اليوم. تأكد على واتساب.';
     }
-    spark($('#sparkHome')); spark($('#sparkGold'));
+  }
+
+  /* ---------- home hero: the shop's name first, photos of its own pieces behind it ---------- */
+  var G2H = 0, g2ht;
+  function renderG2Hero() {
+    var box = $('#g2hIms'); if (!box) return;
+    var ph = SITE.pieces.filter(function (p) { return p.photo });
+    var list = ph.filter(function (p) { return p.featured }).concat(ph.filter(function (p) { return !p.featured })).slice(0, 3);
+    box.innerHTML = list.map(function (p) { return '<img src="' + esc(p.photo) + '" alt="' + esc(p.title) + '">' }).join('');
+    $('#g2hDots').innerHTML = list.length > 1 ? list.map(function (p, i) { return '<button type="button" data-h="' + i + '" aria-label="الصورة ' + (i + 1) + '"><i></i></button>' }).join('') : '';
+    $$('#g2hDots [data-h]').forEach(function (b) { b.onclick = function () { g2Go(+b.dataset.h, true) } });
+    g2Go(Math.min(G2H, Math.max(0, list.length - 1)));
+  }
+  function g2Go(n, byHand) {
+    var ims = $$('#g2hIms img'); if (!ims.length) return;
+    G2H = (n + ims.length) % ims.length;
+    ims.forEach(function (im, i) { im.classList.toggle('on', i === G2H) });
+    $$('#g2hDots button').forEach(function (b, i) { b.classList.toggle('on', i === G2H); b.setAttribute('aria-pressed', i === G2H) });
+    clearTimeout(g2ht); if (!REDUCED && ims.length > 1) g2ht = setTimeout(function () { g2Go(G2H + 1) }, byHand ? 9000 : 6000);
+  }
+
+  /* ---------- home categories: two large tiles from the shop's own pieces, then the rest ---------- */
+  function renderCatTiles() {
+    var big = $('#g2cBig'), sm = $('#g2cSm'); if (!big || !sm) return;
+    var col = function (k) { return COLS.filter(function (c) { return c.key === 'cat-' + k })[0] };
+    var cnt = function (k) { var n = colItems(col(k)).length; return n ? n + (n > 2 ? ' قطع' : n === 2 ? ' قطعتين' : ' قطعة') : 'قريباً' };
+    var go = '<span class="g2t-go" aria-hidden="true"><svg class="i ar"><use href="#s-arr"/></svg></span>';
+    big.innerHTML = [['sets', 'الأطقم', 'أطقم كاملة للعرايس والمناسبات'], ['necklaces', 'العقود', 'عقود وكردانات بتصاميم حصرية']].map(function (c) {
+      var its = colItems(col(c[0])).filter(function (p) { return p.photo }), pic = (its.filter(function (p) { return p.featured })[0] || its[0] || {}).photo || 'img/cat_' + c[0] + '.webp';
+      return '<a class="g2t g2t-b" href="#collection-cat-' + c[0] + '"><img src="' + esc(pic) + '" alt="" loading="lazy"><span class="g2t-tx"><span><b>' + c[1] + '</b><small>' + c[2] + '</small></span>' + go + '</span></a>';
+    }).join('');
+    sm.innerHTML = [['bracelets', 'الأساور'], ['rings', 'الخواتم'], ['earrings', 'الحلق'], ['chains', 'السلاسل'], ['belts', 'الأحزمة']].map(function (c) {
+      return '<a class="g2t g2t-s" href="#collection-cat-' + c[0] + '"><img src="img/cat_' + c[0] + '.webp" alt="" loading="lazy"><span class="g2t-tx"><span><b>' + c[1] + '</b><small>' + cnt(c[0]) + '</small></span>' + go + '</span></a>';
+    }).join('') + (SITE.prices ? '<a class="g2t-pound" href="#gold"><small>الجنيه الذهب</small><b>الجنيهات</b><span>' + moneyH(SITE.prices.pound.sell) + '</span></a>' : '');
   }
   function spark(svg) {
     var h = (SITE.history || []).map(function (x) { return x.v }); if (h.length < 2) { svg.style.display = 'none'; if (svg.id === 'sparkGold') $('#sparkNote').textContent = 'يظهر رسم السعر بعد تسجيل أسعار أكثر من يوم.'; return }
@@ -90,8 +175,7 @@
     HL = SITE.pieces.filter(function (p) { return p.photo }).slice(0, 5);
     $('#slides').innerHTML = HL.map(function (p, i) { return '<div class="slide' + (i ? '' : ' on') + '"><div class="im" style="background-image:url(\'' + esc(p.photo) + '\')"></div></div>' }).join('');
     $('#sTot').textContent = ('0' + HL.length).slice(-2); go(0);
-    // the opening: two grand necklaces, each half hidden beyond the edge of the screen
-    [['#hpL', 'img/scene_medallion.webp'], ['#hpR', 'img/scene_tassel.webp']].forEach(function (x) { var a = $(x[0]); if (a) { a.querySelector('img').src = x[1]; a.href = '#collections'; a.setAttribute('aria-label', 'المجموعات') } });
+    // no generated scene images on the site: every photo is the shop's own
   }
   function go(n) {
     var s = $$('#slides .slide'); if (!s.length) return;
@@ -262,16 +346,16 @@
     function draw(p) {
       var gal = (p.gallery && p.gallery.length ? p.gallery : (p.photos && p.photos.length ? p.photos : [p.photo]).filter(Boolean).map(function (u) { return { role: '', url: u } }));
       var photos = gal.map(function (g) { return g.url }), pct = SITE.deposit_pct || 10;
-      var RL = { card: 'عرض', macro: 'تفاصيل قريبة', orig: 'الصورة الحقيقية' };
+      var RL = {};   // no photo labels: every photo on the site is the shop's own studio photo
       var sim = SITE.pieces.filter(function (x) { return x.code !== p.code && (x.kind === p.kind || x.style === p.style) }).slice(0, 4);
-      $('#pieceWrap').innerHTML = '<div class="pd"><div class="gal"><div class="main" id="gm" data-role="' + esc(gal[0] ? gal[0].role : '') + '"><img src="' + esc(photos[0] || '') + '" alt="' + esc(p.title) + '"><span class="gcap" id="gcap">' + (gal[0] && gal[0].role === 'orig' && gal.length > 1 ? 'صورة حقيقية للقطعة بدون أي تعديل' : '') + '</span></div>' +
+      $('#pieceWrap').innerHTML = '<div class="pd"><div class="gal"><div class="main" id="gm" data-role="' + esc(gal[0] ? gal[0].role : '') + '"><img src="' + esc(photos[0] || '') + '" alt="' + esc(p.title) + '">' + (gal.length > 1 ? '<span class="gcnt" id="gcnt">1 / ' + gal.length + '</span>' : '') + '</div>' +
         (photos.length > 1 ? '<div class="th">' + gal.map(function (g, i) { return '<button' + (i ? '' : ' class="on"') + ' data-ph="' + esc(g.url) + '" data-i="' + i + '"><img src="' + esc(g.url) + '" alt="">' + (RL[g.role] ? '<small>' + RL[g.role] + '</small>' : '') + '</button>' }).join('') + '</div>' : '') + '</div>' +
         '<div class="pi"><div class="crumbs"><a href="#home">الرئيسية</a><span>/</span><a href="#collections">المجموعات</a><span>/</span><span>' + esc(p.kind) + '</span></div>' +
         '<h1>' + esc(p.title) + '</h1>' + (p.status === 'reserved' ? '<span class="avail" style="color:var(--warn)"><i></i>محجوزة حالياً</span>' : '<span class="avail"><i></i>متوفرة · ' + ((SITE.branches || []).length === 1 ? 'تستلمها من المحل' : 'تستلمها من الفرع اللي يريحك') + '</span>') +
         '<div class="specs"><div><small>الوزن</small><b class="num">' + p.weight.toFixed(2) + '</b> جم</div><div><small>العيار</small><b class="num">21K</b></div><div><small>رقم القطعة</small><b class="num">' + esc(p.code) + '</b></div></div>' +
         (p.description ? '<p class="desc">' + esc(p.description) + '</p>' : '') +
-        '<div class="price">' + moneyH(p.price) + '</div><div class="pnote">شامل المصنعية · على سعر ذهب اليوم' + (CUR !== 'YER' ? ' · ' + esc(money(p.price, 'YER')) : '') + '</div>' +
-        '<div class="acts">' + (p.status === 'available' ? '<button class="btn g" data-buy="full">اشترها بتحويل كامل</button><button class="btn" data-buy="deposit">احجزها بعربون ' + pct + '%</button>' : '') +
+        '<div class="price">' + moneyH(p.price) + '</div><div class="pnote">' + (CUR === 'YER' ? 'تقريباً ' + esc(money(p.price, 'USD')) + ' · ' + esc(money(p.price, 'SAR')) : esc(money(p.price, 'YER'))) + '</div><div class="pnote2">على سعر ذهب اليوم، والسعر النهائي بسعر يوم الشراء</div>' +
+        '<div class="acts">' + (p.status === 'available' ? '<button class="btn g" data-buy="full">اشترها بتحويل كامل</button><button class="btn btn2l" data-buy="deposit">احجزها بعربون ' + pct + '%<small>تنحفظ ' + (SITE.deposit_hours || 24) + ' ساعة، وما يثبت السعر</small></button>' : '') +
         '<button class="btn" data-fav2>' + (inList(p.code) ? 'في اختياراتي' : 'أضف لاختياراتي') + '</button><button class="btn" data-open-chat="أبغى أعرف أكثر عن ' + esc(p.title) + ' (' + p.code + ')"><svg class="b"><use href="#s-spark"/></svg>اسأل المستشار</button>' +
         '<a class="btn wide" href="#" data-ask><svg class="b"><use href="#s-wa"/></svg>استفسر عنها على واتساب</a><a class="btn wide" href="#" data-share>شاركها مع أحد</a></div></div></div>' +
         (sim.length ? '<section class="band" style="padding-top:20px"><div class="sh"><div><span class="eyebrow">تنسجم معها</span><h2 class="ttl">قطع <em>مشابهة</em></h2></div></div><div class="grid" id="simGrid">' + sim.map(function (x) { return card(x) }).join('') + '</div></section>' : '');
@@ -279,7 +363,7 @@
       function showG(i) {
         if (!gal.length) return; gi = (i + gal.length) % gal.length; var g = gal[gi];
         $('#gm img').src = g.url; $('#gm').dataset.role = g.role || '';
-        $('#gcap').textContent = g.role === 'orig' && gal.length > 1 ? GM_tr('صورة حقيقية للقطعة بدون أي تعديل') : '';
+        if ($('#gcnt')) $('#gcnt').textContent = (gi + 1) + ' / ' + gal.length;
         $$('[data-ph]').forEach(function (x) { x.classList.toggle('on', +x.dataset.i === gi) });
       }
       $$('[data-ph]').forEach(function (b) { b.onclick = function () { showG(+b.dataset.i) } });
@@ -319,15 +403,19 @@
     bindChatBtns($('#bSum'));
   }
 
-  /* ---------- calculator ---------- */
-  var calcSent = false;
-  function calc() { var p = SITE.prices; if (!p) return; var w = parseFloat($('#cw').value) || 0; $('#ct').innerHTML = w ? moneyH(w * p.k21.sell) : '—'; if (w && !calcSent) { calcSent = true; T('calc_use') } }
-  $('#cw').addEventListener('input', calc);
+  /* ---------- calculator: lives inside the price card (renderTicker) ---------- */
 
-  /* ---------- branches ---------- */
+  /* ---------- the shop (one shop: a single card with address, hours, map and WhatsApp) ---------- */
   function renderBranches() {
     var one = SITE.branches.length === 1;
-    if ($('#brEye')) { $('#brEye').textContent = one ? 'محلنا' : 'فروعنا'; $('#brTtl').innerHTML = one ? 'بجوار البوابة الرئيسية <em>في إب</em>' : SITE.branches.length + ' فروع <em>في إب</em>' }
+    if ($('#brEye')) { $('#brEye').textContent = one ? 'محلنا' : 'فروعنا'; $('#brTtl').innerHTML = one ? 'بجوار البوابة الرئيسية <em>لمركز جرعان</em>' : SITE.branches.length + ' فروع <em>في إب</em>' }
+    if (one) {
+      var b0 = SITE.branches[0], map0 = b0.map || 'https://maps.google.com/?q=' + encodeURIComponent('جمال المشرقي للذهب ' + b0.addr + (/إب/.test(b0.addr) ? '' : ' إب'));
+      $('#brs').innerHTML = '<div class="g2s rv"><div class="g2s-row"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.5-7-11a7 7 0 0 1 14 0c0 4.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><div><b>' + esc(b0.n) + '</b><small>' + esc(b0.addr) + '</small></div></div>' +
+        '<div class="g2s-row"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><div><b>من 9 الصباح إلى 10 الليل</b></div></div>' +
+        '<div class="g2s-act"><a class="btn" href="' + esc(map0) + '" target="_blank" rel="noopener">افتح الخريطة</a><a class="btn g" href="#" data-link="whatsapp">واتساب</a></div></div>';
+      return;
+    }
     $('#brs').innerHTML = SITE.branches.map(function (b, i) { var map = b.map || 'https://maps.google.com/?q=' + encodeURIComponent('جمال المشرقي للذهب ' + b.addr + (/إب/.test(b.addr) ? '' : ' إب')); return '<div class="br rv' + (i ? ' d' + i : '') + '">' + (one ? '' : '<span class="n num">0' + (i + 1) + '</span>') + '<h3>' + esc(b.n) + '</h3><p>' + (/إب/.test(b.addr) ? '' : 'إب — ') + esc(b.addr) + '</p><div class="r"><a class="btn s" href="' + esc(map) + '" target="_blank" rel="noopener">الخريطة</a><a class="btn g s" href="#" data-link="whatsapp">راسلنا</a></div></div>' }).join('');
   }
 
@@ -375,7 +463,7 @@
     if (pg === 'collections') { renderCollection(arg); T('collection_open', null, arg || 'all') }
     if (pg === 'piece') renderPiece(arg.toUpperCase(), PENDING_VIA); PENDING_VIA = null;
     if (pg === 'bride') { renderBride(); T('bride_open') }
-    if (pg === 'gold') { renderTicker(); calc() }
+    if (pg === 'gold') renderTicker();
     if (changed) { if (h === 'branches') setTimeout(function () { $('#branches').scrollIntoView() }, 60); else window.scrollTo(0, 0) }
     T('page_view', null, pg); reveal(); scrollFx();
     if (pg === 'home' && window.ringRefresh) setTimeout(window.ringRefresh, 80);
@@ -483,7 +571,7 @@
     g.innerHTML = items.map(function (p) { return card(p) }).join('') || '<div class="empty" style="grid-column:1/-1">لا توجد قطع في هذه الفئة الآن.</div>';
     bindCards(g);
   }
-  function renderAll() { renderShop(); renderCats(); renderEd(); renderHsc(); renderTicker(); renderHomeCols(); renderNew(); renderSpot(); renderBranches(); calc(); saveList(); bindLinks(); bindChatBtns() }
+  function renderAll() { renderG2Hero(); renderShop(); renderCats(); renderCatTiles(); renderEd(); renderHsc(); renderTicker(); renderHomeCols(); renderNew(); renderSpot(); renderBranches(); saveList(); bindLinks(); bindChatBtns() }
 
   /* ---------- checkout: terms first, accounts after, receipt, review ---------- */
   var CK = null;

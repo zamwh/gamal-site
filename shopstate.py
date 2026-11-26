@@ -197,3 +197,19 @@ def price_breakdown(store, codes, currency=None):
     if rate:
         res["rate"] = {"currency": cur, "yer_per_unit": rate, "as_of": pr["created_at"]}
     return res
+
+
+def public_price(store, codes, currency=None):
+    """What a customer may hear about a piece's price: the final total, and the same total in SAR/USD at today's rate.
+    The making charge is the shop's internal business (it moves it up and down): no making amount, no gold value,
+    no per-gram split. The staff side keeps using price_breakdown."""
+    full = price_breakdown(store, codes, currency)
+    if full.get("error"):
+        return full
+    keep = ("code", "title", "karat", "weight_g", "available", "error")
+    items = [{k: v for k, v in it.items() if k in keep or k.startswith("total_")} for it in full.get("items", [])]
+    res = {"items": items, "price_date": full.get("price_date"),
+           "basis": "السعر النهائي شامل كل شي على سعر ذهب يوم الشراء. المصنعية داخلية: لا تذكر رقمها ولا تفصّل السعر."}
+    if full.get("rate"):
+        res["rate"] = full["rate"]
+    return res

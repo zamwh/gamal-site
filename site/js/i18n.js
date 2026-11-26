@@ -2,7 +2,20 @@
    the page shows (including content the shop scripts render later), and removed again when switching back. */
 (function () {
   var D = {
-    "جم": "g", "كل": "All", "ر.ي": "YER", "بيع": "Sell", "ر.س": "SAR", "حلق": "Earrings", "طقم": "Set", "قطع": "Pieces", "سعر": "Price",
+    "اسمٌ رائد في عالم": "A leading name in", "الذهب والمجوهرات": "gold and jewellery", "اكتشف المجموعة": "Discover the collection",
+    "تصاميم حصرية بروح الجمال المشرقي، مختارة بعناية لتليق بذوقكم وبأجمل مناسباتكم.": "Exclusive designs with an Eastern soul, chosen with care for your taste and your finest occasions.",
+    "ذهب عيار 21 · بسعر يوم الشراء": "21K gold · priced on the day you buy", "بكم ذهبك اليوم؟": "What is your gold worth today?", "سجل الأسعار": "Price history",
+    "بالجرام": "By gram", "بالجنيه": "By pound", "قيمة ذهبك (عيار 21) اليوم تقريباً": "Your 21K gold today, approximately", "على سعر الشراء": "at our buying price",
+    "للجرام": "per gram", "للجنيه": "per pound", "جرام": "g", "جنيه": "pound", "سعر بيع الجرام": "Gram selling price", "آخر تحديث": "Last update",
+    "آخر سعر سجّله المحل": "Last price set by the shop", "أدوات السعر": "Price tools", "زيادة": "More", "إنقاص": "Less",
+    "الأسعار تقديرية وليست نهائية، وقد يختلف السعر حسب حالة الذهب. ونقيّم كل قطعة في المحل بما تستحق.": "These are estimates, not final prices: the price can vary with the gold's condition, and in the shop we value every piece as it deserves.",
+    "يظهر رسم السعر بعد تسجيل أسعار أكثر من يوم.": "The price chart appears once prices for more than one day are recorded.",
+    "الأقسام": "Categories", "حسب القسم": "by category", "الأطقم": "Sets", "العقود": "Necklaces", "الأساور": "Bracelets", "الخواتم": "Rings", "الحلق": "Earrings",
+    "السلاسل": "Chains", "الأحزمة": "Belts", "الجنيهات": "Gold pounds", "أطقم كاملة للعرايس والمناسبات": "Complete sets for brides and occasions",
+    "عقود وكردانات بتصاميم حصرية": "Necklaces and collars, exclusive designs", "مختارات المحل": "The shop's picks", "لمركز جرعان": "of Jar'an Centre",
+    "من 9 الصباح إلى 10 الليل": "9 am – 10 pm", "افتح الخريطة": "Open map", "الوضع النهاري": "Day mode", "الوضع الليلي": "Night mode",
+    "على سعر ذهب اليوم، والسعر النهائي بسعر يوم الشراء": "At today's gold price; the final price is set on the day you buy",
+    "جم": "g","كل": "All", "ر.ي": "YER", "بيع": "Sell", "ر.س": "SAR", "حلق": "Earrings", "طقم": "Set", "قطع": "Pieces", "سعر": "Price",
     "أطقم": "Sets", "شراء": "Buy", "الكل": "All", "عقود": "Necklaces", "صمّم": "Design", "تسوّق": "Shop", "باقتك": "your set",
     "سلاسل": "Chains", "الذهب": "Gold", "في إب": "in Ibb", "السعر": "Price", "أحزمة": "Belts", "أساور": "Bracelets", "الوضع": "Theme",
     "اليوم": "Today", "إرسال": "Send", "تواصل": "Contact", "القطع": "Pieces", "تصفية": "Filter", "الفئة": "Category", "الوزن": "Weight",

@@ -63,7 +63,7 @@ CORE_PROMPT = """أنت "مستشار جمال المشرقي" في موقع م�
 2. اكتشف حاجته بسؤال واحد في الرد: المناسبة، ثم نوع القطعة، ثم الميزانية أو الوزن. إذا عرفت شي واحد على الأقل، أو طلب يشوف ("وريني"، "وش عندكم"، "الجديد")، اعرض.
 3. اعرض قطعتين، أو ثلاث لسبب واضح، من search_pieces. لكل قطعة سطر واحد يربطها بكلامه هو أو بشكلها الحقيقي.
 4. اسأله: أي وحدة أقرب لك، ولا أطلع لك أخف أو أثقل؟
-5. الاعتراض: رد بالحساب الواضح من price_breakdown (سعر الجرام × الوزن + المصنعية)، وبديل أخف بنفس الروح. بدون خصم.
+5. الاعتراض على السعر: قل إن السعر نهائي وشامل كل شي على سعر ذهب اليوم، واعرض بديل أخف بنفس الروح. المصنعية داخلية: لا تذكر رقمها ولا تفصّل السعر (ذهب × وزن + مصنعية) أبداً. لو أصر على تخفيض أو سأل عن المصنعية، فريق المبيعات يكمل معه على الواتساب. بدون خصم.
 6. لما يقول يبغاها أو يسأل كيف يشتري: offer_purchase. خطوة وحدة واضحة.
 7. تذكر بس اللي قاله الزبون بنفسه.
 
@@ -117,7 +117,7 @@ CORE_PROMPT = """أنت "مستشار جمال المشرقي" في موقع م�
 أي وحدة أقرب لك؟"
 
 زبون: غالي شوي
-صح: (بعد price_breakdown) "حقك. سعرها = (سعر جرام 21 اليوم) × (وزنها) + (المصنعية). وإذا تبغى نفس الروح بوزن أخف، شوف هذي:
+صح: "حقك. السعر نهائي وشامل كل شي على سعر ذهب اليوم. وإذا تبغى نفس الروح بوزن أخف، شوف هذي:
 [[رمز3]]"
 
 زبون: هذا آخر واحد؟
@@ -174,7 +174,7 @@ TOOLS = [
             "kinds": {"type": "array", "items": {"type": "string"}}}}}},
     {"type": "function", "function": {
         "name": "piece_details",
-        "description": "تفاصيل قطعة واحدة كاملة من المخزون: الاسم، النوع، المكونات من الوصف، الوزن، العيار، السعر الشامل للمصنعية، الذوق، المناسبة، وحالتها. استخدمه قبل ما تشرح أي قطعة.",
+        "description": "تفاصيل قطعة واحدة كاملة من المخزون: الاسم، النوع، المكونات من الوصف، الوزن، العيار، السعر النهائي، الذوق، المناسبة، وحالتها. استخدمه قبل ما تشرح أي قطعة.",
         "parameters": {"type": "object", "properties": {"code": {"type": "string"}}, "required": ["code"]}}},
     {"type": "function", "function": {
         "name": "offer_purchase",
@@ -183,7 +183,7 @@ TOOLS = [
             "code": {"type": "string", "description": "رمز القطعة"}}, "required": ["code"]}}},
     {"type": "function", "function": {
         "name": "price_breakdown",
-        "description": "حساب ثابت من النظام لقطعة أو أكثر: قيمة الذهب، المصنعية، الإجمالي، السعر للجرام شامل، والتحويل لعملة ثانية بسعر صرف اليوم وتاريخه. استخدمه لأي مقارنة أو سؤال عن سعر أو مصنعية أو عملة، ولا تحسب بنفسك.",
+        "description": "السعر النهائي من النظام لقطعة أو أكثر، والتحويل لعملة ثانية بسعر صرف اليوم وتاريخه. ما فيه تفصيل للسعر: المصنعية داخلية وما تنقال للزبون. استخدمه لأي مقارنة أو سؤال عن سعر أو مصنعية أو عملة، ولا تحسب بنفسك.",
         "parameters": {"type": "object", "properties": {
             "codes": {"type": "array", "items": {"type": "string"}}, "currency": {"type": "string", "enum": ["YER", "SAR", "USD"]}},
             "required": ["codes"]}}},
@@ -474,7 +474,6 @@ class SalesAgent:
         return {"code": p["code"], "name": p["title"] or p["type"], "kind": p["type"], "w": p["weight"],
                 "k": p["karat"], "price": p["price"], "style": p["style"] if "style" in k else None,
                 "occasion": p["occasion"] if "occasion" in k else None,
-                "making": (f"{p['making_value']:,.0f} للجرام" if p["making_mode"] == "gram" else f"{p['making_value']:,.0f} للقطعة"),
                 "desc": ((p["description"] if "description" in k else "") or "")[:180],
                 "new_arrival": __import__("core").showcase_state(p)["new"]}
 
@@ -661,7 +660,7 @@ class SalesAgent:
             import shopstate
             st = ctx.get("state")
             codes = [shopstate.resolve_ref(st, c) or c for c in (args.get("codes") or [])] if st else (args.get("codes") or [])
-            out = shopstate.price_breakdown(self.store, codes, args.get("currency"))
+            out = shopstate.public_price(self.store, codes, args.get("currency"))   # the total only: making is internal
             if out.get("items"):
                 out["instructions"] = SR.TOOL_NOTES["price_breakdown"]
             return out
@@ -747,10 +746,10 @@ class SalesAgent:
             k = p.keys()
             return {"code": p["code"], "name": (p["title"] if "title" in k else None) or p["type"], "kind": p["type"],
                     "parts_and_description": (p["description"] if "description" in k else "") or "",
-                    "weight_g": p["weight"], "karat": p["karat"], "price_incl_making": self.store.piece_price(p)["total"],
+                    "weight_g": p["weight"], "karat": p["karat"], "price_final": self.store.piece_price(p)["total"],
                     "style": p["style"] if "style" in k else None, "occasion": p["occasion"] if "occasion" in k else None,
                     "status": p["status"], "look": __import__("taste").describe(p),
-                    "note": "السعر على سعر ذهب اليوم وشامل المصنعية. الاستلام من المحل.",
+                    "note": "السعر نهائي على سعر ذهب اليوم، والمصنعية داخلية ما تنقال للزبون. الاستلام من المحل.",
                     "instructions": SR.TOOL_NOTES["piece_details"]}
         if name == "offer_purchase":
             import shopstate
@@ -868,7 +867,7 @@ class SalesAgent:
                 except Exception:
                     pass
         if pieces:
-            return ("هذي أقرب القطع لطلبك، والسعر في البطاقة شامل المصنعية بسعر اليوم. "
+            return ("هذي أقرب القطع لطلبك، والسعر في البطاقة نهائي على سعر اليوم. "
                     "وإذا تحب يكمل معك فريق المبيعات، الزر تحت."), pieces
         if why == "limit":
             return "وصلنا لحد المحادثة هنا. فريق المبيعات يكمل معك على الواتساب (الزر تحت).", []
@@ -905,13 +904,13 @@ class SalesAgent:
         if not code or self._status(code) not in ("available", "reserved"):
             return None
         cur = "USD" if has(t, ["دولار", "usd", "$"]) else ("SAR" if has(t, ["سعودي", "sar"]) else None)
-        b = shopstate.price_breakdown(self.store, [code], cur)
+        b = shopstate.public_price(self.store, [code], cur)
         it = (b.get("items") or [{}])[0]
         if "total_yer" not in it:
             return None
-        day = "اليوم" if facts.get("price_today") else "المسجل"
-        txt = (f"سعر «{it['title']}» الإجمالي {it['total_yer']:,.0f} ريال يمني: وزنها {it['weight_g']:g} جم × سعر جرام 21 {day} "
-               f"{it['gold_price_per_g']:,.0f}، والمصنعية {it['making_total']:,.0f}.")
+        basis = "على سعر الذهب اليوم" if facts.get("price_today") else "على آخر سعر ذهب مسجل"
+        txt = (f"سعر «{it['title']}» {it['total_yer']:,.0f} ريال يمني، نهائي وشامل كل شي {basis} "
+               f"(وزنها {it['weight_g']:g} جم).")
         if cur and it.get("total_" + cur.lower()):
             name = "دولار" if cur == "USD" else "ريال سعودي"
             txt += (f" يعني تقريباً {it['total_' + cur.lower()]:,.2f} {name} بسعر صرف اليوم "
@@ -1405,12 +1404,9 @@ class SalesAgent:
                 lines.append("سعر الصرف اليوم: " + "، ".join(rates) + ". أي سعر بعملة ثانية من price_breakdown مع currency بس، لا تحسب بنفسك.")
         try:
             av = self._available()
-            mk = sorted({p["making_value"] for p in av if p["making_mode"] == "gram"})
-            if mk:
-                lines.append("المصنعية في القطع المتاحة: " + (f"{mk[0]:,.0f} ريال للجرام في كل القطع" if len(mk) == 1 else
-                             f"من {mk[0]:,.0f} إلى {mk[-1]:,.0f} ريال للجرام حسب شغل القطعة") +
-                             f". عدد القطع المتاحة في الموقع الآن: {len(av)}، أخفها {min(p['weight'] for p in av)} جم "
-                             f"وأرخصها {min(p['price'] for p in av):,} ريال.")
+            if av:   # the making charge is internal: it never reaches the model
+                lines.append(f"عدد القطع المتاحة في الموقع الآن: {len(av)}، أخفها {min(p['weight'] for p in av)} جم "
+                             f"وأرخصها {min(p['price'] for p in av):,} ريال. المصنعية داخلية: لا تذكرها ولا تفصّل السعر.")
         except Exception:
             pass
         pol = facts.get("policy") or {}
