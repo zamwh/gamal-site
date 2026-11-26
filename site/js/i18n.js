@@ -8,7 +8,7 @@
     "وين موقعكم؟": "Where are you located?", "للبس": "To wear", "للادخار": "To save", "نكمّل الميزانية": "Complete my budget",
     "نكمل الشراء": "Complete the purchase", "تبغى الذهب للبس ولا للادخار؟": "Is the gold for wearing or for saving?",
     "حياك الله في جمال المشرقي، أنا مستشارك الخاص، أعرف كل قطعة متوفرة وسعرها اليوم. تبغى الذهب للبس ولا للادخار؟": "Welcome to Gamal Almshrqi. I'm your personal advisor and I know every piece in stock and today's price. Is the gold for wearing or for saving?", "تغيير الصوت": "Change voice", "اختر الصوت": "Choose a voice", "سالم": "Salem", "فارس": "Fares", "ريم": "Reem",
-    "هادئ": "Calm", "حيوي": "Lively", "صوت عميق": "Deep voice", "صوت دافئ": "Warm voice", "صوت نسائي": "Female voice", "تكلّم متى ما حبيت، أنا معك": "Speak anytime, I'm here",
+    "هادئ": "Calm", "حيوي": "Lively", "صوت عميق": "Deep voice", "صوت دافئ": "Warm voice", "صوت نسائي": "Female voice", "جداوي": "Jeddawi", "صوت سعودي · رد ورد": "Saudi voice · turn by turn", "أسمعك…": "Listening…", "تكلّم متى ما حبيت، أنا معك": "Speak anytime, I'm here",
     "اسمٌ رائد في عالم": "A leading name in", "الذهب والمجوهرات": "gold and jewellery", "اكتشف المجموعة": "Discover the collection",
     "تصاميم حصرية بروح الجمال المشرقي، مختارة بعناية لتليق بذوقكم وبأجمل مناسباتكم.": "Exclusive designs with an Eastern soul, chosen with care for your taste and your finest occasions.",
     "ذهب عيار 21 · بسعر يوم الشراء": "21K gold · priced on the day you buy", "بكم ذهبك اليوم؟": "What is your gold worth today?", "سجل الأسعار": "Price history",
@@ -94,9 +94,10 @@
   };
   var M = { "مليون": "M", "ألف": "K" };
   var P = [
-    [/^(سالم|فارس|ريم) (يرد|ترد) عليك…$/, function (m) { return (D[m[1]] || m[1]) + ' is answering…' }],
+    [/^(سالم|فارس|ريم|جداوي) (يرد|ترد) عليك…$/, function (m) { return (D[m[1]] || m[1]) + ' is answering…' }],
+    [/^(سالم|فارس|ريم|جداوي) (يرد|ترد) عليك… اضغط الكرة لو تبي تقاطع$/, function (m) { return (D[m[1]] || m[1]) + ' is answering… tap the orb to interrupt' }],
     [/^(سالم|فارس|ريم) (يرجع يسمعك|ترجع تسمعك)…$/, function (m) { return (D[m[1]] || m[1]) + ' is back…' }],
-    [/^يحوّل لصوت (سالم|فارس|ريم)…$/, function (m) { return 'Switching to ' + (D[m[1]] || m[1]) + '…' }],
+    [/^يحوّل لصوت (سالم|فارس|ريم|جداوي)…$/, function (m) { return 'Switching to ' + (D[m[1]] || m[1]) + '…' }],
     [/^(\d+) (قطع|قطعة)$/, function (m) { return m[1] + (m[1] === '1' ? ' piece' : ' pieces') }],
     [/^(\d+) · (.+)$/, function (m) { return m[1] + ' · ' + (D[m[2]] || m[2]) }],
     [/^▲ ([\d,.]+) عن أمس$/, function (m) { return '▲ ' + m[1] + ' vs yesterday' }],

@@ -136,3 +136,23 @@ OpenAI refused the first real call: `acknowledgement_delay_ms` was 900, OpenAI a
 - Which voice: the customer chooses among «سالم», «فارس» and «ريم». OpenAI lists 38 voices; none is Arabic-specific.
 - Since 2026-11-19 OpenAI also offers `gpt-live-1.1` (steadier accents). Not used yet (`model` setting).
 - The first words after a pause can be lost while the call reopens (about a second): the assistant says «تفضل، معك» and the customer repeats.
+
+
+## «رد ورد» voices — ElevenLabs «جداوي» (27 Nov 2026)
+
+- Shown in «تغيير الصوت» beside the three live voices once the owner saves an ElevenLabs key in the admin
+  (Settings → «صوت جداوي (ElevenLabs)»). The key is kept in the server's settings only and is shown back as its last
+  four letters; it is never in the code, the repo or what the phone receives.
+- No call stays open. The phone records one sentence (its own speech detector: about a second of quiet ends it, 25 s
+  at most), sends it to `/api/voice/turn`; OpenAI turns it into text (`gpt-4o-mini-transcribe`, falls back to
+  `gpt-transcribe` / `whisper-1`), the same shop assistant answers (same session, rules, picks and cards), the reply
+  is cleaned for speaking (numbers in words, no codes, links or symbols, the first sentences of a long answer) and
+  ElevenLabs reads it with `eleven_flash_v2_5` in voice `yXEnnEln9armDCyhkXcA`. The phone plays it through Web Audio
+  (louder on iPhone), and records nothing while it plays, so the assistant never hears itself. A tap on the orb cuts
+  the answer short.
+- The same sentence in the same voice is made once and kept on the server (greetings and "say it again" cost nothing
+  after the first time).
+- Costs per answer are written to `voice_turns` (listening at $0.003/min, ElevenLabs credits at the Starter rate,
+  the assistant's own cost) and count in the same daily voice cap; listening also counts in the monthly AI cap.
+  Nothing is paid while the customer is quiet. The admin's AI tab shows talks, answers, letters, credits and costs.
+- The owner's test button plays a sample and shows the ElevenLabs credits left (needs the key's User «read» permission).

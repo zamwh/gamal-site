@@ -28,13 +28,14 @@ SITE = os.path.join(SITE_DIR, "index.html")
 MAX_BODY = 20_000
 MAX_UPLOAD = 4_500_000          # receipt image as base64 JSON
 MAX_SYNC = 12_000_000           # a branch sending new pieces with their three photos
+MAX_VOICE = 1_500_000           # one recorded sentence (up to ~25 s) as base64 JSON
 STATIC = re.compile(r"/(img|fonts|js|css)/([A-Za-z0-9_.-]+\.(png|jpg|jpeg|webp|woff2|js|css|svg))")
 CTYPES = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp", "woff2": "font/woff2",
           "js": "text/javascript; charset=utf-8", "css": "text/css; charset=utf-8", "svg": "image/svg+xml"}
 CSP = ("default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; "
-       "script-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; "
+       "script-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self'; media-src 'self' blob:; frame-ancestors 'none'; "
        "base-uri 'self'; form-action 'self'; object-src 'none'")
-LIMITS = {"voice": (60, 60), "login": (6, 300), "chat": (12, 60), "terms": (10, 60), "request": (3, 600), "ev": (40, 60), "api": (90, 60), "static": (600, 60)}
+LIMITS = {"voice": (60, 60), "turn": (20, 60), "login": (6, 300), "chat": (12, 60), "terms": (10, 60), "request": (3, 600), "ev": (40, 60), "api": (90, 60), "static": (600, 60)}
 
 
 def lan_ip():
@@ -307,7 +308,8 @@ class Server:
                 path = urllib.parse.urlparse(self.path).path
                 ip = self._ip()
                 limit = (MAX_SYNC if path == "/api/pos/sync" else
-                         MAX_UPLOAD if path in ("/api/request", "/api/admin/photo") else MAX_BODY)
+                         MAX_UPLOAD if path in ("/api/request", "/api/admin/photo") else
+                         MAX_VOICE if path == "/api/voice/turn" else MAX_BODY)
                 try:
                     n = int(self.headers.get("Content-Length") or 0)
                 except ValueError:
@@ -372,6 +374,16 @@ class Server:
                             return self._send(200, v.open(str(data.get("visitor", ""))[:40], str(data.get("session", "")),
                                                           str(data.get("sdp", "")), self._vip(), staff, bool(data.get("resume")),
                                                           str(data.get("voice", ""))[:20] or None))
+                        if path == "/api/voice/turn":      # «رد ورد» voices: one recorded sentence in, the answer and its audio out
+                            if server.limited(self._vip(), "turn"):
+                                return self._send(429, {"ok": False, "why": "rate"})
+                            staff = bool(admin.user_for(app, self.headers.get("Cookie")))
+                            picks = data.get("picks") if isinstance(data.get("picks"), list) else None
+                            ms = data.get("ms")
+                            return self._send(200, v.turn(str(data.get("visitor", ""))[:40], str(data.get("session", "")),
+                                                          str(data.get("audio", "")), str(data.get("mime", ""))[:60],
+                                                          ms if isinstance(ms, (int, float)) else 0, self._vip(), staff, picks,
+                                                          bool(data.get("hello")), str(data.get("voice", ""))[:20] or None))
                         if path == "/api/voice/delegate":
                             picks = data.get("picks") if isinstance(data.get("picks"), list) else None
                             return self._send(200, v.delegate(call, str(data.get("text", "")), picks))

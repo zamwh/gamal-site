@@ -1,3 +1,10 @@
+## 2026-11-27 — «جداوي»: a turn-by-turn ElevenLabs voice beside the live call
+- New voice in «تغيير الصوت»: «جداوي» (Saudi, ElevenLabs). One sentence at a time: recorded on the phone, turned into
+  text by OpenAI, answered by the same shop assistant, read by ElevenLabs. No open call, nothing paid while quiet.
+- Admin: ElevenLabs key box (kept on the server only), on/off, a test button that plays a sample and shows the credits
+  left; the AI tab shows this voice's talks, answers, credits and costs.
+- Spoken text: numbers in words (prices, grams, percent), no codes/links/emoji, long answers trimmed for the voice.
+
 # Changelog — AI assistants (text and voice)
 
 - 2026-11-27 (00:55) — Voice cost leak: calls close 20 s after OpenAI's own standby (room noise can no longer keep them open), after 40 s without words, and at 5 minutes; standby after 5 s; wake threshold 0.7; live call and day cost on the call screen (test phase).
