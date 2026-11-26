@@ -19,6 +19,8 @@ class Fake(BaseHTTPRequestHandler):
         if ack is not None and (ack > MODE.get("ack_max", 800) or ack < 0):    # OpenAI's own check (0-800)
             out, code = {"error": {"message": "Invalid 'session.delegation.acknowledgement_delay_ms': integer above maximum value. "
                                    "Expected a value <= %d, but got %d instead." % (MODE.get("ack_max", 800), ack)}}, 400
+        elif MODE.get("reject_standby") and "idle_timeout_s" in body.get("session", {}):
+            out, code = {"error": {"message": "Unknown parameter: 'session.idle_timeout_s'."}}, 400
         elif MODE["reject_voice"] and "audio" in body.get("session", {}):
             out, code = {"error": {"message": "Unsupported voice 'cedar'"}}, 400
         elif MODE["status"] != 201:
@@ -52,7 +54,10 @@ try:
     sent = SEEN[-1]["body"]["session"] if SEEN else {}
     check('4  a call opens; the key stays on the server', o.get("ok") and o.get("sdp") == "v=0 answer" and SEEN[-1]["auth"] == "Bearer sk-test", o)
     check('5  GPT-Live with client delegation and a male voice', sent.get("model") == "gpt-live-1" and sent.get("delegation", {}).get("type") == "client"
-          and sent.get("audio", {}).get("output", {}).get("voice") == "cedar", sent.get("delegation"))
+          and sent.get("audio", {}).get("output", {}).get("voice") == "ash" and "«سالم»" in sent.get("instructions", ""), sent.get("delegation"))
+    check('5b standby: idle after 8 s of no words, wakes on real speech only', sent.get("idle_timeout_s") == 8
+          and sent.get("wake_policy") == {"type": "speech", "vad_threshold": 0.6}, (sent.get("idle_timeout_s"), sent.get("wake_policy")))
+    check('5c with standby the phone closes only after a minute of quiet', o.get("standby_s") == 8 and o.get("close_after_ms") == 60000, o)
     ins = sent.get("instructions", "")
     check('6  instructions: one shop, no branches, prices only from the backend, making internal, gold knowledge, greeting',
           "بجوار البوابة الرئيسية لمركز جرعان" in ins and "ذكر فروع" in ins and "اطلب من الخلفية" in ins and "المصنعية داخلية" in ins
@@ -107,6 +112,35 @@ try:
     check('17c OpenAI lowers that limit: the call still opens without the setting',
           o4.get("ok") and "acknowledgement_delay_ms" not in SEEN[-1]["body"]["session"]["delegation"], o4)
     MODE.pop("ack_max")
+    MODE["reject_standby"] = True
+    o5 = v.open("vis8", "chat8", "v=0 offer", "1.1.1.4", True)
+    check('17d OpenAI refuses standby: the call opens anyway and closes when quiet (2.5 s)', o5.get("ok") and o5.get("standby_s") == 0
+          and o5.get("close_after_ms") == 2500 and "wake_policy" not in SEEN[-1]["body"]["session"], o5)
+    MODE.pop("reject_standby")
+    for x in (o2, o4, o5):
+        v.close(x["call"], None, "end")
+    # the customer picks one of three voices; each has its own name and manner
+    app.store.set_setting("voice", {"public": True})
+    o6 = v.open("vis10", "chat10", "v=0 offer", "1.1.1.5", False, False, "marin")
+    se = SEEN[-1]["body"]["session"]
+    check('17e a customer picks «ريم»: the woman voice, her name, speaking as a woman', o6.get("ok") and se["audio"]["output"]["voice"] == "marin"
+          and "«ريم»" in se["instructions"] and "بصيغة المؤنث" in se["instructions"] and "رجل هادي" not in se["instructions"], o6.get("voice"))
+    o7 = v.open("vis11", "chat11", "v=0 offer", "1.1.1.6", False, False, "nova-hack")
+    check('17f a voice outside the three is ignored (the default «سالم»)', SEEN[-1]["body"]["session"]["audio"]["output"]["voice"] == "ash")
+    st9 = v.status("vis12", "1.1.1.7", False)
+    check('17h every customer gets the three named voices', [x["name"] for x in st9.get("voices", [])] == ["سالم", "فارس", "ريم"]
+          and [x["g"] for x in st9["voices"]] == ["m", "m", "f"], st9.get("voices"))
+    app.store.set_setting("voice", {})
+    # standby time costs the lower rate: 100 s with 60 s in standby = 40 s x 5c/min + 60 s x 2c/min
+    app.store.db.execute("UPDATE voice_calls SET started=?, last_beat=? WHERE id=?", (time.time() - 100, time.time(), o6["call"])); app.store.db.commit()
+    v.beat(o6["call"], 30000)
+    cz = v.close(o6["call"], None, "end", 60000)
+    exp = 40 * 0.05 / 60 + 60 * 0.02 / 60
+    check('17g standby seconds are billed at 2 cents a minute, active at 5', abs(cz["cost"] - exp) < 0.0006 and cz["standby_s"] <= 100.5, (cz, round(exp, 5)))
+    app.store.db.execute("UPDATE voice_calls SET started=? WHERE id=?", (time.time() - 30, o7["call"])); app.store.db.commit()
+    v.beat(o7["call"], 999999999)                       # more standby than the call's own time: capped at its time
+    cz7 = v.close(o7["call"], None, "end")
+    check('17i a phone cannot claim more standby than the call lasted', cz7["standby_s"] <= 30.5 and cz7["cost"] > 0, cz7)
     MODE["reject_voice"] = False; MODE["status"] = 403
     o3 = v.open("vis6", "chat6", "v=0 offer", "1.1.1.2", True)
     check('18 no access to the model: refused, the reason shown to staff', not o3["ok"] and o3.get("code") == 403 and "access" in o3.get("detail", ""), o3)

@@ -18,14 +18,15 @@ def check(n, ok, i=''): res.append((n, bool(ok), i)); print(('PASS ' if ok else 
 
 FAKE = r"""
 (function () {
-  var F = window.fetch; var T = window.__vt = { opens: 0, closes: 0, delegates: 0, dc: null, events: [], refuse: false };
+  var F = window.fetch; var T = window.__vt = { opens: 0, closes: 0, delegates: 0, dc: null, events: [], refuse: false, openBodies: [], closeBodies: [] };
   function J(o) { return Promise.resolve(new Response(JSON.stringify(o), { status: 200, headers: { 'Content-Type': 'application/json' } })) }
   T.send = function (o) { if (T.dc && T.dc.readyState === 'open') T.dc.send(JSON.stringify(o)) };
   window.fetch = function (u, o) {
     u = String(u);
-    if (u.indexOf('/api/voice/status') >= 0) return J({ on: true, lab: true, close_after_ms: 2500, budget_s: 300 });
+    if (u.indexOf('/api/voice/status') >= 0) return J({ on: true, lab: true, close_after_ms: 2500, budget_s: 300, voice: 'ash',
+      voices: [{ id: 'ash', name: 'سالم', g: 'm', sub: 'هادئ' }, { id: 'verse', name: 'فارس', g: 'm', sub: 'حيوي' }, { id: 'marin', name: 'ريم', g: 'f', sub: 'صوت نسائي' }] });
     if (u.indexOf('/api/voice/open') >= 0) {
-      T.opens++;
+      T.opens++; T.openBodies.push(JSON.parse(o.body));
       if (T.refuse) return J({ ok: false, why: 'openai', code: 400, detail: "Invalid 'session.delegation.acknowledgement_delay_ms'", say: 'المساعد الصوتي مشغول الحين' });
       var body = JSON.parse(o.body), pc2 = new RTCPeerConnection(); T.pc2 = pc2;
       var ac = new AudioContext(), osc = ac.createOscillator(), g = ac.createGain(), dst = ac.createMediaStreamDestination();
@@ -43,7 +44,7 @@ FAKE = r"""
         .then(function () { return J({ ok: true, call: 'c' + T.opens, sdp: pc2.localDescription.sdp, budget_s: 300, close_after_ms: 2500, max_call_s: 240 }) });
     }
     if (u.indexOf('/api/voice/delegate') >= 0) { T.delegates++; return J({ say: 'عندي لك طقمين على ذوقك', pieces: [] }) }
-    if (u.indexOf('/api/voice/close') >= 0) { T.closes++; return J({ ok: true }) }
+    if (u.indexOf('/api/voice/close') >= 0) { T.closes++; T.closeBodies.push(JSON.parse(o.body)); return J({ ok: true }) }
     if (u.indexOf('/api/voice/beat') >= 0) return J({ ok: true, left_s: 200 });
     return F.apply(this, arguments);
   };
@@ -102,7 +103,7 @@ async def m():
           return { mid: [...mid], edge } })()""")
         check('4d the orb is gold (warm light in the middle)', px['mid'][0] > 180 and px['mid'][0] > px['mid'][1] > px['mid'][2], px['mid'])
         check('4e nothing is cut at the canvas edge while it is biggest', px['edge'] < 26, px['edge'])
-        check('4b status says it is answering, its words appear in the chat', await ev("document.querySelector('#vTx').textContent") == 'يرد عليك…'
+        check('4b status says «سالم» is answering, his words appear in the chat', await ev("document.querySelector('#vTx').textContent") == 'سالم يرد عليك…'
               and 'أهلاً وسهلاً' in await ev("document.querySelector('#msgs').innerText"))
         last_msg_bottom = await ev("(() => { const m = [...document.querySelectorAll('#msgs .mg')].pop(); return m.getBoundingClientRect().bottom })()")
         dock_top = await ev("document.querySelector('#vdock').getBoundingClientRect().top")
@@ -115,6 +116,33 @@ async def m():
         check('5  while it looks: "one moment"', await ev("document.querySelector('#vTx').textContent") == 'لحظة أشوف لك…')
         await pg.wait_for_timeout(1200)
         check('5b the shop\'s answer goes back to the call', 'session.commentary.append' in await ev("__vt.events") and await ev("__vt.delegates") == 1)
+
+        # 5c OpenAI's standby: paused -> the stage rests and says "speak anytime"; resumed -> listening again
+        await ev("__vt.send({type: 'session.output_transcript.delta', delta: ' '}); __vt.send({type: 'session.paused'})"); await pg.wait_for_timeout(400)
+        check('5c standby: the stage rests, "speak anytime, I am here"', await ev("document.querySelector('#vdock').dataset.st") == 'rest'
+              and await ev("document.querySelector('#vTx').textContent") == 'تكلّم متى ما حبيت، أنا معك')
+        await pg.wait_for_timeout(700)
+        await ev("__vt.send({type: 'session.resumed'})"); await pg.wait_for_timeout(300)
+        check('5d it wakes on speech: listening again', await ev("document.querySelector('#vdock').dataset.st") == 'live')
+
+        # 5e change the voice: the button next to "end call", three named voices, «سالم» first
+        vb = await ev("(() => { const b = document.querySelector('#vVoiceBtn'), e = document.querySelector('#vStop'); return { shown: !b.hidden && getComputedStyle(b).display !== 'none', txt: b.textContent.trim(), same_row: b.parentElement === e.parentElement } })()")
+        check('5e «تغيير الصوت» sits next to «إنهاء المكالمة»', vb['shown'] and vb['txt'] == 'تغيير الصوت' and vb['same_row'], vb)
+        await ev("document.querySelector('#vVoiceBtn').click()"); await pg.wait_for_timeout(300)
+        names = await ev("[...document.querySelectorAll('#vVoices button')].map(b => b.querySelector('b').textContent + '|' + b.classList.contains('on'))")
+        check('5f three voices with their names, the current one marked', names == ['سالم|true', 'فارس|false', 'ريم|false'], names)
+        n_open = await ev("__vt.opens")
+        await ev("[...document.querySelectorAll('#vVoices button')][2].click()"); await pg.wait_for_timeout(200)
+        check('5g picking «ريم»: the list closes, "switching to Reem"', await ev("document.querySelector('#vVoices').hidden")
+              and 'ريم' in await ev("document.querySelector('#vTx').dataset.t || ''"))
+        await until("document.querySelector('#vTx').textContent === 'أسمعك، تكلم' && __vt.opens > " + str(n_open), 9000)
+        ob = await ev("__vt.openBodies[__vt.openBodies.length - 1]")
+        cb = await ev("__vt.closeBodies[__vt.closeBodies.length - 1]")
+        check('5h the call reconnects with her voice, and is remembered', ob.get('voice') == 'marin' and ob.get('resume') is True
+              and await ev("localStorage.getItem('gm_vv')") == 'marin', {k: ob.get(k) for k in ('voice', 'resume')})
+        check('5i the standby time is reported for the lower rate', cb.get('reason') == 'voice' and 600 <= (cb.get('standby_ms') or 0) <= 3000, cb)
+        await ev("__vt.send({type: 'session.output_transcript.delta', delta: 'هلا، معك ريم'})"); await pg.wait_for_timeout(250)
+        check('5j she speaks: «ريم ترد عليك…»', await ev("document.querySelector('#vTx').textContent") == 'ريم ترد عليك…')
 
         # 6 both quiet: the call sleeps (stops paying), the orb rests and says how to wake it
         await until("document.querySelector('#vdock').dataset.st === 'idle'", 9000); await pg.wait_for_timeout(300)

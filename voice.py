@@ -27,18 +27,31 @@ LIVE_URL = "https://api.openai.com/v1/live/sessions"
 DEFAULT = {
     "public": False,              # False: only signed-in staff see the microphone (the owner's test phase)
     "model": "gpt-live-1",
-    "voice": "cedar",             # a calm male voice; dropped automatically if OpenAI does not offer it
+    "voice": "ash",               # the default of the three voices below («سالم»)
     "per_customer_usd": 0.10,     # the most one customer can cost in a day
     "buyer_usd": 0.25,            # ... once he is buying (asked to buy, opened the purchase step)
     "daily_usd": 1.5,             # all voice calls in a day
     "price_per_min": 0.05,        # OpenAI's price for the voice layer, billed per second
     "min_billed_s": 15,           # OpenAI bills at least this much for every opening
     "close_after_ms": 2500,       # quiet (customer and assistant) this long -> the call closes until he speaks again
-    "max_call_s": 240,            # one opening never runs longer than this
+    "max_call_s": 600,            # one opening never runs longer than this (standby keeps one opening for a whole talk)
     "max_live": 3,                # calls open at the same moment, for the whole shop
     "opens_per_10min": 10,        # openings per customer in ten minutes
     "ack_delay_ms": 600,          # pause before "one moment" while the shop's assistant looks (OpenAI allows 0-800)
+    "standby": True,              # OpenAI's standby: quiet -> the call stays connected at the lower rate, wakes on speech
+    "standby_after_s": 8,         # no words (either side) this long -> standby (OpenAI allows 5-60)
+    "standby_per_min": 0.02,      # OpenAI's standby rate
+    "standby_close_s": 60,        # quiet this long -> the call closes completely; the phone's detector reopens it
+    "wake_threshold": 0.6,        # how sure OpenAI must be it is speech (not noise) to wake (0-1, its default 0.5)
 }
+
+# the customer picks one of these from the call screen («تغيير الصوت»); each has its own name and manner
+VOICES = [
+    {"id": "ash", "name": "سالم", "g": "m", "sub": "هادئ", "style": "رجل هادي وواثق"},
+    {"id": "verse", "name": "فارس", "g": "m", "sub": "حيوي", "style": "رجل بشوش وحيوي وواثق"},
+    {"id": "marin", "name": "ريم", "g": "f", "sub": "صوت نسائي", "style": "بنت هادية وواثقة"},
+]
+VOICE_BY_ID = {x["id"]: x for x in VOICES}
 
 GOLD_KNOWLEDGE = """معرفة عامة عن الذهب تقدر تقولها بنفسك (بدون أي رقم من أرقام المحل):
 - عيار 21 يعني 21 جزء ذهب من 24، تقريباً 87.5٪ ذهب. عيار 24 أنقى وأطرى، و18 أقسى وفيه ذهب أقل. ذهبنا كله عيار 21، ومعه جنيهات ذهب.
@@ -79,6 +92,9 @@ class Voice:
                 id TEXT PRIMARY KEY, visitor TEXT, session TEXT, ip TEXT, day TEXT, started REAL, last_beat REAL,
                 ended REAL, billed_s REAL DEFAULT 0, cost REAL DEFAULT 0, backend REAL DEFAULT 0, turns INTEGER DEFAULT 0,
                 buyer INTEGER DEFAULT 0, lab INTEGER DEFAULT 0, oai_id TEXT, usage TEXT, end_reason TEXT, resumed INTEGER DEFAULT 0)""")
+            cols = [r[1] for r in self.store.db.execute("PRAGMA table_info(voice_calls)").fetchall()]
+            if "standby_s" not in cols:
+                self.store.db.execute("ALTER TABLE voice_calls ADD COLUMN standby_s REAL DEFAULT 0")
             self.store.db.commit()
         threading.Thread(target=self._sweeper, daemon=True).start()
 
@@ -108,9 +124,34 @@ class Voice:
     def _spent_voice_today(self):
         return float(self.store.one("SELECT COALESCE(SUM(cost+backend),0) c FROM voice_calls WHERE day=?", (self._today(),))["c"] or 0)
 
+    def _cost(self, c, billed, standby):
+        """Active seconds at the full rate, standby seconds at the lower rate."""
+        sb = max(0.0, min(float(standby or 0), billed))
+        return (billed - sb) * self._per_s(c) + sb * float(c["standby_per_min"]) / 60.0
+
+    @staticmethod
+    def _sb(row):
+        try:
+            return float(row["standby_s"] or 0)
+        except Exception:
+            return 0.0
+
     def _live_cost(self, row, now, c):
         """What an open call has cost so far: at least the minimum OpenAI bills for an opening."""
-        return max(float(c["min_billed_s"]), now - float(row["started"])) * self._per_s(c)
+        return self._cost(c, max(float(c["min_billed_s"]), now - float(row["started"])), self._sb(row))
+
+    def _note_standby(self, row, standby_ms, now):
+        """The phone reports how long OpenAI kept the call in standby (its paused/resumed events); never more than
+        the call's own time, and never less than before."""
+        try:
+            sb = max(0.0, float(standby_ms) / 1000.0)
+        except Exception:
+            return
+        sb = min(sb, max(0.0, now - float(row["started"])))
+        if sb > self._sb(row):
+            with self.app.lock:
+                self.store.db.execute("UPDATE voice_calls SET standby_s=? WHERE id=?", (round(sb, 1), row["id"]))
+                self.store.db.commit()
 
     def _budget_left(self, who, c, extra=0.0, lab=False):
         spent, buyer = self._spent_by(who)
@@ -141,6 +182,7 @@ class Voice:
             out["why"] = "customer"
             return out
         out.update({"on": True, "budget_s": int(left / self._per_s(c)), "buyer": buyer})
+        out.update({"voices": [{k: x[k] for k in ("id", "name", "g", "sub")} for x in VOICES], "voice": c.get("voice")})
         return out
 
     # ---- open a call
@@ -153,9 +195,19 @@ class Voice:
                 lines.append(("الزبون: " if r["role"] == "user" else "أنت: ") + txt[:300])
         return "\n".join(lines)
 
-    def _instructions(self, session, resume):
+    def _instructions(self, session, resume, voice=None):
         hist = self._history(session)
-        parts = [PERSONA, RESUME if resume else GREETING]
+        persona = PERSONA
+        v = VOICE_BY_ID.get(voice or "")
+        if v:
+            if v["g"] == "f":
+                persona = persona.replace("أنت «مستشار جمال المشرقي»، بيّاع ذهب", "أنتِ «" + v["name"] + "»، مستشارة جمال المشرقي، بيّاعة ذهب", 1)
+                persona = persona.replace("الشخصية: رجل هادي وواثق", "الشخصية: " + v["style"] + "، تتكلم عن نفسها بصيغة المؤنث (أنا جاهزة، أنا معك)", 1)
+            else:
+                persona = persona.replace("أنت «مستشار جمال المشرقي»، بيّاع ذهب", "أنت «" + v["name"] + "»، مستشار جمال المشرقي، بيّاع ذهب", 1)
+                persona = persona.replace("الشخصية: رجل هادي وواثق", "الشخصية: " + v["style"], 1)
+            persona += "\nاسمك «" + v["name"] + "»: عرّف بنفسك باسمك مرة وحدة في أول رد، ولو سألك الزبون عن اسمك قله."
+        parts = [persona, RESUME if resume else GREETING]
         if hist:
             parts.append("اللي صار في المحادثة إلى الآن (كتابة أو صوت):\n" + hist)
         return "\n\n".join(parts)
@@ -174,7 +226,7 @@ class Voice:
         except Exception as e:
             return 0, {"error": {"message": str(e)[:200]}}
 
-    def open(self, visitor, session, sdp, ip, lab, resume=False):
+    def open(self, visitor, session, sdp, ip, lab, resume=False, voice=None):
         c = self.cfg()
         session = re.sub(r"[^A-Za-z0-9_-]", "", session or "")[:40]
         who = self._who(visitor, ip)
@@ -198,18 +250,26 @@ class Voice:
             ack = 600
         sess = {"model": c["model"], "instructions": self._instructions(session, resume),
                 "delegation": {"type": "client", "acknowledgement_delay_ms": ack}}
-        if c.get("voice"):
-            sess["audio"] = {"output": {"voice": c["voice"]}}
+        vname = voice if voice in VOICE_BY_ID else c.get("voice")
+        sess["instructions"] = self._instructions(session, resume, vname)
+        if vname:
+            sess["audio"] = {"output": {"voice": vname}}
+        if c.get("standby"):
+            sess["idle_timeout_s"] = max(5, min(60, int(c.get("standby_after_s", 8))))
+            sess["wake_policy"] = {"type": "speech", "vad_threshold": max(0.0, min(1.0, float(c.get("wake_threshold", 0.6))))}
         code, d = self._post(key, {"session": sess, "transport": {"type": "webrtc", "sdp": sdp}})
         dropped = []
-        for _ in range(2):                         # an optional setting OpenAI refuses: drop it and try again, once each
+        for _ in range(3):                         # an optional setting OpenAI refuses: drop it and try again, once each
             if code != 400:
                 break
             err = json.dumps(d).lower()
             if "audio" in sess and "voice" in err:
-                sess.pop("audio"); dropped.append("voice")          # a voice name it does not offer: its default voice
+                sess.pop("audio"); dropped.append("voice")          # a voice name it does not offer: its default voice (marin)
+                sess["instructions"] = self._instructions(session, resume, "marin")
             elif "acknowledgement_delay_ms" in err and "acknowledgement_delay_ms" in sess["delegation"]:
                 sess["delegation"].pop("acknowledgement_delay_ms"); dropped.append("ack")
+            elif ("idle_timeout" in err or "wake_policy" in err) and "idle_timeout_s" in sess:
+                sess.pop("idle_timeout_s"); sess.pop("wake_policy", None); dropped.append("standby")   # back to closing when quiet
             else:
                 break
             code, d = self._post(key, {"session": sess, "transport": {"type": "webrtc", "sdp": sdp}})
@@ -227,8 +287,10 @@ class Voice:
                                    (d.get("session") or {}).get("id"), 1 if resume else 0))
             self.store.db.commit()
         left = max(0.0, st["budget_s"] * self._per_s(c))
+        sb = int(sess.get("idle_timeout_s") or 0)
         return {"ok": True, "call": cid, "sdp": d["transport"]["sdp"], "budget_s": int(left / self._per_s(c)),
-                "close_after_ms": c["close_after_ms"], "max_call_s": c["max_call_s"]}
+                "standby_s": sb, "close_after_ms": int(c["standby_close_s"]) * 1000 if sb else c["close_after_ms"],
+                "max_call_s": c["max_call_s"], "voice": (sess.get("audio") or {}).get("output", {}).get("voice", "")}
 
     def _warn(self, code, msg, ok=False):
         """OpenAI refused the call (no access to the model, no balance...): tell the owner in plain words,
@@ -253,15 +315,19 @@ class Voice:
     def _row(self, cid):
         return self.store.one("SELECT * FROM voice_calls WHERE id=?", ((cid or "")[:20],))
 
-    def beat(self, cid):
+    def beat(self, cid, standby_ms=None):
         c = self.cfg()
         row = self._row(cid)
         if not row or row["ended"]:
             return {"ok": False, "left_s": 0}
         now = time.time()
-        with self.lock, self.app.lock:
-            self.store.db.execute("UPDATE voice_calls SET last_beat=? WHERE id=?", (now, row["id"]))
-            self.store.db.commit()
+        with self.lock:
+            if standby_ms is not None:
+                self._note_standby(row, standby_ms, now)
+            with self.app.lock:
+                self.store.db.execute("UPDATE voice_calls SET last_beat=? WHERE id=?", (now, row["id"]))
+                self.store.db.commit()
+        row = self._row(cid)
         return {"ok": True, "left_s": self._left_s(row, now, c)}
 
     def _left_s(self, row, now, c):
@@ -296,7 +362,7 @@ class Voice:
         return out
 
     # ---- end of a call
-    def close(self, cid, usage=None, reason="end"):
+    def close(self, cid, usage=None, reason="end", standby_ms=None):
         c = self.cfg()
         with self.lock:
             row = self._row(cid)
@@ -304,8 +370,11 @@ class Voice:
                 return {"ok": True}
             now = time.time()
             end = now if reason != "stale" else min(now, float(row["last_beat"]) + 10)
+            if standby_ms is not None:
+                self._note_standby(row, standby_ms, end)
+                row = self._row(cid)
             billed = max(float(c["min_billed_s"]), end - float(row["started"]))
-            cost = round(billed * self._per_s(c), 5)
+            cost = round(self._cost(c, billed, self._sb(row)), 5)
             backend = self._backend_cost(row["session"], float(row["started"]), end)
             with self.app.lock:
                 self.store.db.execute("UPDATE voice_calls SET ended=?, billed_s=?, cost=?, backend=?, usage=?, end_reason=? WHERE id=?",
@@ -316,7 +385,7 @@ class Voice:
         if an:   # the voice layer counts against the same daily / monthly caps as the text assistant
             an.log_ai(row["session"], c["model"], "voice", "voice", "voice:" + (reason or "end")[:12], 0, 0, 0, cost,
                       int(billed * 1000), "")
-        return {"ok": True, "billed_s": round(billed, 1), "cost": cost}
+        return {"ok": True, "billed_s": round(billed, 1), "standby_s": round(min(self._sb(row), billed), 1), "cost": cost}
 
     def _backend_cost(self, session, t0, t1):
         an = getattr(self.agent, "analytics", None)

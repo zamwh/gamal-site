@@ -370,15 +370,19 @@ class Server:
                         if path == "/api/voice/open":
                             staff = bool(admin.user_for(app, self.headers.get("Cookie")))
                             return self._send(200, v.open(str(data.get("visitor", ""))[:40], str(data.get("session", "")),
-                                                          str(data.get("sdp", "")), self._vip(), staff, bool(data.get("resume"))))
+                                                          str(data.get("sdp", "")), self._vip(), staff, bool(data.get("resume")),
+                                                          str(data.get("voice", ""))[:20] or None))
                         if path == "/api/voice/delegate":
                             picks = data.get("picks") if isinstance(data.get("picks"), list) else None
                             return self._send(200, v.delegate(call, str(data.get("text", "")), picks))
                         if path == "/api/voice/beat":
-                            return self._send(200, v.beat(call))
+                            sbm = data.get("standby_ms")
+                            return self._send(200, v.beat(call, sbm if isinstance(sbm, (int, float)) else None))
                         if path == "/api/voice/close":
                             usage = data.get("usage") if isinstance(data.get("usage"), (dict, list)) else None
-                            return self._send(200, v.close(call, usage, str(data.get("reason", "end"))[:20]))
+                            sbm = data.get("standby_ms")
+                            return self._send(200, v.close(call, usage, str(data.get("reason", "end"))[:20],
+                                                           sbm if isinstance(sbm, (int, float)) else None))
                         return self._send(404, {"error": "not found"})
                     if path == "/api/chat":
                         if server.limited(ip, "chat"):

@@ -743,7 +743,8 @@
   var BUSY_V = 'المساعد الصوتي مشغول الحين، كمّل معي كتابة هنا أو كلم فريق المبيعات على الواتساب.';
   var V = { on: false, st: 'off', pc: null, dc: null, tr: null, call: null, mic: null, ac: null, an: null, vt: null, bt: null, speaking: false,
     aSpeaking: false, aT: null, pend: 0, quiet: 0, uText: '', uBub: null, aBub: null, left: 0, since: 0, closeMs: 2500,
-    opening: false, ending: false, resume: false, rd: false, miss: 0, told: false, lab: false, asking: false, txT: null };
+    opening: false, ending: false, resume: false, rd: false, miss: 0, told: false, lab: false, asking: false, txT: null,
+    vv: '', vlist: [], sb: 0, paused: false, pAt: 0, sbMs: 0 };
   var micBtn = $('#micBtn'), vdock = $('#vdock'), orbW = $('#vOrbW'), chatEl = $('#chat');
   function vSet(st, txt) {
     V.st = st; if (!vdock) return; vdock.dataset.st = st;
@@ -756,7 +757,33 @@
   function vCheck() {
     if (!micBtn || location.protocol.indexOf('http') !== 0 || !navigator.mediaDevices || !window.RTCPeerConnection) return;
     fetch('/api/voice/status?v=' + encodeURIComponent((window.T && window.T.visitor) || ''), { cache: 'no-store' })
-      .then(function (r) { return r.json() }).then(function (d) { micBtn.hidden = !(d && d.on); V.lab = !!(d && d.lab); if (d && d.close_after_ms) V.closeMs = d.close_after_ms }).catch(function () { });
+      .then(function (r) { return r.json() }).then(function (d) {
+        micBtn.hidden = !(d && d.on); V.lab = !!(d && d.lab); if (d && d.close_after_ms) V.closeMs = d.close_after_ms;
+        if (d && d.voices && d.voices.length) {
+          V.vlist = d.voices; var mine = ''; try { mine = localStorage.getItem('gm_vv') || '' } catch (e) { }
+          V.vv = V.vlist.some(function (x) { return x.id === mine }) ? mine : (d.voice || V.vlist[0].id); vVoicesUI();
+        }
+      }).catch(function () { });
+  }
+  // the customer's voice choice: three voices, each with its own name
+  function vName() { for (var i = 0; i < V.vlist.length; i++) if (V.vlist[i].id === V.vv) return V.vlist[i]; return { name: 'المستشار', g: 'm' } }
+  function vVoicesUI() {
+    var box = $('#vVoices'), btn = $('#vVoiceBtn'); if (!box || !btn) return;
+    btn.hidden = V.vlist.length < 2; box.textContent = '';
+    V.vlist.forEach(function (x) {
+      var b = document.createElement('button'), n = document.createElement('b'), sm = document.createElement('small');
+      b.type = 'button'; b.dataset.v = x.id; b.className = x.id === V.vv ? 'on' : ''; b.setAttribute('aria-pressed', x.id === V.vv ? 'true' : 'false');
+      n.textContent = x.name; sm.textContent = x.sub || ''; b.appendChild(n); b.appendChild(sm); box.appendChild(b);
+    });
+  }
+  function vVoicesShow(on) { var box = $('#vVoices'), btn = $('#vVoiceBtn'); if (!box) return; box.hidden = !on; btn.setAttribute('aria-expanded', on ? 'true' : 'false') }
+  function vPick(id) {
+    vVoicesShow(false); if (!id || id === V.vv) return;
+    V.vv = id; try { localStorage.setItem('gm_vv', id) } catch (e) { } vVoicesUI();
+    if (V.on && (V.pc || V.call)) {                            // in a call: reconnect with the new voice (about a second)
+      vClose('voice'); vSet('dial', 'يحوّل لصوت ' + vName().name + '…');
+      setTimeout(function () { if (V.on && !V.pc) vOpen(true, true) }, 350);
+    }
   }
   function vStart() {
     if (V.on || V.asking) { vStop('user'); return }
@@ -790,39 +817,46 @@
       vTick();
     }, 50);
   }
+  function vSbMs() { return V.sbMs + (V.paused ? Date.now() - V.pAt : 0) }
   function vTick() {
-    if (V.st !== 'live') return;
+    if (V.st !== 'live' && V.st !== 'rest') return;
     var now = Date.now();
     if (V.left && !V.ending && (now - V.since) / 1000 >= V.left - 6) { vEnd(); return }
     if (V.speaking || V.aSpeaking || V.pend) { V.quiet = 0; return }
     if (!V.quiet) V.quiet = now;
-    if (now - V.quiet >= V.closeMs) vClose('quiet');           // both quiet: stop paying, the detector keeps listening for free
+    if (now - V.quiet >= V.closeMs) vClose('quiet');           // quiet long enough: stop paying, the detector keeps listening for free
   }
   function vIce(pc, ms) { return new Promise(function (res) { if (pc.iceGatheringState === 'complete') return res(); var t = setTimeout(res, ms); pc.addEventListener('icegatheringstatechange', function () { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res() } }) }) }
-  function vOpen(resume) {
+  function vOpen(resume, quietly) {
     if (V.opening || V.pc || !V.mic) return; var tr0 = V.mic.getAudioTracks()[0]; if (!tr0) return;
-    V.opening = true; V.ending = false; V.rd = !!resume; vSet('dial', resume ? 'يرجع يسمعك…' : 'يتصل…');
+    var nm = vName();
+    V.opening = true; V.ending = false; V.rd = !!resume;
+    if (!quietly) vSet('dial', resume ? nm.name + (nm.g === 'f' ? ' ترجع تسمعك…' : ' يرجع يسمعك…') : 'يتصل…');
     var mine = tr0.clone(), pc = new RTCPeerConnection(), dc = pc.createDataChannel('oai-events');
     pc.addTrack(mine, new MediaStream([mine])); V.pc = pc; V.dc = dc; V.tr = mine;
     pc.ontrack = function (e) { var au = $('#vAudio'); au.srcObject = e.streams[0]; au.play().catch(function () { }) };
     dc.onmessage = function (e) { var m; try { m = JSON.parse(e.data) } catch (x) { return } vEvent(m) };
     pc.onconnectionstatechange = function () { if (pc.connectionState === 'failed' && V.pc === pc) vDrop('net') };
     pc.createOffer().then(function (o) { return pc.setLocalDescription(o) }).then(function () { return vIce(pc, 2500) }).then(function () {
-      return vPost('open', { sdp: pc.localDescription.sdp, session: CHAT_ID, visitor: (window.T && window.T.visitor) || '', resume: !!resume });
+      return vPost('open', { sdp: pc.localDescription.sdp, session: CHAT_ID, visitor: (window.T && window.T.visitor) || '', resume: !!resume, voice: V.vv || '' });
     }).then(function (d) {
       V.opening = false; if (V.pc !== pc) return;
       if (!d || !d.ok) { vDrop(d && d.why, d && d.say, d && d.detail); return }
       V.call = d.call; V.left = d.budget_s || 0; V.closeMs = d.close_after_ms || V.closeMs; V.resume = !!resume;
+      V.sb = d.standby_s || 0; V.sbMs = 0; V.paused = false;
       return pc.setRemoteDescription({ type: 'answer', sdp: d.sdp });
     }).catch(function () { V.opening = false; if (V.pc === pc) vDrop('net') });
   }
   function vEvent(m) {
     var t = m.type;
     if (t === 'session.started') { V.since = Date.now(); V.quiet = V.resume ? Date.now() + 4000 : 0; vSet('live', 'أسمعك، تكلم'); voBurst(); clearInterval(V.bt); V.bt = setInterval(vBeat, 10000) }
-    else if (t === 'session.input_transcript.delta') { V.uText += m.delta || ''; if (!V.uBub) V.uBub = addMsg('', 'u'); V.uBub.textContent += m.delta || ''; V.aBub = null; msgs.scrollTop = 1e6 }
+    else if (t === 'session.paused') { if (!V.paused) { V.paused = true; V.pAt = Date.now() } if (V.st === 'live') vSet('rest', 'تكلّم متى ما حبيت، أنا معك') }
+    else if (t === 'session.resumed') { if (V.paused) { V.sbMs += Date.now() - V.pAt; V.paused = false } if (V.st === 'rest' || V.st === 'live') vSet('live', 'أسمعك، تكلم') }
+    else if (t === 'session.input_transcript.delta') { V.quiet = 0; if (V.st === 'rest') vSet('live', 'أسمعك، تكلم'); V.uText += m.delta || ''; if (!V.uBub) V.uBub = addMsg('', 'u'); V.uBub.textContent += m.delta || ''; V.aBub = null; msgs.scrollTop = 1e6 }
     else if (t === 'session.output_transcript.delta') {
-      V.aSpeaking = true; clearTimeout(V.aT); V.aT = setTimeout(function () { V.aSpeaking = false; if (V.st === 'live') vSet('live', 'أسمعك، تكلم') }, 1400);
-      if (!V.aBub) V.aBub = addMsg('', 'a'); V.aBub.textContent += m.delta || ''; V.uBub = null; msgs.scrollTop = 1e6; if (!V.pend) vSet('live', 'يرد عليك…');
+      V.aSpeaking = true; V.quiet = 0; clearTimeout(V.aT); V.aT = setTimeout(function () { V.aSpeaking = false; if (V.st === 'live') vSet('live', 'أسمعك، تكلم') }, 1400);
+      if (!V.aBub) V.aBub = addMsg('', 'a'); V.aBub.textContent += m.delta || ''; V.uBub = null; msgs.scrollTop = 1e6;
+      if (!V.pend) { var nm = vName(); vSet('live', nm.name + (nm.g === 'f' ? ' ترد عليك…' : ' يرد عليك…')) }
     }
     else if (t === 'session.delegation.created') vDelegate(m.id || (m.delegation && m.delegation.id));
     else if (t === 'session.closed' && V.pc) vClose('server', m.usage || (m.message && m.message.usage) || null);
@@ -853,15 +887,15 @@
     a.href = (h ? String(h).replace(/%7BBASE%7D/g, encodeURIComponent(location.origin)) : '') || wa('السلام عليكم، أبغى أستفسر عن مجموعتكم') || '#';
     msgs.appendChild(a); msgs.scrollTop = 1e6;
   }
-  function vBeat() { if (!V.call) return; vPost('beat', { call: V.call }).then(function (d) { if (d && d.left_s !== undefined) V.left = (Date.now() - V.since) / 1000 + d.left_s }).catch(function () { }) }
+  function vBeat() { if (!V.call) return; vPost('beat', { call: V.call, standby_ms: vSbMs() }).then(function (d) { if (d && d.left_s !== undefined) V.left = (Date.now() - V.since) / 1000 + d.left_s }).catch(function () { }) }
   // close this call (the voice stays on: the detector reopens it when he speaks)
   function vClose(reason, usage0) {
-    if (!V.pc) return; var pc = V.pc, dc = V.dc, call = V.call, tr = V.tr;
-    V.pc = V.dc = V.tr = V.call = null; V.aSpeaking = false; V.pend = 0; V.quiet = 0; V.uBub = V.aBub = null; clearInterval(V.bt);
-    var fin = false, done = function (usage) { if (fin) return; fin = true; try { pc.close() } catch (e) { } try { tr.stop() } catch (e) { } if (call) vPost('close', { call: call, usage: usage || null, reason: reason }).catch(function () { }) };
+    if (!V.pc) return; var pc = V.pc, dc = V.dc, call = V.call, tr = V.tr, sbms = vSbMs();
+    V.pc = V.dc = V.tr = V.call = null; V.aSpeaking = false; V.pend = 0; V.quiet = 0; V.uBub = V.aBub = null; V.paused = false; V.sbMs = 0; clearInterval(V.bt);
+    var fin = false, done = function (usage) { if (fin) return; fin = true; try { pc.close() } catch (e) { } try { tr.stop() } catch (e) { } if (call) vPost('close', { call: call, usage: usage || null, reason: reason, standby_ms: sbms }).catch(function () { }) };
     if (usage0 !== undefined) done(usage0);
     else { try { dc.send(JSON.stringify({ type: 'session.close' })) } catch (e) { } dc.onmessage = function (e) { var m; try { m = JSON.parse(e.data) } catch (x) { return } if (m.type === 'session.closed') done(m.usage || (m.message && m.message.usage)) }; setTimeout(function () { done(null) }, 4000) }
-    if (V.on) vSet('idle', 'أول ما تتكلم، أرجع أسمعك');
+    if (V.on && reason !== 'voice') vSet('idle', 'أول ما تتكلم، أرجع أسمعك');
   }
   function vDrop(why, say, detail) {
     var pc = V.pc; V.pc = V.dc = V.call = null; V.opening = false; try { pc && pc.close() } catch (e) { } try { V.tr && V.tr.stop() } catch (e) { } V.tr = null;
@@ -941,12 +975,12 @@
     var c = VO.c; if (!c) return;
     var dt = Math.min(.05, VO.last ? (now - VO.last) / 1000 : .016); VO.last = now;
     var ez = function (f) { return 1 - Math.pow(1 - f, dt * 60) };
-    var st = V.st, dial = st === 'dial', idle = st === 'idle' || st === 'off';
+    var st = V.st, dial = st === 'dial', idle = st === 'idle' || st === 'off' || st === 'rest';
     var u = voMic(), a = voOut(now, dt);
     VO.lvU += (u - VO.lvU) * ez(u > VO.lvU ? .3 : .07);
     VO.lvA += (a - VO.lvA) * ez(a > VO.lvA ? .35 : .09);
     var talk = V.aSpeaking || VO.lvA > .08;
-    VO.b += ((idle ? .5 : dial ? .8 : talk ? 1 : .9) - VO.b) * ez(.05);
+    VO.b += ((st === 'rest' ? .62 : idle ? .5 : dial ? .8 : talk ? 1 : .9) - VO.b) * ez(.05);
     VO.sc += ((idle ? .82 : dial ? .9 : 1) + VO.lvU * .1 + VO.lvA * .07 - VO.sc) * ez(.12);
     VO.glow += ((idle ? .22 : .55) + VO.lvA * .9 + VO.lvU * .4 - VO.glow) * ez(.08);
     VO.dial += ((dial && !V.rd ? 1 : 0) - VO.dial) * ez(.08);
@@ -997,7 +1031,7 @@
   }
   function voLoop(now) {
     VO.raf = 0; if (!VO.on) return;
-    var skip = VO.calm ? now - VO.last < 200 : (V.st === 'idle' && VO.lvU < .05 && (VO.odd = !VO.odd));   // resting: half the frames
+    var skip = VO.calm ? now - VO.last < 200 : ((V.st === 'idle' || V.st === 'rest') && VO.lvU < .05 && VO.lvA < .05 && (VO.odd = !VO.odd));   // resting: half the frames
     if (!skip) voDraw(now);
     VO.raf = requestAnimationFrame(voLoop);
   }
@@ -1025,7 +1059,7 @@
   }
   function vcHide() {
     if (!vdock || vdock.hidden) return;
-    clearTimeout(VO.hideT);
+    clearTimeout(VO.hideT); vVoicesShow(false);
     orbW.style.transition = 'transform .42s cubic-bezier(.55,0,.75,.2),opacity .36s ease-in';
     orbW.style.transform = voFly(); orbW.style.opacity = '0';
     vdock.classList.remove('in'); chatEl.classList.remove('vc');
@@ -1033,8 +1067,10 @@
   }
   if (micBtn) {
     micBtn.onclick = vStart; $('#vStop').onclick = function () { vStop('user') };
+    $('#vVoiceBtn').onclick = function () { vVoicesShow($('#vVoices').hidden) };
+    $('#vVoices').onclick = function (e) { var b = e.target.closest('button[data-v]'); if (b) vPick(b.dataset.v) };
     $('#chatX').addEventListener('click', function () { vStop('closed') });
-    addEventListener('pagehide', function () { if (V.call) { try { navigator.sendBeacon('/api/voice/close', JSON.stringify({ call: V.call, reason: 'leave' })) } catch (e) { } } });
+    addEventListener('pagehide', function () { if (V.call) { try { navigator.sendBeacon('/api/voice/close', JSON.stringify({ call: V.call, reason: 'leave', standby_ms: vSbMs() })) } catch (e) { } } });
     document.addEventListener('visibilitychange', function () { if (document.hidden && (V.on || V.asking)) vStop('hidden') });
     addEventListener('resize', function () { if (VO.on && vdock && !vdock.hidden) { voSize(); vcPad() } });
     vCheck();

@@ -22,6 +22,19 @@ second, half that while the call sleeps, a still frame for phones set to reduce 
 - rests smaller and dimmer while the call sleeps between sentences («أول ما تتكلم، أرجع أسمعك»).
 One button: «إنهاء المكالمة». Staff see OpenAI's own reason in the chat when a call is refused, and keep the microphone.
 
+## Standby and the three voices (2026-11-26, 21:00, the owner's choice)
+- **Standby instead of closing:** the call stays connected while nobody talks. After 8 s without words OpenAI pauses
+  it (`idle_timeout_s`, `session.paused`) and bills the lower rate ($0.02/min instead of $0.05); it wakes on real speech
+  (`wake_policy` speech, threshold 0.6, `session.resumed`), so no first words are lost. After a full minute of quiet the
+  call closes completely and the phone's own detector reopens it (the old way). The phone reports the paused time in
+  each heartbeat and at the end; the server never accepts more than the call's own time, and bills it at 2¢/min.
+  If OpenAI refuses the standby settings the call opens without them and closes after 2.5 s of quiet as before.
+  The stage shows standby as a resting orb and «تكلّم متى ما حبيت، أنا معك».
+- **Three voices, each with its own name** (the customer chooses with «تغيير الصوت» next to «إنهاء المكالمة»; the
+  choice is remembered on that phone; during a call it reconnects with the new voice in about a second):
+  «سالم» `ash` (man, calm, the default) · «فارس» `verse` (man, lively) · «ريم» `marin` (woman). The assistant introduces
+  itself by that name once, and «ريم» speaks of herself in the feminine.
+
 ## Caps (settings key `voice`)
 | Setting | Default | Meaning |
 |---|---|---|
@@ -30,8 +43,10 @@ One button: «إنهاء المكالمة». Staff see OpenAI's own reason in th
 | `daily_usd` | 1.5 | all voice calls in a day |
 | monthly | 133 (shared) | the text assistant's monthly cap; voice costs are logged in the same `ai_usage` ledger |
 | `close_after_ms` | 2500 | quiet time before a call closes |
-| `max_call_s` | 240 | longest single opening |
+| `max_call_s` | 600 | longest single opening (standby keeps one opening for a whole talk) |
 | `max_live` / `opens_per_10min` | 3 / 10 | calls open at once / openings per customer in 10 minutes |
+| `standby` / `standby_after_s` / `standby_close_s` | on / 8 / 60 | standby after 8 s without words; full close after 60 s of quiet |
+| `standby_per_min` / `wake_threshold` | 0.02 / 0.6 | OpenAI's standby rate / how sure it must be that it is speech |
 | `ack_delay_ms` | 600 | pause before GPT-Live says "one moment" while the shop's assistant looks (OpenAI allows 0–800) |
 
 Staff testing from `/admin` gets the buyer's cap (25¢ a day), still inside the daily cap.
@@ -46,8 +61,8 @@ When a cap is reached the assistant says only: «المساعد الصوتي م�
 - `web.py` — `/api/voice/status|open|delegate|beat|close`.
 - `site/js/site.js` (voice section and the call stage), `site/css/v7.css`, `site/index.html` (microphone, stage, audio).
 - `admin.py`, `site/js/admin.js` — the voice box in «أداء المساعد والتكلفة».
-- `tests/voice_test.py` — 24 checks against a fake OpenAI endpoint (including OpenAI's 0–800 ms limit).
-- `tests/voice_ui_test.py` — 26 checks of the call screen in a browser, with a fake GPT-Live peer inside the page.
+- `tests/voice_test.py` — 32 checks against a fake OpenAI endpoint (0–800 ms limit, standby, its cost, the three voices).
+- `tests/voice_ui_test.py` — 34 checks of the call screen in a browser, with a fake GPT-Live peer inside the page.
 - `web.py` sends `Permissions-Policy: microphone=(self)`; before this fix Chrome and Android blocked the microphone.
 
 ## First test (2026-11-26, 20:08)
@@ -55,7 +70,6 @@ OpenAI refused the first real call: `acknowledgement_delay_ms` was 900, OpenAI a
 
 ## Open questions for the owner's test
 - Does GPT-Live understand the Yemeni dialect well enough? (Arabic is not listed for the API at launch.)
-- Which voice: `cedar` is tried first; if OpenAI rejects it the default voice is used. OpenAI now lists 38 voices.
-- Since 2026-11-19 OpenAI also offers `gpt-live-1.1` (steadier accents) and a Standby mode (`idle_timeout_s` 5–60,
-  $0.02/min while silent, no reconnect, no lost words). Not used yet: the owner chose close-on-silence.
+- Which voice: the customer chooses among «سالم», «فارس» and «ريم». OpenAI lists 38 voices; none is Arabic-specific.
+- Since 2026-11-19 OpenAI also offers `gpt-live-1.1` (steadier accents). Not used yet (`model` setting).
 - The first words after a pause can be lost while the call reopens (about a second): the assistant says «تفضل، معك» and the customer repeats.

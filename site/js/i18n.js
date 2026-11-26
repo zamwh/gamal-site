@@ -5,6 +5,8 @@
     "يتصل…": "Connecting…", "يرجع يسمعك…": "Listening again…", "أسمعك، تكلم": "I'm listening", "يرد عليك…": "Answering…",
     "لحظة أشوف لك…": "One moment…", "أول ما تتكلم، أرجع أسمعك": "Just speak, I'll be right back", "إنهاء المكالمة": "End call",
     "كلّم المستشار بصوتك": "Talk to the advisor",
+    "تغيير الصوت": "Change voice", "اختر الصوت": "Choose a voice", "سالم": "Salem", "فارس": "Fares", "ريم": "Reem",
+    "هادئ": "Calm", "حيوي": "Lively", "صوت نسائي": "Female voice", "تكلّم متى ما حبيت، أنا معك": "Speak anytime, I'm here",
     "اسمٌ رائد في عالم": "A leading name in", "الذهب والمجوهرات": "gold and jewellery", "اكتشف المجموعة": "Discover the collection",
     "تصاميم حصرية بروح الجمال المشرقي، مختارة بعناية لتليق بذوقكم وبأجمل مناسباتكم.": "Exclusive designs with an Eastern soul, chosen with care for your taste and your finest occasions.",
     "ذهب عيار 21 · بسعر يوم الشراء": "21K gold · priced on the day you buy", "بكم ذهبك اليوم؟": "What is your gold worth today?", "سجل الأسعار": "Price history",
@@ -90,6 +92,9 @@
   };
   var M = { "مليون": "M", "ألف": "K" };
   var P = [
+    [/^(سالم|فارس|ريم) (يرد|ترد) عليك…$/, function (m) { return (D[m[1]] || m[1]) + ' is answering…' }],
+    [/^(سالم|فارس|ريم) (يرجع يسمعك|ترجع تسمعك)…$/, function (m) { return (D[m[1]] || m[1]) + ' is back…' }],
+    [/^يحوّل لصوت (سالم|فارس|ريم)…$/, function (m) { return 'Switching to ' + (D[m[1]] || m[1]) + '…' }],
     [/^(\d+) (قطع|قطعة)$/, function (m) { return m[1] + (m[1] === '1' ? ' piece' : ' pieces') }],
     [/^(\d+) · (.+)$/, function (m) { return m[1] + ' · ' + (D[m[2]] || m[2]) }],
     [/^▲ ([\d,.]+) عن أمس$/, function (m) { return '▲ ' + m[1] + ' vs yesterday' }],
