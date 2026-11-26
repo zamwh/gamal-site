@@ -28,6 +28,25 @@ async def m():
         check('1b hero has the shop photos and its dots', n_im >= 2 and await ev("document.querySelectorAll('#g2hDots button').length") == n_im, n_im)
         await pg.click('#g2hDots button:nth-child(2)'); await pg.wait_for_timeout(300)
         check('1c a dot switches the hero photo', await ev("document.querySelectorAll('#g2hIms img')[1].classList.contains('on')"))
+        # 1e swiping the hero with a finger (Arabic page: a swipe to the right brings the next photo)
+        SW = """(a) => { const h = document.querySelector('#g2h'), r = h.getBoundingClientRect(), y = r.top + r.height * .45;
+          const t = (x, yy) => new Touch({identifier: 1, target: h, clientX: x, clientY: yy});
+          const fire = (type, x, yy) => h.dispatchEvent(new TouchEvent(type, {bubbles: true, cancelable: true,
+            touches: type === 'touchend' ? [] : [t(x, yy)], changedTouches: [t(x, yy)]}));
+          fire('touchstart', a.x0, y); for (let i = 1; i <= 6; i++) fire('touchmove', a.x0 + (a.dx * i) / 6, y + (a.dy * i) / 6); fire('touchend', a.x0 + a.dx, y + a.dy);
+          return [...document.querySelectorAll('#g2hIms img')].findIndex(i => i.classList.contains('on')) }"""
+        await ev("document.querySelectorAll('#g2hDots button')[0].click()"); await pg.wait_for_timeout(200)
+        i1 = await pg.evaluate(SW, {'x0': 80, 'dx': 160, 'dy': 6})
+        check('1e a finger swipe to the right brings the next photo', i1 == 1, i1)
+        i2 = await pg.evaluate(SW, {'x0': 280, 'dx': -160, 'dy': 4})
+        check('1f a swipe to the left goes back', i2 == 0, i2)
+        i3 = await pg.evaluate(SW, {'x0': 180, 'dx': 10, 'dy': 140})
+        check('1g scrolling up or down does not change the photo', i3 == 0, i3)
+        i4 = await pg.evaluate(SW, {'x0': 180, 'dx': 25, 'dy': 0})
+        check('1h a tiny slow move does not change the photo', i4 == 0, i4)
+        await pg.wait_for_timeout(700)
+        st = await ev("[...document.querySelectorAll('#g2hIms img')].map(i => i.style.transform + '|' + i.style.opacity).join(',')")
+        check('1i after a swipe nothing is left half-moved', st.replace('|', '').replace(',', '') == '', st)
         check('1d no generated scene images anywhere on the page', await ev("document.querySelectorAll('img[src*=\"scene_\"]').length") == 0)
         # 2 price card
         pr = await ev("window.GM_SITE.prices")

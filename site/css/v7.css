@@ -13,6 +13,10 @@ html.day #modeBtn .mi-moon{display:block}
 .g2h{position:relative;height:min(92vh,780px);min-height:580px;overflow:hidden;background:#070605;isolation:isolate}
 .g2h-ims img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 38%;opacity:0;transition:opacity 1.2s var(--ease)}
 .g2h-ims img.on{opacity:1}
+.g2h{touch-action:pan-y}
+.g2h-ims.drag img{transition:none}
+.g2h-ims.snap img{transition:opacity .55s var(--out),transform .55s var(--out)}
+.g2h-ims img{-webkit-user-drag:none;user-select:none}
 .g2h-fade{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(7,6,5,.6) 0%,rgba(7,6,5,0) 20%,rgba(7,6,5,.08) 38%,rgba(7,6,5,.9) 72%,#070605 100%)}
 .g2h-in{position:absolute;inset-inline:0;bottom:78px;z-index:2;display:flex;flex-direction:column;gap:14px}
 .g2-eye{display:inline-flex;align-items:center;gap:10px;font-size:13px;color:#d9b872}

@@ -147,6 +147,43 @@
     clearTimeout(g2ht); if (!REDUCED && ims.length > 1) g2ht = setTimeout(function () { g2Go(G2H + 1) }, byHand ? 9000 : 6000);
   }
 
+  /* swipe the hero photos with a finger (or drag with the mouse): the photo follows the finger, the next one shows
+     through, and it settles on release; up-and-down movement stays the page's own scrolling */
+  (function () {
+    var hero = $('#g2h'), box = $('#g2hIms'); if (!hero || !box) return;
+    var x0 = 0, y0 = 0, t0 = 0, dx = 0, lock = null, on = false, cur = null, nxt = null, step = 0;
+    var rtl = function () { return document.documentElement.dir !== 'ltr' };
+    function start(x, y) { if ($$('#g2hIms img').length < 2) return; x0 = x; y0 = y; t0 = Date.now(); dx = 0; lock = null; on = true; cur = nxt = null }
+    function move(x, y, e) {
+      if (!on) return; dx = x - x0; var dy = y - y0;
+      if (!lock) { if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return; lock = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'; if (lock === 'x') clearTimeout(g2ht) }
+      if (lock !== 'x') return;
+      if (e && e.cancelable) e.preventDefault();
+      var L = $$('#g2hIms img'), s = (dx > 0) === rtl() ? 1 : -1;
+      if (s !== step || !cur) { if (nxt) { nxt.style.opacity = '' } step = s; cur = L[G2H]; nxt = L[(G2H + s + L.length) % L.length] }
+      var p = Math.min(1, Math.abs(dx) / (hero.clientWidth * .6));
+      box.classList.add('drag');
+      cur.style.transform = 'translateX(' + (dx * .35).toFixed(1) + 'px) scale(1.02)'; cur.style.opacity = (1 - p * .7).toFixed(3);
+      nxt.style.opacity = p.toFixed(3);
+    }
+    function end() {
+      if (!on) return; on = false; if (lock !== 'x') return;
+      var fast = Math.abs(dx) > 30 && Date.now() - t0 < 300, go = Math.abs(dx) > hero.clientWidth * .18 || fast;
+      box.classList.remove('drag'); box.classList.add('snap');
+      if (cur) { cur.style.transform = ''; cur.style.opacity = '' } if (nxt) nxt.style.opacity = '';
+      if (go) g2Go(G2H + step, true); else g2Go(G2H, true);
+      setTimeout(function () { box.classList.remove('snap') }, 650);
+      var stop = function (e) { e.preventDefault(); e.stopPropagation() };           // the swipe is not a tap on a button
+      hero.addEventListener('click', stop, true); setTimeout(function () { hero.removeEventListener('click', stop, true) }, 350);
+    }
+    hero.addEventListener('touchstart', function (e) { if (e.touches.length === 1) start(e.touches[0].clientX, e.touches[0].clientY); else on = false }, { passive: true });
+    hero.addEventListener('touchmove', function (e) { if (e.touches.length === 1) move(e.touches[0].clientX, e.touches[0].clientY, e) }, { passive: false });
+    hero.addEventListener('touchend', end); hero.addEventListener('touchcancel', end);
+    hero.addEventListener('pointerdown', function (e) { if (e.pointerType === 'mouse' && e.button === 0 && !e.target.closest('a,button')) { start(e.clientX, e.clientY); e.preventDefault() } });
+    addEventListener('pointermove', function (e) { if (e.pointerType === 'mouse' && on) move(e.clientX, e.clientY, null) });
+    addEventListener('pointerup', function (e) { if (e.pointerType === 'mouse') end() });
+  })();
+
   /* ---------- home categories: two large tiles from the shop's own pieces, then the rest ---------- */
   function renderCatTiles() {
     var big = $('#g2cBig'), sm = $('#g2cSm'); if (!big || !sm) return;
