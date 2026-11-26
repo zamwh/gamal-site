@@ -1,6 +1,9 @@
 # Voice salesman (GPT-Live) — prototype
 
-Status: built 2026-11-26 for the owner's test. Hidden from customers (`voice.public = false`): only a phone signed in to `/admin` sees the microphone in the chat.
+Status: built 2026-11-26 for the owner's test. On for everyone since 21:10 (only the owner and the shop owner use it in
+the test phase). The owner switches it off and on from the admin, «أداء المساعد والتكلفة» → «إيقاف / تشغيل المساعد
+الصوتي» (`voice.public`). While it is off, staff signed in to `/admin` still see the microphone, and are told in the chat
+why it is hidden when it is. Staff testing is limited only by the day's voice cap.
 
 ## How a call works
 1. The customer taps the microphone in the chat. The browser asks for microphone permission; if refused, the chat says he can type.
@@ -49,7 +52,7 @@ One button: «إنهاء المكالمة». Staff see OpenAI's own reason in th
 | `standby_per_min` / `wake_threshold` | 0.02 / 0.6 | OpenAI's standby rate / how sure it must be that it is speech |
 | `ack_delay_ms` | 600 | pause before GPT-Live says "one moment" while the shop's assistant looks (OpenAI allows 0–800) |
 
-Staff testing from `/admin` gets the buyer's cap (25¢ a day), still inside the daily cap.
+Staff testing from `/admin` is limited only by the daily cap.
 
 If OpenAI refuses an optional setting (the voice name, the pause above) the call is retried once without it, and the
 owner gets a Telegram note. Every different refusal is reported once a day.

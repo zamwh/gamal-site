@@ -695,8 +695,8 @@
   /* ---------- assistant ---------- */
   var chatEl = $('#chat'), msgs = $('#msgs'), busy = false;
   function openChat(text) {
-    chatEl.classList.add('open'); T('ai_open'); chatUsed = true; hideHint(); document.body.classList.remove('has-hint'); if (innerWidth < 760) document.body.style.overflow = 'hidden';
-    if (!msgs.children.length) { addMsg('حياك الله في جمال المشرقي أنا مستشارك الخاص، أعرف كل قطعة متوفرة وسعرها اليوم. تجهّز لمناسبة، ولا تدور على شيء معيّن؟', 'a'); chips(['أطقم العرايس', 'عقود', 'سعر الذهب اليوم', 'وين فروعكم؟']) }
+    chatEl.classList.add('open'); T('ai_open'); chatUsed = true; if (window.GM_vCheck) GM_vCheck(); hideHint(); document.body.classList.remove('has-hint'); if (innerWidth < 760) document.body.style.overflow = 'hidden';
+    if (!msgs.children.length) { addMsg('حياك الله في جمال المشرقي أنا مستشارك الخاص، أعرف كل قطعة متوفرة وسعرها اليوم. تجهّز لمناسبة، ولا تدور على شيء معيّن؟', 'a'); chips(['أطقم العرايس', 'عقود', 'سعر الذهب اليوم', 'وين موقعكم؟']) }
     if (text) send(text); else setTimeout(function () { $('#chatIn').focus() }, 400);
   }
   window.openChat = openChat;
@@ -795,7 +795,10 @@
     if (!micBtn || location.protocol.indexOf('http') !== 0 || !navigator.mediaDevices || !window.RTCPeerConnection) return;
     fetch('/api/voice/status?v=' + encodeURIComponent((window.T && window.T.visitor) || ''), { cache: 'no-store' })
       .then(function (r) { return r.json() }).then(function (d) {
-        micBtn.hidden = !(d && d.on); V.lab = !!(d && d.lab); if (d && d.close_after_ms) V.closeMs = d.close_after_ms;
+        micBtn.hidden = !(d && d.on) && !V.on; V.lab = !!(d && d.lab); if (d && d.close_after_ms) V.closeMs = d.close_after_ms;
+        if (d && !d.on && d.lab && d.why && !V.whyTold && chatEl.classList.contains('open')) {   // staff: say why there is no microphone
+          V.whyTold = true; addMsg('للفريق فقط: زر الصوت مخفي الحين، ' + ({ hidden: 'لأنه موقّف من لوحة الإدارة', off: 'لأن المساعد مطفي أو ما فيه مفتاح', monthly: 'لأن الحد الشهري خلص', daily: 'لأن حد الصوت اليومي خلص', customer: 'لأن حدك اليومي خلص' }[d.why] || d.why) + '.', 'a');
+        }
         if (d && d.voices && d.voices.length) {
           V.vlist = d.voices; var mine = ''; try { mine = localStorage.getItem('gm_vv') || '' } catch (e) { }
           V.vv = V.vlist.some(function (x) { return x.id === mine }) ? mine : (d.voice || V.vlist[0].id); vVoicesUI();
@@ -1102,6 +1105,7 @@
     vdock.classList.remove('in'); chatEl.classList.remove('vc');
     VO.hideT = setTimeout(function () { vdock.hidden = true; orbW.style.transition = orbW.style.transform = orbW.style.opacity = ''; voStop() }, 460);
   }
+  window.GM_vCheck = vCheck;
   if (micBtn) {
     micBtn.onclick = vStart; $('#vStop').onclick = function () { vStop('user') };
     $('#vVoiceBtn').onclick = function () { vVoicesShow($('#vVoices').hidden) };

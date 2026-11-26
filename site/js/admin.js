@@ -218,7 +218,13 @@
         '<div class="g3"><div class="box"><h3>أكثر الاحتياجات</h3><div class="sub">تجميعي، بدون نصوص المحادثات</div><div class="list2">' + (d.needs.map(function (n) { return '<div><span>' + esc(n.need) + '</span><b>' + fmt(n.n) + '</b></div>' }).join('') || '—') + '</div></div>' +
         '<div class="box"><h3>مراحل المحادثات</h3><div class="sub">زائر عادي ← مهتم ← تنسيق ← جاد</div><div class="list2">' + (d.stages.map(function (n) { return '<div><span>' + esc(({ browse: 'زائر عادي', interest: 'مهتم', taste: 'تنسيق/ذوق', objection: 'تردد/اعتراض', ready: 'نية شراء جدية' })[n.stage] || n.stage) + '</span><b>' + fmt(n.n) + '</b></div>' }).join('') || '—') + '</div></div>' +
         '<div class="box"><h3>القطع اللي نجح فيها المساعد</h3><div class="sub">عرض ← ضغط ← إضافة</div><div class="list2">' + (d.top_pieces.map(function (n) { return '<div><span>' + esc(n.code) + '</span><b>' + fmt(n.shown) + ' ← ' + fmt(n.clicks) + ' ← ' + fmt(n.lists) + '</b></div>' }).join('') || '—') + '</div><div class="sub" style="margin-top:10px">محادثات انتهت بدون أي تفاعل: ' + fmt(d.silent_sessions) + '</div></div></div>';
-      if (d.voice) mp.insertAdjacentHTML('beforeend', voiceBox(d.voice));
+      if (d.voice) {
+        mp.insertAdjacentHTML('beforeend', voiceBox(d.voice));
+        var vb = $('#vPub'); if (vb) vb.onclick = function () {
+          var on = vb.dataset.on !== '1'; vb.disabled = true;
+          api('/api/admin/settings', { voice: { public: on } }).then(function () { toast(on ? 'المساعد الصوتي شغّال' : 'المساعد الصوتي موقّف'); ai(mp) }).catch(function (e) { vb.disabled = false; toast((e && e.message) || 'ما انحفظ') });
+        };
+      }
       bindRange();
     }).catch(err(mp));
   }
@@ -226,8 +232,10 @@
   function voiceBox(v) {
     var m = function (x) { return '$' + Number(x || 0).toFixed(3) }, t = v.totals || {};
     var WHY = { quiet: 'سكت الزبون', end: 'انتهت', user: 'أنهاها الزبون', budget: 'وصل الحد', stale: 'انقطع الاتصال', leave: 'طلع من الصفحة', hidden: 'ترك الصفحة', closed: 'سكّر المحادثة' };
-    return '<div class="box" style="margin-top:16px"><h3>المساعد الصوتي <span class="mes">' + (v.public ? 'ظاهر للزبائن' : 'تجربة للموظفين فقط') + '</span></h3>' +
-      '<div class="sub">كل مكالمة بالثانية (' + m(v.price_per_min) + ' للدقيقة) + تكلفة العقل الخلفي. المكالمة تتوقف لما يسكت الزبون وترجع لما يتكلم.</div><div class="list2">' +
+    return '<div class="box" style="margin-top:16px"><h3>المساعد الصوتي <span class="mes">' + (v.public ? 'شغّال في الموقع' : 'موقّف') + '</span></h3>' +
+      '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 12px"><button type="button" class="btn' + (v.public ? '' : ' g') + '" id="vPub" data-on="' + (v.public ? 1 : 0) + '">' +
+      (v.public ? 'إيقاف المساعد الصوتي' : 'تشغيل المساعد الصوتي') + '</button><span class="sub">' + (v.public ? 'زر المايك ظاهر في محادثة الموقع.' : 'زر المايك مخفي، والمحادثة الكتابية شغالة.') + '</span></div>' +
+      '<div class="sub">كل مكالمة بالثانية (' + m(v.price_per_min) + ' للدقيقة وقت الكلام، وأقل وقت الانتظار) + تكلفة العقل الخلفي. لو سكت الزبون دقيقة كاملة تنقفل وترجع لما يتكلم.</div><div class="list2">' +
       '<div><span>المكالمات / الزبائن / المشترين</span><b>' + fmt(t.calls) + ' / ' + fmt(t.customers) + ' / ' + fmt(t.buyers) + '</b></div>' +
       '<div><span>الثواني المحسوبة</span><b>' + fmt(t.seconds) + '</b></div><div><span>تكلفة الفترة / اليوم</span><b>' + m(t.cost) + ' / ' + m(v.today) + '</b></div>' +
       '<div><span>الحد: للزبون / للمشتري / لليوم</span><b>' + m(v.caps.customer) + ' / ' + m(v.caps.buyer) + ' / ' + m(v.caps.day) + '</b></div></div>' +

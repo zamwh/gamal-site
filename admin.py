@@ -248,6 +248,11 @@ def post(app, u, path, d):
                     ai["api_key"] = key.strip()
                     ai["enabled"] = True
                 s.set_setting("ai", ai)
+            if isinstance(d.get("voice"), dict):           # the voice assistant: on/off for the site
+                vs = dict(s.setting("voice", {}) or {})
+                if "public" in d["voice"]:
+                    vs["public"] = bool(d["voice"]["public"])
+                s.set_setting("voice", vs)
             if "links" in d:
                 s.set_setting("links", {k: str(d["links"].get(k, ""))[:200] for k in
                                         ("tiktok", "facebook", "instagram", "whatsapp")})

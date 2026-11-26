@@ -5,7 +5,7 @@
     "يتصل…": "Connecting…", "يرجع يسمعك…": "Listening again…", "أسمعك، تكلم": "I'm listening", "يرد عليك…": "Answering…",
     "لحظة أشوف لك…": "One moment…", "أول ما تتكلم، أرجع أسمعك": "Just speak, I'll be right back", "إنهاء المكالمة": "End call",
     "كلّم المستشار بصوتك": "Talk to the advisor",
-    "تغيير الصوت": "Change voice", "اختر الصوت": "Choose a voice", "سالم": "Salem", "فارس": "Fares", "ريم": "Reem",
+    "وين موقعكم؟": "Where are you located?", "تغيير الصوت": "Change voice", "اختر الصوت": "Choose a voice", "سالم": "Salem", "فارس": "Fares", "ريم": "Reem",
     "هادئ": "Calm", "حيوي": "Lively", "صوت نسائي": "Female voice", "تكلّم متى ما حبيت، أنا معك": "Speak anytime, I'm here",
     "اسمٌ رائد في عالم": "A leading name in", "الذهب والمجوهرات": "gold and jewellery", "اكتشف المجموعة": "Discover the collection",
     "تصاميم حصرية بروح الجمال المشرقي، مختارة بعناية لتليق بذوقكم وبأجمل مناسباتكم.": "Exclusive designs with an Eastern soul, chosen with care for your taste and your finest occasions.",

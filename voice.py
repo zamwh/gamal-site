@@ -25,7 +25,7 @@ import urllib.request
 LIVE_URL = "https://api.openai.com/v1/live/sessions"
 
 DEFAULT = {
-    "public": False,              # False: only signed-in staff see the microphone (the owner's test phase)
+    "public": True,               # the microphone for everyone; the owner switches it off/on from the admin («المساعد الصوتي»)
     "model": "gpt-live-1",
     "voice": "ash",               # the default of the three voices below («سالم»)
     "per_customer_usd": 0.10,     # the most one customer can cost in a day
@@ -155,7 +155,7 @@ class Voice:
 
     def _budget_left(self, who, c, extra=0.0, lab=False):
         spent, buyer = self._spent_by(who)
-        cap = float(c["buyer_usd"] if (buyer or lab) else c["per_customer_usd"])   # staff testing: the buyer's cap
+        cap = float(c["daily_usd"] if lab else c["buyer_usd"] if buyer else c["per_customer_usd"])   # staff testing: only the day's cap
         day_left = float(c["daily_usd"]) - self._spent_voice_today()
         return max(0.0, min(cap - spent, day_left) - extra), buyer
 
