@@ -114,15 +114,28 @@ html.day #modeBtn .mi-moon{display:block}
 .cin .mic{flex:none;width:44px;height:44px;margin-inline-end:6px;border-radius:50%;border:1px solid var(--line2);background:none;color:var(--gold);display:grid;place-items:center;cursor:pointer}
 .cin .mic[hidden]{display:none}
 .cin .mic.on{background:var(--gold);border-color:var(--gold);color:var(--btn-ink);box-shadow:0 0 0 6px rgba(217,184,114,.18)}
-.vbar{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px;color:var(--mut);background:var(--card2)}
-.vbar[hidden]{display:none}
-.vbar .vdot{flex:none;width:10px;height:10px;border-radius:50%;background:var(--faint)}
-.vbar[data-st=live] .vdot{background:#d9b872;animation:vpulse 1.2s ease-in-out infinite}
-.vbar[data-st=dial] .vdot{background:#e7b25f}
-.vbar span{flex:1}
-.vbar button{min-height:36px;padding:0 12px;border-radius:99px;border:1px solid var(--line2);background:none;color:var(--ink);font:inherit;font-size:12.5px;cursor:pointer}
-@keyframes vpulse{50%{transform:scale(1.35);opacity:.6}}
-@media (prefers-reduced-motion:reduce){.vbar .vdot{animation:none}}
+/* the voice call: a stage rises from the bottom of the chat, the gold orb flies out of the microphone */
+.vdock{position:absolute;left:0;right:0;bottom:0;z-index:4;display:flex;flex-direction:column;align-items:center;padding:0 16px calc(16px + env(safe-area-inset-bottom));background:linear-gradient(to top,var(--bg) 64%,color-mix(in srgb,var(--bg) 0%,transparent));opacity:0;pointer-events:none;transition:opacity .45s var(--out)}
+.vdock[hidden]{display:none}
+.vdock.in{opacity:1}
+.vdock.in .vd-end{pointer-events:auto}
+.msgs::after{content:"";flex:none;height:0;margin-top:-10px;transition:height .45s var(--out)}
+.chat.vc .msgs::after{height:var(--vpad,0px);transition:none}
+.vd-orb{width:196px;height:196px;flex:none;transition:transform .8s cubic-bezier(.2,1.2,.3,1),opacity .35s var(--out);will-change:transform}
+.vd-orb canvas{display:block;width:100%;height:100%}
+.vd-tx{margin:-14px 0 0;min-height:24px;font-size:14px;color:var(--mut);text-align:center;transition:opacity .15s}
+.vd-tx.sw{opacity:0}
+.vdock[data-st=live] .vd-tx{color:var(--ink)}
+.vd-row{display:flex;justify-content:center;margin-top:12px;opacity:0;transform:translateY(12px);transition:opacity .5s var(--out) .15s,transform .6s var(--out) .15s}
+.vdock.in .vd-row{opacity:1;transform:none}
+.vd-end{display:inline-flex;align-items:center;gap:8px;min-height:46px;padding:0 22px;border-radius:99px;border:1px solid rgba(226,112,96,.42);background:rgba(226,112,96,.12);color:#ec8f80;font:inherit;font-size:14px;cursor:pointer;transition:background .3s,transform .2s}
+.vd-end:active{transform:scale(.96)}
+.vd-end svg{width:20px;height:20px;fill:currentColor}
+html.day .vd-end{color:#c24f3c;background:rgba(194,79,60,.08);border-color:rgba(194,79,60,.35)}
+.chat .sug,.chat .cin{transition:opacity .35s .12s,transform .45s var(--out) .12s}
+.chat.vc .sug,.chat.vc .cin{opacity:0;visibility:hidden;transform:translateY(12px);transition:opacity .2s,transform .3s var(--out),visibility 0s .3s}
+@media (max-height:720px){.vd-orb{width:156px;height:156px}.vd-tx{margin-top:-10px}}
+@media (prefers-reduced-motion:reduce){.vd-orb,.vd-row,.vdock{transition:none}}
 #vAudio{display:none}
 
 /* ---------- piece page: photo counter, no photo labels, price without breakdown ---------- */

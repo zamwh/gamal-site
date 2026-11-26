@@ -183,7 +183,7 @@ class Server:
                 self.send_header("X-Content-Type-Options", "nosniff")
                 self.send_header("X-Frame-Options", "DENY")
                 self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
-                self.send_header("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
+                self.send_header("Permissions-Policy", "camera=(), microphone=(self), geolocation=(), payment=()")
                 self.send_header("Cross-Origin-Opener-Policy", "same-origin")
                 self.send_header("Content-Security-Policy", CSP)
                 if self.headers.get("X-Forwarded-Proto") == "https":

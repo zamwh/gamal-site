@@ -741,30 +741,38 @@
      are both quiet it closes, and a speech detector on the phone (free) opens it again the moment the customer speaks.
      Prices, pieces and rules come from the same assistant as the text chat, and its cards appear here. */
   var BUSY_V = 'المساعد الصوتي مشغول الحين، كمّل معي كتابة هنا أو كلم فريق المبيعات على الواتساب.';
-  var V = { on: false, st: 'off', pc: null, dc: null, tr: null, call: null, mic: null, ac: null, vt: null, bt: null, speaking: false,
+  var V = { on: false, st: 'off', pc: null, dc: null, tr: null, call: null, mic: null, ac: null, an: null, vt: null, bt: null, speaking: false,
     aSpeaking: false, aT: null, pend: 0, quiet: 0, uText: '', uBub: null, aBub: null, left: 0, since: 0, closeMs: 2500,
-    opening: false, ending: false, resume: false, miss: 0, told: false };
-  var micBtn = $('#micBtn'), vbar = $('#vbar');
-  function vSet(st, txt) { V.st = st; if (vbar) { vbar.dataset.st = st; $('#vbarTx').textContent = txt } }
+    opening: false, ending: false, resume: false, rd: false, miss: 0, told: false, lab: false, asking: false, txT: null };
+  var micBtn = $('#micBtn'), vdock = $('#vdock'), orbW = $('#vOrbW'), chatEl = $('#chat');
+  function vSet(st, txt) {
+    V.st = st; if (!vdock) return; vdock.dataset.st = st;
+    var el = $('#vTx'); if (!el || el.dataset.t === txt) return; el.dataset.t = txt;
+    clearTimeout(V.txT); el.classList.add('sw');
+    V.txT = setTimeout(function () { el.textContent = txt; el.classList.remove('sw') }, 150);
+  }
   function vPost(path, body) { return fetch('/api/voice/' + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(function (r) { return r.json() }) }
   function vSend(o) { try { if (V.dc && V.dc.readyState === 'open') V.dc.send(JSON.stringify(o)) } catch (e) { } }
   function vCheck() {
     if (!micBtn || location.protocol.indexOf('http') !== 0 || !navigator.mediaDevices || !window.RTCPeerConnection) return;
     fetch('/api/voice/status?v=' + encodeURIComponent((window.T && window.T.visitor) || ''), { cache: 'no-store' })
-      .then(function (r) { return r.json() }).then(function (d) { micBtn.hidden = !(d && d.on); if (d && d.close_after_ms) V.closeMs = d.close_after_ms }).catch(function () { });
+      .then(function (r) { return r.json() }).then(function (d) { micBtn.hidden = !(d && d.on); V.lab = !!(d && d.lab); if (d && d.close_after_ms) V.closeMs = d.close_after_ms }).catch(function () { });
   }
   function vStart() {
-    if (V.on) { vStop('user'); return }
+    if (V.on || V.asking) { vStop('user'); return }
     if (!V.told) { V.told = true; addMsg('بيطلب منك المتصفح إذن المايكروفون عشان تكلمني بصوتك. اسمح له، وتكلم براحتك.', 'a') }
+    V.asking = true; V.rd = false; vcShow(); vSet('dial', 'يتصل…');
     navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }).then(function (s) {
-      V.mic = s; V.on = true; V.miss = 0; micBtn.classList.add('on'); micBtn.setAttribute('aria-pressed', 'true'); vbar.hidden = false;
+      var still = V.asking; V.asking = false;
+      if (!still) { s.getTracks().forEach(function (t) { t.stop() }); return }          // ended while the phone was asking
+      V.mic = s; V.on = true; V.miss = 0; micBtn.classList.add('on'); micBtn.setAttribute('aria-pressed', 'true');
       vVad(s); vOpen(false);
-    }).catch(function () { addMsg('ما قدرت أوصل للمايكروفون. تقدر تسمح له من إعدادات المتصفح، أو تكتب لي هنا وأنا أرد عليك.', 'a') });
+    }).catch(function () { V.asking = false; vcHide(); addMsg('ما قدرت أوصل للمايكروفون. تقدر تسمح له من إعدادات المتصفح، أو تكتب لي هنا وأنا أرد عليك.', 'a') });
   }
   // a speech detector on the phone: a quarter second of real voice (the speech band, well above the room's own noise)
   function vVad(stream) {
     var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
-    V.ac = new AC(); var an = V.ac.createAnalyser(); an.fftSize = 1024; an.smoothingTimeConstant = 0.15;
+    V.ac = new AC(); var an = V.ac.createAnalyser(); an.fftSize = 1024; an.smoothingTimeConstant = 0.15; V.an = an;
     V.ac.createMediaStreamSource(stream).connect(an);
     var bins = new Float32Array(an.frequencyBinCount), hz = V.ac.sampleRate / an.fftSize, lo = Math.max(1, Math.floor(300 / hz)), hi = Math.ceil(3400 / hz);
     var floor = 0, warm = 0, on = 0, off = 0;
@@ -793,7 +801,7 @@
   function vIce(pc, ms) { return new Promise(function (res) { if (pc.iceGatheringState === 'complete') return res(); var t = setTimeout(res, ms); pc.addEventListener('icegatheringstatechange', function () { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res() } }) }) }
   function vOpen(resume) {
     if (V.opening || V.pc || !V.mic) return; var tr0 = V.mic.getAudioTracks()[0]; if (!tr0) return;
-    V.opening = true; V.ending = false; vSet('dial', resume ? 'يرجع يسمعك…' : 'يتصل…');
+    V.opening = true; V.ending = false; V.rd = !!resume; vSet('dial', resume ? 'يرجع يسمعك…' : 'يتصل…');
     var mine = tr0.clone(), pc = new RTCPeerConnection(), dc = pc.createDataChannel('oai-events');
     pc.addTrack(mine, new MediaStream([mine])); V.pc = pc; V.dc = dc; V.tr = mine;
     pc.ontrack = function (e) { var au = $('#vAudio'); au.srcObject = e.streams[0]; au.play().catch(function () { }) };
@@ -803,18 +811,18 @@
       return vPost('open', { sdp: pc.localDescription.sdp, session: CHAT_ID, visitor: (window.T && window.T.visitor) || '', resume: !!resume });
     }).then(function (d) {
       V.opening = false; if (V.pc !== pc) return;
-      if (!d || !d.ok) { vDrop(d && d.why, d && d.say); return }
+      if (!d || !d.ok) { vDrop(d && d.why, d && d.say, d && d.detail); return }
       V.call = d.call; V.left = d.budget_s || 0; V.closeMs = d.close_after_ms || V.closeMs; V.resume = !!resume;
       return pc.setRemoteDescription({ type: 'answer', sdp: d.sdp });
     }).catch(function () { V.opening = false; if (V.pc === pc) vDrop('net') });
   }
   function vEvent(m) {
     var t = m.type;
-    if (t === 'session.started') { V.since = Date.now(); V.quiet = V.resume ? Date.now() + 4000 : 0; vSet('live', 'أسمعك، تكلم'); clearInterval(V.bt); V.bt = setInterval(vBeat, 10000) }
+    if (t === 'session.started') { V.since = Date.now(); V.quiet = V.resume ? Date.now() + 4000 : 0; vSet('live', 'أسمعك، تكلم'); voBurst(); clearInterval(V.bt); V.bt = setInterval(vBeat, 10000) }
     else if (t === 'session.input_transcript.delta') { V.uText += m.delta || ''; if (!V.uBub) V.uBub = addMsg('', 'u'); V.uBub.textContent += m.delta || ''; V.aBub = null; msgs.scrollTop = 1e6 }
     else if (t === 'session.output_transcript.delta') {
       V.aSpeaking = true; clearTimeout(V.aT); V.aT = setTimeout(function () { V.aSpeaking = false; if (V.st === 'live') vSet('live', 'أسمعك، تكلم') }, 1400);
-      if (!V.aBub) V.aBub = addMsg('', 'a'); V.aBub.textContent += m.delta || ''; V.uBub = null; msgs.scrollTop = 1e6; vSet('live', 'يرد عليك…');
+      if (!V.aBub) V.aBub = addMsg('', 'a'); V.aBub.textContent += m.delta || ''; V.uBub = null; msgs.scrollTop = 1e6; if (!V.pend) vSet('live', 'يرد عليك…');
     }
     else if (t === 'session.delegation.created') vDelegate(m.id || (m.delegation && m.delegation.id));
     else if (t === 'session.closed' && V.pc) vClose('server', m.usage || (m.message && m.message.usage) || null);
@@ -853,12 +861,13 @@
     var fin = false, done = function (usage) { if (fin) return; fin = true; try { pc.close() } catch (e) { } try { tr.stop() } catch (e) { } if (call) vPost('close', { call: call, usage: usage || null, reason: reason }).catch(function () { }) };
     if (usage0 !== undefined) done(usage0);
     else { try { dc.send(JSON.stringify({ type: 'session.close' })) } catch (e) { } dc.onmessage = function (e) { var m; try { m = JSON.parse(e.data) } catch (x) { return } if (m.type === 'session.closed') done(m.usage || (m.message && m.message.usage)) }; setTimeout(function () { done(null) }, 4000) }
-    if (V.on) vSet('idle', 'متوقف لين تتكلم، وأرجع أسمعك على طول');
+    if (V.on) vSet('idle', 'أول ما تتكلم، أرجع أسمعك');
   }
-  function vDrop(why, say) {
+  function vDrop(why, say, detail) {
     var pc = V.pc; V.pc = V.dc = V.call = null; V.opening = false; try { pc && pc.close() } catch (e) { } try { V.tr && V.tr.stop() } catch (e) { } V.tr = null;
     if (why === 'net') { addMsg('الاتصال ضعيف شوي. جرب مرة ثانية، أو اكتب لي هنا وأنا أرد عليك.', 'a'); vStop('net'); return }
-    vStop('limit'); if (why !== 'bad') { micBtn.hidden = true; addMsg(say || BUSY_V, 'a') }
+    vStop('limit'); if (why !== 'bad') { if (!V.lab) micBtn.hidden = true; addMsg(say || BUSY_V, 'a') }
+    if (V.lab && detail) addMsg('للفريق فقط، سبب الرفض: ' + detail, 'a');          // staff testing: OpenAI's own words
   }
   // the customer's budget is nearly spent: say it plainly (never "a limit was reached") and carry on in writing
   function vEnd() {
@@ -867,16 +876,167 @@
     setTimeout(function () { vStop('budget'); micBtn.hidden = true; addMsg(BUSY_V, 'a') }, 7000);
   }
   function vStop(reason) {
-    if (!V.on) return; V.on = false; vClose(reason || 'end');
-    clearInterval(V.vt); V.vt = null; try { V.ac && V.ac.close() } catch (e) { } V.ac = null; V.speaking = false;
+    if (!V.on) { if (V.asking || (vdock && !vdock.hidden)) { V.asking = false; vcHide() } return }
+    V.on = false; vClose(reason || 'end');
+    clearInterval(V.vt); V.vt = null; try { V.ac && V.ac.close() } catch (e) { } V.ac = null; V.an = null; V.speaking = false;
     if (V.mic) V.mic.getTracks().forEach(function (t) { t.stop() }); V.mic = null;
-    micBtn.classList.remove('on'); micBtn.setAttribute('aria-pressed', 'false'); vbar.hidden = true; V.st = 'off';
+    micBtn.classList.remove('on'); micBtn.setAttribute('aria-pressed', 'false'); V.st = 'off'; vcHide();
+  }
+
+  /* ---------- the call stage: a liquid-gold orb (one small canvas, drawn on the phone) ----------
+     It flies out of the microphone when the call starts, rings while connecting, swells softly with the customer's
+     voice, sends out rings when the assistant speaks, shimmers while the shop's assistant looks for pieces, and rests
+     dim while the call sleeps between sentences. */
+  var VO = { on: false, raf: 0, c: null, S: 196, d: 1, ph: 0, last: 0, lvU: 0, lvA: 0, aRaw: 0, aMax: 0, aSpk: 0, hasLv: false,
+    stT: 0, stBusy: false, b: .8, sc: .9, glow: .4, dial: 0, think: 0, rings: [], peak: 0, tb: null, odd: false, hideT: null,
+    calm: !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) };
+  function voSize() {
+    var cv = $('#vOrb'); if (!cv) return; VO.c = VO.c || cv.getContext('2d');
+    var w = cv.clientWidth || 196; VO.S = w; VO.d = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(w * VO.d); cv.height = Math.round(w * VO.d);
+  }
+  function voMic() {                                           // the customer's voice, 0..1 (the room's noise barely counts)
+    var an = V.an; if (!an) return 0;
+    if (!an.getFloatTimeDomainData) return V.speaking ? .5 : 0;
+    if (!VO.tb || VO.tb.length !== an.fftSize) VO.tb = new Float32Array(an.fftSize);
+    an.getFloatTimeDomainData(VO.tb);
+    for (var s = 0, x = VO.tb, i = 0; i < x.length; i++) s += x[i] * x[i];
+    var l = (20 * Math.log10(Math.sqrt(s / x.length) + 1e-9) + 54) / 34;
+    l = l < 0 ? 0 : l > 1 ? 1 : l;
+    return V.speaking ? l : l * .2;
+  }
+  function voOut(now, dt) {                                    // the assistant's voice, 0..1, from the call's own sound level
+    var pc = V.pc;
+    if (!pc) { VO.aRaw = 0; return 0 }
+    if (now - VO.stT > 110 && !VO.stBusy && pc.getStats) {
+      VO.stT = now; VO.stBusy = true;
+      pc.getStats().then(function (r) {
+        VO.stBusy = false;
+        r.forEach(function (x) { if (x.type === 'inbound-rtp' && (x.kind || x.mediaType) === 'audio' && typeof x.audioLevel === 'number') { VO.hasLv = true; VO.aRaw = x.audioLevel; if (x.audioLevel > VO.aMax) VO.aMax = x.audioLevel } });
+      }, function () { VO.stBusy = false });
+    }
+    if (V.aSpeaking) VO.aSpk += dt * 1000;
+    if (VO.hasLv && (VO.aMax > .004 || VO.aSpk < 1600)) return Math.min(1, Math.sqrt(VO.aRaw) * 1.7);
+    if (!V.aSpeaking) return 0;
+    var t = now / 1000;                                        // a phone that gives no level: a calm speech-like rhythm
+    return Math.max(0, .42 + .3 * Math.sin(t * 24) * Math.sin(t * 6.8 + 1) + .18 * Math.sin(t * 13.3 + 2)) * (.75 + .25 * Math.sin(t * 1.7));
+  }
+  function voBlob(c, cx, cy, R, ph, a, u, s) {
+    c.beginPath();
+    for (var i = 0; i <= 96; i++) {
+      var th = i / 96 * 6.2832,
+        r = R * (1 + a * Math.sin(2 * th + ph * 1.1) + a * .8 * Math.sin(3 * th - ph * 1.7 + 1.3)
+          + (a * .5 + s * .07) * Math.sin(5 * th + ph * 2.9 + .4) + u * .04 * Math.sin(4 * th - ph * 2.3 + 2.1)
+          + s * .035 * Math.sin(7 * th + ph * 4.1));
+      if (i) c.lineTo(cx + r * Math.cos(th), cy + r * Math.sin(th)); else c.moveTo(cx + r, cy);
+    }
+    c.closePath();
+  }
+  function voSpot(c, x, y, r, rgb, al) {
+    var g = c.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, 'rgba(' + rgb + ',' + al.toFixed(3) + ')'); g.addColorStop(1, 'rgba(' + rgb + ',0)');
+    c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  function voDraw(now) {
+    var c = VO.c; if (!c) return;
+    var dt = Math.min(.05, VO.last ? (now - VO.last) / 1000 : .016); VO.last = now;
+    var ez = function (f) { return 1 - Math.pow(1 - f, dt * 60) };
+    var st = V.st, dial = st === 'dial', idle = st === 'idle' || st === 'off';
+    var u = voMic(), a = voOut(now, dt);
+    VO.lvU += (u - VO.lvU) * ez(u > VO.lvU ? .3 : .07);
+    VO.lvA += (a - VO.lvA) * ez(a > VO.lvA ? .35 : .09);
+    var talk = V.aSpeaking || VO.lvA > .08;
+    VO.b += ((idle ? .5 : dial ? .8 : talk ? 1 : .9) - VO.b) * ez(.05);
+    VO.sc += ((idle ? .82 : dial ? .9 : 1) + VO.lvU * .1 + VO.lvA * .07 - VO.sc) * ez(.12);
+    VO.glow += ((idle ? .22 : .55) + VO.lvA * .9 + VO.lvU * .4 - VO.glow) * ez(.08);
+    VO.dial += ((dial && !V.rd ? 1 : 0) - VO.dial) * ez(.08);
+    VO.think += ((V.pend > 0 ? 1 : 0) - VO.think) * ez(.06);
+    if (!VO.calm) VO.ph += dt * (.55 + VO.lvU * 1.4 + VO.lvA * 2 + VO.think * .8);
+    if (!VO.calm && VO.lvA > .32 && now - VO.peak > 700 && VO.rings.length < 4) { VO.peak = now; VO.rings.push(now) }
+    var S = VO.S, cx = S / 2, cy = S / 2, R = S * .27 * VO.sc, ph = VO.ph, b = VO.b, tm = VO.calm ? 0 : now / 1000;
+    c.setTransform(VO.d, 0, 0, VO.d, 0, 0); c.clearRect(0, 0, S, S); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+    var g = c.createRadialGradient(cx, cy, R * .8, cx, cy, R * 1.75);                     // the aura
+    g.addColorStop(0, 'rgba(217,184,114,' + (.32 * VO.glow).toFixed(3) + ')'); g.addColorStop(1, 'rgba(217,184,114,0)');
+    c.fillStyle = g; c.fillRect(0, 0, S, S);
+    for (var i = VO.rings.length - 1; i >= 0; i--) {                                      // rings the assistant's voice sends out
+      var age = (now - VO.rings[i]) / 1500;
+      if (age >= 1 || age < 0) { VO.rings.splice(i, 1); continue }
+      c.beginPath(); c.arc(cx, cy, R * (1.04 + age * .55), 0, 6.2832);
+      c.strokeStyle = 'rgba(234,205,142,' + (.5 * (1 - age) * (1 - age)).toFixed(3) + ')'; c.lineWidth = 1.7 - age; c.stroke();
+    }
+    if (VO.dial > .02) {                                                                  // ringing while it connects
+      c.beginPath(); c.arc(cx, cy, R * 1.24, 0, 6.2832); c.strokeStyle = 'rgba(217,184,114,' + (.14 * VO.dial).toFixed(3) + ')'; c.lineWidth = 1; c.stroke();
+      c.beginPath(); c.arc(cx, cy, R * 1.24, tm * 4.2, tm * 4.2 + 1.15); c.lineCap = 'round';
+      c.strokeStyle = 'rgba(242,216,152,' + (.9 * VO.dial).toFixed(3) + ')'; c.lineWidth = 2.2; c.stroke();
+    }
+    c.globalAlpha = .45 + .55 * b;                                                        // the orb
+    voBlob(c, cx, cy, R, ph, idle ? .01 : .014, VO.lvU, VO.lvA);
+    c.save(); c.clip();
+    var gb = c.createRadialGradient(cx - R * .34, cy - R * .42, R * .06, cx + R * .05, cy + R * .08, R * 1.12);
+    gb.addColorStop(0, '#fff4d2'); gb.addColorStop(.2, '#f2d68f'); gb.addColorStop(.52, '#cc9d4a'); gb.addColorStop(.8, '#8e6627'); gb.addColorStop(1, '#4a3311');
+    c.fillStyle = gb; c.fillRect(cx - R * 1.3, cy - R * 1.3, R * 2.6, R * 2.6);
+    c.globalCompositeOperation = 'screen';                                                // molten light moving inside
+    voSpot(c, cx + R * .42 * Math.cos(ph * .9), cy + R * .36 * Math.sin(ph * 1.15 + 1), R * .78, '255,236,186', .42 * b);
+    voSpot(c, cx + R * .5 * Math.cos(ph * .6 + 2.4), cy + R * .44 * Math.sin(ph * .8 + .3), R * .6, '255,214,128', .32 * b);
+    c.globalCompositeOperation = 'multiply';
+    voSpot(c, cx + R * .55 * Math.cos(ph * .7 + 4), cy + R * .5 * Math.sin(ph * .95 + 2), R * .85, '120,80,24', .5);
+    c.globalCompositeOperation = 'source-over';
+    var gr = c.createRadialGradient(cx, cy + R * .06, R * .6, cx, cy, R * 1.06);           // depth: a darker rim
+    gr.addColorStop(0, 'rgba(36,22,6,0)'); gr.addColorStop(1, 'rgba(36,22,6,.6)');
+    c.fillStyle = gr; c.fillRect(cx - R * 1.3, cy - R * 1.3, R * 2.6, R * 2.6);
+    voSpot(c, cx + R * .22, cy + R * .66, R * .42, '255,206,120', .22);                  // warm light bounced from below
+    if (VO.think > .02) {                                                                 // looking for pieces: a light sweeps across
+      var x = cx + ((tm * .75) % 1 * 2.8 - 1.4) * R, gs = c.createLinearGradient(x - R * .45, cy - R, x + R * .45, cy + R);
+      gs.addColorStop(0, 'rgba(255,248,225,0)'); gs.addColorStop(.5, 'rgba(255,248,225,' + (.38 * VO.think).toFixed(3) + ')'); gs.addColorStop(1, 'rgba(255,248,225,0)');
+      c.fillStyle = gs; c.fillRect(cx - R * 1.3, cy - R * 1.3, R * 2.6, R * 2.6);
+    }
+    c.save(); c.translate(cx - R * .36, cy - R * .46); c.scale(1, .72); voSpot(c, 0, 0, R * .34, '255,255,246', .8 * b); c.restore();
+    c.restore();
+    c.strokeStyle = 'rgba(255,236,190,' + (.18 * b).toFixed(3) + ')'; c.lineWidth = 1; c.stroke();
+    c.globalAlpha = 1;
+  }
+  function voLoop(now) {
+    VO.raf = 0; if (!VO.on) return;
+    var skip = VO.calm ? now - VO.last < 200 : (V.st === 'idle' && VO.lvU < .05 && (VO.odd = !VO.odd));   // resting: half the frames
+    if (!skip) voDraw(now);
+    VO.raf = requestAnimationFrame(voLoop);
+  }
+  function voStart() { if (VO.on) return; VO.on = true; VO.last = 0; VO.rings = []; VO.raf = requestAnimationFrame(voLoop) }
+  function voStop() { VO.on = false; if (VO.raf) cancelAnimationFrame(VO.raf); VO.raf = 0 }
+  function voBurst() { if (!VO.calm && window.performance) VO.rings.push(performance.now()); VO.sc = Math.min(1.12, VO.sc + .06) }
+  function voFly() {                                           // from the orb's resting place to the microphone (transforms ignored)
+    var m = micBtn.getBoundingClientRect(), d = vdock.getBoundingClientRect();
+    if (!m.width) return 'scale(.5)';
+    return 'translate(' + Math.round(m.left + m.width / 2 - d.left - d.width / 2) + 'px,' + Math.round(m.top + m.height / 2 - d.top - orbW.offsetHeight / 2) + 'px) scale(.24)';
+  }
+  function vcPad() {
+    var gap = chatEl.getBoundingClientRect().bottom - msgs.getBoundingClientRect().bottom;
+    msgs.style.setProperty('--vpad', Math.max(0, Math.round(vdock.offsetHeight - gap + 4)) + 'px');
+  }
+  function vcShow() {
+    if (!vdock) return;
+    clearTimeout(VO.hideT); vdock.hidden = false; vdock.classList.remove('in'); chatEl.classList.add('vc');
+    voSize(); vcPad();
+    orbW.style.transition = 'none'; orbW.style.opacity = '0'; orbW.style.transform = voFly();
+    void orbW.offsetWidth;
+    orbW.style.transition = orbW.style.transform = orbW.style.opacity = '';
+    VO.sc = .6; VO.b = .7; vdock.classList.add('in'); voStart();
+    setTimeout(function () { if (msgs.scrollTo) msgs.scrollTo({ top: msgs.scrollHeight, behavior: 'smooth' }); else msgs.scrollTop = 1e6 }, 30);
+  }
+  function vcHide() {
+    if (!vdock || vdock.hidden) return;
+    clearTimeout(VO.hideT);
+    orbW.style.transition = 'transform .42s cubic-bezier(.55,0,.75,.2),opacity .36s ease-in';
+    orbW.style.transform = voFly(); orbW.style.opacity = '0';
+    vdock.classList.remove('in'); chatEl.classList.remove('vc');
+    VO.hideT = setTimeout(function () { vdock.hidden = true; orbW.style.transition = orbW.style.transform = orbW.style.opacity = ''; voStop() }, 460);
   }
   if (micBtn) {
     micBtn.onclick = vStart; $('#vStop').onclick = function () { vStop('user') };
     $('#chatX').addEventListener('click', function () { vStop('closed') });
     addEventListener('pagehide', function () { if (V.call) { try { navigator.sendBeacon('/api/voice/close', JSON.stringify({ call: V.call, reason: 'leave' })) } catch (e) { } } });
-    document.addEventListener('visibilitychange', function () { if (document.hidden && V.on) vStop('hidden') });
+    document.addEventListener('visibilitychange', function () { if (document.hidden && (V.on || V.asking)) vStop('hidden') });
+    addEventListener('resize', function () { if (VO.on && vdock && !vdock.hidden) { voSize(); vcPad() } });
     vCheck();
   }
   // offline / assistant-off replies: honest and helpful, never invented

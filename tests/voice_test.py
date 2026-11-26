@@ -15,7 +15,11 @@ class Fake(BaseHTTPRequestHandler):
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or "{}")
         SEEN.append({"auth": self.headers.get("Authorization"), "body": body})
-        if MODE["reject_voice"] and "audio" in body.get("session", {}):
+        ack = ((body.get("session") or {}).get("delegation") or {}).get("acknowledgement_delay_ms")
+        if ack is not None and (ack > MODE.get("ack_max", 800) or ack < 0):    # OpenAI's own check (0-800)
+            out, code = {"error": {"message": "Invalid 'session.delegation.acknowledgement_delay_ms': integer above maximum value. "
+                                   "Expected a value <= %d, but got %d instead." % (MODE.get("ack_max", 800), ack)}}, 400
+        elif MODE["reject_voice"] and "audio" in body.get("session", {}):
             out, code = {"error": {"message": "Unsupported voice 'cedar'"}}, 400
         elif MODE["status"] != 201:
             out, code = {"error": {"message": "You do not have access to gpt-live-1"}}, MODE["status"]
@@ -38,7 +42,11 @@ try:
     check('2  staff: off while the assistant has no key', not st["on"] and st.get("why") == "off", st)
     app.store.set_setting("ai", {"enabled": True, "api_key": "sk-test"})
     st = v.status("vis1", "1.2.3.4", True)
-    check('3  staff with a key: on, 10 cents = 120 seconds', st["on"] and st["budget_s"] == 120, st)
+    check('3  staff testing: on, the buyer cap 25 cents = 300 seconds', st["on"] and st["budget_s"] == 300, st)
+    app.store.set_setting("voice", {"public": True})
+    st = v.status("vis9", "9.9.9.9", False)
+    check('3b a customer (once public): 10 cents = 120 seconds', st["on"] and st["budget_s"] == 120, st)
+    app.store.set_setting("voice", {})
 
     o = v.open("vis1", "chat1", "v=0 offer", "1.2.3.4", True)
     sent = SEEN[-1]["body"]["session"] if SEEN else {}
@@ -77,7 +85,9 @@ try:
     # caps
     app.store.db.execute("INSERT INTO voice_calls (id,visitor,session,ip,day,started,last_beat,ended,cost) VALUES ('x1','vis2','c2','',?,?,?,?,0.10)",
                          (v._today(), time.time(), time.time(), time.time())); app.store.db.commit()
-    st = v.status("vis2", "5.6.7.8", True)
+    app.store.set_setting("voice", {"public": True})
+    st = v.status("vis2", "5.6.7.8", False)
+    app.store.set_setting("voice", {})
     check('15 a customer who used his 10 cents: no microphone today', not st["on"] and st.get("why") == "customer", st)
     app.store.db.execute("INSERT INTO voice_calls (id,visitor,session,ip,day,started,last_beat,ended,cost) VALUES ('x2','vis3','c3','',?,?,?,?,1.6)",
                          (v._today(), time.time(), time.time(), time.time())); app.store.db.commit()
@@ -89,6 +99,14 @@ try:
     MODE["reject_voice"] = True
     o2 = v.open("vis5", "chat5", "v=0 offer", "1.1.1.1", True)
     check('17 an unknown voice name: retried with OpenAI\'s default voice', o2.get("ok") and "audio" not in SEEN[-1]["body"]["session"], o2)
+    MODE["reject_voice"] = False
+    first = [x for x in SEEN if x["body"].get("session")][0]["body"]["session"]["delegation"]
+    check('17b the pause before "one moment" is inside OpenAI\'s 0-800 ms', 0 <= first.get("acknowledgement_delay_ms", -1) <= 800, first)
+    MODE["ack_max"] = 300
+    o4 = v.open("vis7", "chat7", "v=0 offer", "1.1.1.3", True)
+    check('17c OpenAI lowers that limit: the call still opens without the setting',
+          o4.get("ok") and "acknowledgement_delay_ms" not in SEEN[-1]["body"]["session"]["delegation"], o4)
+    MODE.pop("ack_max")
     MODE["reject_voice"] = False; MODE["status"] = 403
     o3 = v.open("vis6", "chat6", "v=0 offer", "1.1.1.2", True)
     check('18 no access to the model: refused, the reason shown to staff', not o3["ok"] and o3.get("code") == 403 and "access" in o3.get("detail", ""), o3)
