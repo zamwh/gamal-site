@@ -249,5 +249,34 @@ ag._call_any = never
 out = ag.chat("t13", "أبغى عقد", visitor="v13")
 check("4y assistant switched off: still answers with the closest real pieces", out["pieces"] and out.get("handoff") is not None, out)
 
+# a shown piece's price: the system's numbers (riyals and dollars), or "which one?" when several were shown
+on = dict(s.setting("ai")); on["enabled"] = True; s.set_setting("ai", on); s.db.commit()
+ag._call_any = never
+N0 = [c for c, p in AV.items() if p["type"] == "عقد"][0]
+c14 = ag._ctx("t14"); shopstate.register_shown(c14["state"], [ag._public(s.piece(N0))]); c14["shown"] = [N0]
+ag._save_ctx("t14", c14); s.db.commit()
+out = ag.chat("t14", "كم يطلع بالدولار؟", visitor="v14")
+b = shopstate.price_breakdown(s, [N0], "USD")["items"][0]
+check("5a price of the shown piece in dollars: from the system, no model", out.get("canned") and f"{b['total_yer']:,.0f}" in out["text"]
+      and f"{b['total_usd']:,.2f}" in out["text"] and "535" in out["text"], out["text"])
+c15 = ag._ctx("t15"); shopstate.register_shown(c15["state"], [ag._public(s.piece(x)) for x in SETS[:2]]); c15["shown"] = SETS[:2]
+ag._save_ctx("t15", c15); s.db.commit()
+out = ag.chat("t15", "كم سعر هذي؟", visitor="v15")
+check("5b two shown and none named: asks which one", out["text"].startswith("تقصد أي وحدة") and out["text"].count("؟") == 1, out["text"])
+out = ag.chat("t15", "كم سعر الثاني؟", visitor="v15")
+check("5c «الثاني» is priced from the system", f"{price(SETS[1]):,.0f}" in out["text"], out["text"])
+r_ = ag.search_products({"kind": "عقد", "near_weight": 50, "count": 3}, shopstate.new_state())
+ws = [abs(i["w"] - 50) for i in r_["items"] if i["kind"] == "عقد"]
+check("5d a weight asked for: real necklaces first, the closest first, the difference worked out by the system",
+      r_["items"] and r_["items"][0]["kind"] == "عقد" and ws == sorted(ws) and all("diff_g" in i for i in r_["items"])
+      and "ما فيه قطعة بنفس الوزن" in r_.get("note", ""), r_["items"])
+cc = {"facts": {}}; ag.update_facts(cc, SR.norm("أبغى عقد 50 جرام بالضبط"))
+check("5e «50 جرام» is read as the weight he wants", cc["facts"].get("weight") == 50, cc)
+M = Model({"tools": [("search_pieces", {"count": 2})]}, {"content": "هذي بوزن 50 جرام بالضبط 77,777"}, {"content": "وزنها 50 جرام 77,777"})
+ag._call_any = M
+out = ag.chat("t16", "أبغى عقد 50 جرام بالضبط", visitor="v16")
+check("5f the safe reply shows what HE asked for (necklaces), not whatever the model searched",
+      out["pieces"] and all(AV[p["code"]]["type"] == "عقد" for p in out["pieces"]), [(p["code"], AV[p["code"]]["type"]) for p in out["pieces"]])
+
 print(f"\n{sum(res)}/{len(res)} passed")
 os.makedirs(os.path.join(os.path.dirname(__file__), "results"), exist_ok=True)

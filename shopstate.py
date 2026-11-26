@@ -88,7 +88,7 @@ def last_batch(state):
 
 def resolve_ref(state, text):
     """'الأول', 'الثاني', 'ارجع للطقم الأول', 'اللي عرضته قبل' -> a code from the stored history, or None."""
-    t = " " + norm(text) + " "
+    t = " " + re.sub(r"[؟?!.,،:؛]", " ", norm(text)) + " "        # «الثاني؟» is «الثاني»
     if not state["shown"]:
         return None
     m = re.search(r"\b([A-Z]{0,2}\d{4,7})\b", (text or "").upper())

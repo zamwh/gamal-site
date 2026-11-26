@@ -62,7 +62,7 @@ CORE_PROMPT = """أنت "مستشار جمال المشرقي" في موقع م�
 1. افهم رسالته. رسالة "## الآن" من النظام تقول لك وش المطلوب في هذا الرد بالذات، واتبعها.
 2. اكتشف حاجته بسؤال واحد في الرد: المناسبة، ثم نوع القطعة، ثم الميزانية أو الوزن. إذا عرفت شي واحد على الأقل، أو طلب يشوف ("وريني"، "وش عندكم"، "الجديد")، اعرض.
 3. اعرض قطعتين، أو ثلاث لسبب واضح، من search_pieces. لكل قطعة سطر واحد يربطها بكلامه هو أو بشكلها الحقيقي.
-4. اسأله: أي وحدة أقرب لك؟ ولا أطلع لك أخف أو أثقل؟
+4. اسأله: أي وحدة أقرب لك، ولا أطلع لك أخف أو أثقل؟
 5. الاعتراض: رد بالحساب الواضح من price_breakdown (سعر الجرام × الوزن + المصنعية)، وبديل أخف بنفس الروح. بدون خصم.
 6. لما يقول يبغاها أو يسأل كيف يشتري: offer_purchase. خطوة وحدة واضحة.
 7. تذكر بس اللي قاله الزبون بنفسه.
@@ -149,7 +149,8 @@ TOOLS = [
             "similar_to_code": {"type": "string", "description": "رمز قطعة أعجبته؛ يرتب حسب الشبه بها"},
             "new_only": {"type": "boolean", "description": "true إذا سأل عن الجديد أو اللي وصل حديثاً: يرجع القطع المسجلة \"وصل حديثاً\" فقط"},
             "required_features": {"type": "array", "items": {"type": "string", "enum": ["وحدات متكررة", "تكوين مركزي", "متدرج", "طبقات", "متناظر", "شراشيب", "ورود", "تخريم"]},
-                                  "description": "ملامح طلبها صراحة (شرط)"}}}}},
+                                  "description": "ملامح طلبها صراحة (شرط)"},
+            "near_weight": {"type": "number", "description": "إذا طلب وزن معين (مثلاً 50 جرام): يرجع الأقرب لهذا الوزن، ومع كل قطعة فرقها بالجرام (diff_g)"}}}}},
     {"type": "function", "function": {
         "name": "note_taste",
         "description": "يسجّل ما فهمته عن ذوق الزبون من كلامه أو ردّة فعله. استدعه بنفس الرد كل ما عبّر عن تفضيل أو أعجبته قطعة أو رفضها أو ذكر ميزانية أو مناسبة. سجّل فقط الواضح.",
@@ -239,19 +240,19 @@ W_SET_YES = ["ايوه", "ايوا", "اكيد", "يب", "تمام", "ياليت
 
 
 def extract_budget(t, rates):
-    """'300 الف' / '2 مليون' / '1500 سعودي' -> YER."""
+    """'300 الف' / '2 مليون' / '1500 سعودي' / '30 الف سعودي' / '500 دولار' -> YER."""
     t = t.replace(",", "")
-    m = re.search(r"(\d+(?:\.\d+)?)\s*(مليون|الف|ريال سعودي|سعودي|دولار|\$)?", t)
+    m = re.search(r"(\d+(?:\.\d+)?)\s*(مليون|الف)?\s*(ريال سعودي|سعودي|دولار|\$)?", t)
     if not m:
         return None
-    v, unit = float(m.group(1)), m.group(2) or ""
-    if "مليون" in unit:
+    v, mult, cur = float(m.group(1)), m.group(2) or "", m.group(3) or ""
+    if "مليون" in mult:
         v *= 1_000_000
-    elif "الف" in unit:
+    elif "الف" in mult:
         v *= 1000
-    elif "سعودي" in unit:
+    if "سعودي" in cur:
         v *= rates.get("sar") or 140
-    elif unit in ("دولار", "$"):
+    elif cur in ("دولار", "$"):
         v *= rates.get("usd") or 535
     return v if v >= 10000 else None
 
@@ -413,6 +414,9 @@ class SalesAgent:
                 f["budget"] = round(b)
         if has(t, W_SETS):
             f["wants_set"] = True
+        m = re.search(r"(\d+(?:\.\d+)?)\s*(جرام|جم|غرام)", t)
+        if m and 0.5 <= float(m.group(1)) <= 1000:
+            f["weight"] = float(m.group(1))
         return f
 
     def classify(self, c, t):
@@ -560,11 +564,19 @@ class SalesAgent:
         over = sorted([p for p in eligible if budget and p["price"] > float(budget)], key=lambda p: p["price"])[:2]
         sort = args.get("sort") or "taste"
         n = max(1, min(5, int(args.get("count") or 2)))
+        near = float(args["near_weight"]) if args.get("near_weight") else None
+        if near:
+            sort = "near"
         pool = [p for p in within if p["code"] not in shown] or ([p for p in within] if sort != "taste" else [])
+        # asked for a necklace: real necklaces first; a set that has a necklace in it only after them
+        k_ = norm(kind) if kind else ""
+        other = (lambda p: 0) if not kind else \
+            (lambda p: 0 if norm(p["type"]) == k_ or (k_ in ("سلسله", "سلسلة") and "طقم" not in norm(p["type"])) else 1)
         if sort != "taste":
             key = {"price_asc": lambda p: p["price"], "price_desc": lambda p: -p["price"],
-                   "weight_asc": lambda p: p["weight"], "weight_desc": lambda p: -p["weight"]}[sort]
-            ranked = [(0, p, []) for p in sorted(within, key=key)][:n]   # the true order over all eligible stock
+                   "weight_asc": lambda p: p["weight"], "weight_desc": lambda p: -p["weight"],
+                   "near": lambda p: abs(p["weight"] - (near or 0))}.get(sort, lambda p: p["price"])
+            ranked = [(0, p, []) for p in sorted(within, key=lambda p: (other(p), key(p)))][:n]   # the true order over all eligible stock
         else:
             if args.get("similar_to_code"):
                 try:
@@ -574,7 +586,10 @@ class SalesAgent:
                     prof = tmp
                 except Exception:
                     pass
-            ranked, _ = self.taste.rank(prof, pool, lambda p: True, None, occ, (), n)
+            ranked, _ = self.taste.rank(prof, [p for p in pool if not other(p)], lambda p: True, None, occ, (), n)
+            if len(ranked) < n:
+                more, _ = self.taste.rank(prof, [p for p in pool if other(p)], lambda p: True, None, occ, (), n - len(ranked))
+                ranked = list(ranked) + list(more)
         stated_taste = any((v or {}).get("src") == "stated" for v in (prof.get("liked") or {}).values()) or any(
             (e or {}).get("src") == "stated" and (e or {}).get("s", 0) > 0
             for d in (prof.get("dims") or {}).values() for e in d.values())
@@ -582,6 +597,8 @@ class SalesAgent:
         for sc, p, why in ranked:
             it = self._brief(p)
             it.update(describe(p))
+            if near:
+                it["diff_g"] = round(p["weight"] - near, 1)
             if why and stated_taste:
                 it["fits"] = "قريبة مما قاله الزبون: " + "، ".join(why)
             items.append(it)
@@ -590,7 +607,11 @@ class SalesAgent:
                           "cheaper_than": cheaper, "lighter_than": lighter, "max_weight": wmax, "sort": sort,
                           "occasion": occ, "dropped": dropped},
                "profile_known": stated_taste}
-        if sort != "taste" and items:
+        if near and items:
+            exact = any(abs(i["w"] - near) < 0.05 for i in items)
+            out["note"] = (f"هذي الأقرب لوزن {near:g} جم. " + ("فيه قطعة بنفس الوزن." if exact else
+                           "ما فيه قطعة بنفس الوزن بالضبط: قل الفرق من diff_g بالضبط، ولا تقل إن وزنها " + f"{near:g}."))
+        elif sort != "taste" and items:
             out["note"] = "الترتيب حقيقي على كل القطع المتاحة المطابقة؛ الأول هو " + {"price_asc": "الأرخص", "price_desc": "الأغلى",
                           "weight_asc": "الأخف", "weight_desc": "الأثقل"}[sort] + " فعلاً."
         if not items and over:
@@ -853,6 +874,52 @@ class SalesAgent:
             return "وصلنا لحد المحادثة هنا. فريق المبيعات يكمل معك على الواتساب (الزر تحت).", []
         return (SR.BUSY if why in ("cap", "error") else SR.OFF), []
 
+    def _safe_pieces(self, c, st, prof):
+        """The closest real pieces to what the customer asked for (kind, occasion, budget, weight), by the system."""
+        f, req = c["facts"], st.get("request") or {}
+        args = {k: v for k, v in {"kind": req.get("category") or f.get("kind"), "occasion": f.get("occasion"),
+                                  "max_price": req.get("budget") or f.get("budget"), "near_weight": f.get("weight"),
+                                  "count": 2}.items() if v}
+        return [i["code"] for i in self.search_products(args, st, prof, f, exclude_shown=False).get("items", [])]
+
+    PRICE_Q = re.compile(r"(كم|بكم)\s*(سعر|سعرها|سعره|يطلع|تطلع|تكلف|يكلف|قيمه|قيمتها|حقها|حقه|الاجمالي)|السعر\s*كم|كم\s*بالدولار|"
+                         r"كم\s*بالسعودي|بالدولار\s*كم|بالسعودي\s*كم")
+
+    def _price_answer(self, st, ref_code, message, facts):
+        """«كم سعر هذي؟» / «كم يطلع الأول بالدولار؟» about a piece already shown: the system's own price, never the model's
+        arithmetic. Several shown and none named: ask which. -> text or None"""
+        import shopstate
+        t = norm(message)
+        if not st.get("shown") or not self.PRICE_Q.search(t) or len(t.split()) > 10:
+            return None
+        if has(t, sum(KINDS.values(), [])) and has(t, ["ارخص", "اغلى", "اخف", "اثقل"]):
+            return None                      # «كم سعر أرخص طقم» is a search, not a price of a shown piece
+        code = ref_code
+        if not code:
+            lb = shopstate.last_batch(st)
+            if len(lb) == 1:
+                code = lb[0]["code"]
+            elif len(lb) >= 2:
+                names = [f"«{e['title']}»" for e in lb[:3]]
+                return "تقصد أي وحدة: " + " ولا ".join(names) + "؟"
+        if not code or self._status(code) not in ("available", "reserved"):
+            return None
+        cur = "USD" if has(t, ["دولار", "usd", "$"]) else ("SAR" if has(t, ["سعودي", "sar"]) else None)
+        b = shopstate.price_breakdown(self.store, [code], cur)
+        it = (b.get("items") or [{}])[0]
+        if "total_yer" not in it:
+            return None
+        day = "اليوم" if facts.get("price_today") else "المسجل"
+        txt = (f"سعر «{it['title']}» الإجمالي {it['total_yer']:,.0f} ريال يمني: وزنها {it['weight_g']:g} جم × سعر جرام 21 {day} "
+               f"{it['gold_price_per_g']:,.0f}، والمصنعية {it['making_total']:,.0f}.")
+        if cur and it.get("total_" + cur.lower()):
+            name = "دولار" if cur == "USD" else "ريال سعودي"
+            txt += (f" يعني تقريباً {it['total_' + cur.lower()]:,.2f} {name} بسعر صرف اليوم "
+                    f"({b['rate']['yer_per_unit']:,.0f} ريال يمني لل{'دولار' if cur == 'USD' else 'ريال السعودي'}).")
+        elif cur:
+            txt += " وسعر الصرف ما تسجل اليوم، فما أقدر أحسبها بالعملة الثانية الحين."
+        return txt + "\nتحب تشوف طريقة الشراء؟"
+
     def _sold_ref(self, message):
         for code in re.findall(r"\b[A-Za-z]\d{6}\b", message or ""):
             try:
@@ -994,6 +1061,18 @@ class SalesAgent:
                     self.analytics.log_ai(session, "-", "canned", stage, "tpl:" + ",".join(r["faq"]), 0, 0, 0, 0.0,
                                           int((time.time() - t0) * 1000), need)
                 return res
+            # ---- the price of a piece already shown: the system's numbers, never the model's arithmetic
+            if r["path"] == "llm" and not r["faq"] and not (set(r["selling"]) - {"piece", "currency", "browse", "budget"}):
+                ptxt = self._price_answer(st, ref_code, message, facts)
+                if ptxt:
+                    self._log(session, message, ptxt, "tpl:piece_price", 0, 0, 0)
+                    self._save_ctx(session, c)
+                    self.taste.save(pkey, prof)
+                    self.store.db.commit()
+                    if self.analytics:
+                        self.analytics.log_ai(session, "-", "canned", stage, "tpl:piece_price", 0, 0, 0, 0.0,
+                                              int((time.time() - t0) * 1000), need)
+                    return {"text": ptxt, "pieces": [], "stage": stage, "canned": True, "suggest": self._suggest(c)}
             # ---- the model's turn, unless it is off, capped or the chat is very long
             why = "limit" if c["msgs"] > int(cfg["session_msg_limit"]) else ("off" if not (cfg.get("enabled") and cfg.get("api_key")) else None)
             if not why:
@@ -1008,7 +1087,8 @@ class SalesAgent:
                 self.store.db.commit()
                 return res
             no_cards = bool(r["faq"]) and not r["selling"]
-            known = {"occasion": bool(c["facts"].get("occasion") or st["request"].get("occasion")),
+            known = {"weight": c["facts"].get("weight"),
+                     "occasion": bool(c["facts"].get("occasion") or st["request"].get("occasion")),
                      "kind": bool(c["facts"].get("kind") or st["request"].get("category")),
                      "budget": bool(c["facts"].get("budget") or st["request"].get("budget") or st["request"].get("weight_max"))}
             bridal = c["facts"].get("occasion") in ("عرس", "خطوبة")
@@ -1079,8 +1159,8 @@ class SalesAgent:
                 keys = [k_ for k_, _ in chk["problems"]]
                 with self.lock:
                     self._trace(session, st["turn"], "check", {"problems": keys})
-                msgs.append({"role": "assistant", "content": text})
-                msgs.append({"role": "system", "content": SR.rewrite_note(chk["problems"])})
+                # the draft travels inside the instruction (as an unfinished reply the model would carry it on)
+                msgs.append({"role": "system", "content": SR.rewrite_note(chk["problems"], text)})
                 cfg2 = dict(cfg, extra=dict(cfg.get("extra") or {}, tool_choice="none"))
                 resp, _ = self._call_any(cfg2, msgs)
                 u = resp.get("usage") or {}
@@ -1094,8 +1174,9 @@ class SalesAgent:
                 with self.lock:
                     self._trace(session, st["turn"], "guard_rewrite", {"why": keys, "left": [k_ for k_, _ in chk2["problems"]]})
                 if chk2["severe"]:
-                    found = [x for x in dict.fromkeys(ctx.get("found") or []) if self._status(x) == "available"]
-                    if found and not no_cards:
+                    with self.lock:
+                        found = [] if no_cards else self._safe_pieces(c, st, prof)
+                    if found:
                         text = SR.SAFE_SHOW + "\n" + "\n".join(f"[[{x}]]" for x in found[:2])
                     else:
                         text = SR.SAFE_HANDOFF

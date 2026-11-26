@@ -52,7 +52,7 @@ def base_rules(r, asked_deposit=False):
         bad.append("banned word")
     if len(r["pieces"]) > 3:
         bad.append(f"{len(r['pieces'])} cards")
-    if t.count("؟") + t.count("?") > 1:
+    if SR.question_count(t) > 1:
         bad.append("2+ questions")
     env = {"sources": [1e18], "customer": "", "kinds": {p["code"]: p["kind"] for p in r["pieces"]}, "deposit_ok": asked_deposit}
     probs = [k for k, _ in SR.check_reply(t, env)["problems"] if k in ("promise", "scarcity", "relative", "branch", "banned", "karat")]

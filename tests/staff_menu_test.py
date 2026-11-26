@@ -75,7 +75,8 @@ bot.handle("T", cbq(111, "p:none"))
 none = [p["code"] for p in s.q("SELECT * FROM pieces WHERE status IN ('available','reserved')") if not any(core.piece_roles(p).values())]
 listed = [x["text"].split(" ")[0] for x in sent(111)]
 check("11 only pieces with no photo at all are listed; pieces that have a photo are not", sorted(listed) == sorted(none)
-      and staff_menu._pcs(len(none)) in edits()[-1]["text"], (none, listed, edits()[-1:]))
+      and ((staff_menu._pcs(len(none)) in edits()[-1]["text"]) if none else "كل القطع لها صور" in edits()[-1]["text"]),
+      (none, listed, edits()[-1:]))
 np_ = s.add_piece(owner, "خاتم", 21, 3.4, "gram", 2500, s.branches()[0]["id"], title="خاتم جديد")
 calls.clear()
 bot.handle("T", cbq(111, "p:none"))

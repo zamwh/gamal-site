@@ -170,6 +170,8 @@ def route(text, shown=False, ref=None):
         selling.append("piece")
     for s in ("browse_strong", "ready", "obj_price", "making", "thinking", "misunderstood", "currency"):
         if s in intents and (s not in ("thinking", "misunderstood", "obj_price") or shown):
+            if s == "currency" and not (shown or kinds or re.search(r"\d", t) or "ميزاني" in t):
+                continue             # «كم الساعة في السعودية» is not about money
             selling.append(s)
     if "browse" in intents and not faq:
         selling.append("browse")
@@ -395,8 +397,13 @@ def moment(r, known, shown, ref=None, pre=None, sold_ref=None, bridal=False, wan
             out.append("هذي قطعة مناسبة عرس وهو جاهز يشتري: قل إن فريق المبيعات يكمل معه على الواتساب باسم القطعة (الزر تحت).")
     elif not shown and not wants_show and len(missing) == 3 and not (sel & {"kind", "occasion", "budget", "piece"}):
         discovery = True
-        out.append(f"ما نعرف عنه شي للحين: اسأل سؤال واحد بس عن {SLOT_Q['occasion']}. لا تبحث ولا تعرض قطع في هذا الرد.")
+        out.append(f"ما نعرف عنه شي للحين: اسأل سؤال واحد بس عن {SLOT_Q['occasion']}. لا تبحث ولا تعرض قطع في هذا الرد."
+                   + ("" if r.get("intents") else " وإذا سؤاله ما له علاقة بالذهب أو المحل، قل بلطف إنك مساعد المحل وما عندك هذي "
+                                                   "المعلومة، بدون ما تخمّن أي جواب، وبعدها سؤالك."))
     elif not shown and (sel & {"kind", "occasion", "budget", "browse_strong", "browse"} or wants_show):
+        if known.get("weight"):
+            out.append(f"طلب وزن {known['weight']:g} جم: ابحث بـ near_weight={known['weight']:g}، واعرض الأقرب، وقل الفرق من diff_g "
+                       "بالضبط. لا تقل إن وزن قطعة يساوي طلبه إلا إذا diff_g صفر.")
         nxt = next((SLOT_Q[s] for s in missing), None)
         out.append("اعرض قطعتين (ثلاث فقط لسبب واضح) من search_pieces بشروطه"
                    + (f"، وبعدها سؤال واحد بس عن {nxt} إذا يفيد." if nxt and len(missing) >= 2 else "."))
@@ -412,7 +419,7 @@ def moment(r, known, shown, ref=None, pre=None, sold_ref=None, bridal=False, wan
 TOOL_NOTES = {
     "search_pieces": ("اعرض قطعتين أو ثلاث بالكثير، كل رمز [[CODE]] في سطر لحاله، وتحت كل وحدة سطر واحد ليش تناسبه: "
                       "من كلامه هو أو من شكلها الحقيقي (look). لا تكتب السعر ولا الوزن (البطاقة فيها). لا تقل آخر قطعة ولا "
-                      "الكمية محدودة. لا تدّعي تعرف ذوقه. اختم بسؤال واحد: أي وحدة أقرب لك؟ ولا أطلع لك أخف أو أثقل؟"),
+                      "الكمية محدودة. لا تدّعي تعرف ذوقه. اختم بسؤال واحد: أي وحدة أقرب لك، ولا أطلع لك أخف أو أثقل؟"),
     "price_breakdown": ("اشرح بسطر من هذه الأرقام بالضبط: سعر جرام 21 اليوم × الوزن + المصنعية = الإجمالي. أي عملة ثانية من هذا "
                         "الحساب فقط. إذا قال غالي اعرض قطعة أخف بنفس الروح. لا خصم من عندك."),
     "piece_details": ("صف القطعة من بياناتها ووصف شكلها فقط، بثلاث أسطر بالكثير. لا تخترع خدمة (تعديل مقاس، تفصيل، توصيل). "
@@ -604,7 +611,7 @@ def check_reply(text, env):
     prev = norm(re.sub(r"\[\[[^\]]*\]\]", " ", env.get("prev") or ""))
     if prev and len(plain) > 30 and difflib.SequenceMatcher(None, plain.strip(), prev.strip()).ratio() > 0.85:
         probs.append(("repeat", "ردك نفس ردك السابق تقريباً. غيّر الصياغة وقل شي جديد يفيده."))
-    if plain.count("؟") + plain.count("?") > 1:
+    if question_count(plain) > 1:
         probs.append(("questions", "في ردك أكثر من سؤال. خله سؤال واحد بس."))
     # 8) pieces the search found but the reply hid
     found = list(dict.fromkeys(env.get("found") or []))
@@ -614,8 +621,15 @@ def check_reply(text, env):
     return {"text": fixed.strip(), "problems": probs, "severe": any(k in SEVERE for k, _ in probs), "codes": codes}
 
 
-def rewrite_note(problems):
-    return ("أعد كتابة ردك الأخير للزبون كاملاً بنفس الأسلوب القصير، مع هذا التصحيح:\n" +
+def question_count(text):
+    """Questions in a reply; «أي وحدة أقرب لك؟ ولا أطلع لك أخف؟» is one question with its alternative."""
+    t = re.sub(r"[؟?](?=\s*(و?لا|او|أو)\s)", "،", text or "")
+    return t.count("؟") + t.count("?")
+
+
+def rewrite_note(problems, draft=""):
+    head = ("هذي مسودة ردك على رسالة الزبون الأخيرة (ما وصلته):\n«" + draft.strip() + "»\n\n") if draft else ""
+    return (head + "اكتب الرد للزبون من جديد كاملاً، بنفس الأسلوب القصير، مع هذا التصحيح:\n" +
             "\n".join("- " + n for _, n in problems))
 
 
