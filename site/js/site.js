@@ -913,6 +913,11 @@
     if (V.st !== 'live' && V.st !== 'rest') return;
     var now = Date.now();
     if (V.left && !V.ending && (now - V.since) / 1000 >= V.left - 6) { vEnd(); return }
+    if (V.sb) {                                                 // standby calls: paid even while waiting, so they close soon
+      if (V.paused && now - V.pAt >= V.closeMs) { vClose('quiet'); return }                  // OpenAI itself found it quiet
+      if (!V.pend && !V.aSpeaking && now - (V.lastW || V.since) >= 40000) { vClose('quiet'); return }   // no words at all
+      if (V.maxS && now - V.since >= V.maxS * 1000 && !V.aSpeaking) { vClose('max'); return }       // the longest opening
+    }
     if (V.speaking || V.aSpeaking || V.pend) { V.quiet = 0; return }
     if (!V.quiet) V.quiet = now;
     if (now - V.quiet >= V.closeMs) vClose('quiet');           // quiet long enough: stop paying, the detector keeps listening for free
@@ -933,19 +938,19 @@
     }).then(function (d) {
       V.opening = false; if (V.pc !== pc) return;
       if (!d || !d.ok) { vDrop(d && d.why, d && d.say, d && d.detail); return }
-      V.call = d.call; V.left = d.budget_s || 0; V.closeMs = d.close_after_ms || V.closeMs; V.resume = !!resume;
+      V.call = d.call; V.left = d.budget_s || 0; V.closeMs = d.close_after_ms || V.closeMs; V.resume = !!resume; V.maxS = d.max_call_s || 0;
       V.sb = d.standby_s || 0; V.sbMs = 0; V.paused = false;
       return pc.setRemoteDescription({ type: 'answer', sdp: d.sdp });
     }).catch(function () { V.opening = false; if (V.pc === pc) vDrop('net') });
   }
   function vEvent(m) {
     var t = m.type;
-    if (t === 'session.started') { V.since = Date.now(); V.quiet = V.resume ? Date.now() + 4000 : 0; vSet('live', 'أسمعك، تكلم'); voBurst(); clearInterval(V.bt); V.bt = setInterval(vBeat, 10000) }
+    if (t === 'session.started') { V.since = Date.now(); V.lastW = Date.now(); setTimeout(vBeat, 1500); V.quiet = V.resume ? Date.now() + 4000 : 0; vSet('live', 'أسمعك، تكلم'); voBurst(); clearInterval(V.bt); V.bt = setInterval(vBeat, 10000) }
     else if (t === 'session.paused') { if (!V.paused) { V.paused = true; V.pAt = Date.now() } if (V.st === 'live') vSet('rest', 'تكلّم متى ما حبيت، أنا معك') }
     else if (t === 'session.resumed') { if (V.paused) { V.sbMs += Date.now() - V.pAt; V.paused = false } if (V.st === 'rest' || V.st === 'live') vSet('live', 'أسمعك، تكلم') }
-    else if (t === 'session.input_transcript.delta') { V.quiet = 0; if (V.st === 'rest') vSet('live', 'أسمعك، تكلم'); if (!V.guard || V.barge >= 300) V.uText += m.delta || ''; V.aBub = null }
+    else if (t === 'session.input_transcript.delta') { V.quiet = 0; V.lastW = Date.now(); if (V.st === 'rest') vSet('live', 'أسمعك، تكلم'); if (!V.guard || V.barge >= 300) V.uText += m.delta || ''; V.aBub = null }
     else if (t === 'session.output_transcript.delta') {
-      V.aSpeaking = true; V.quiet = 0; clearTimeout(V.aT); V.aT = setTimeout(function () { V.aSpeaking = false; if (V.st === 'live') vSet('live', 'أسمعك، تكلم') }, 1400);
+      V.aSpeaking = true; V.quiet = 0; V.lastW = Date.now(); clearTimeout(V.aT); V.aT = setTimeout(function () { V.aSpeaking = false; if (V.st === 'live') vSet('live', 'أسمعك، تكلم') }, 1400);
       if (!V.aBub) V.aBub = addMsg('', 'a'); V.aBub.textContent += m.delta || ''; V.uBub = null; msgs.scrollTop = 1e6;
       if (!V.pend) { var nm = vName(); vSet('live', nm.name + (nm.g === 'f' ? ' ترد عليك…' : ' يرد عليك…')) }
     }
@@ -979,7 +984,14 @@
     a.href = (h ? String(h).replace(/%7BBASE%7D/g, encodeURIComponent(location.origin)) : '') || wa('السلام عليكم، أبغى أستفسر عن مجموعتكم') || '#';
     msgs.appendChild(a); msgs.scrollTop = 1e6;
   }
-  function vBeat() { if (!V.call) return; vPost('beat', { call: V.call, standby_ms: vSbMs() }).then(function (d) { if (d && d.left_s !== undefined) V.left = (Date.now() - V.since) / 1000 + d.left_s }).catch(function () { }) }
+  function vBeat() {
+    if (!V.call) return;
+    vPost('beat', { call: V.call, standby_ms: vSbMs() }).then(function (d) {
+      if (d && d.left_s !== undefined) V.left = (Date.now() - V.since) / 1000 + d.left_s;
+      var el = $('#vCost');
+      if (el && d && d.call_usd !== undefined && (V.test || V.lab)) { el.hidden = false; el.textContent = 'للتجربة: هذي المكالمة ' + (d.call_usd * 100).toFixed(1) + ' سنت · صوت اليوم كله ' + (d.today_usd * 100).toFixed(1) + ' سنت' }
+    }).catch(function () { });
+  }
   // close this call (the voice stays on: the detector reopens it when he speaks)
   function vClose(reason, usage0) {
     if (!V.pc) return; var pc = V.pc, dc = V.dc, call = V.call, tr = V.tr, sbms = vSbMs();

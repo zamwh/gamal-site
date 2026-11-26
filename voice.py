@@ -34,15 +34,15 @@ DEFAULT = {
     "price_per_min": 0.05,        # OpenAI's price for the voice layer, billed per second
     "min_billed_s": 15,           # OpenAI bills at least this much for every opening
     "close_after_ms": 2500,       # quiet (customer and assistant) this long -> the call closes until he speaks again
-    "max_call_s": 600,            # one opening never runs longer than this (standby keeps one opening for a whole talk)
+    "max_call_s": 300,            # one opening never runs longer than this (5 minutes); speaking again reopens it
     "max_live": 3,                # calls open at the same moment, for the whole shop
     "opens_per_10min": 10,        # openings per customer in ten minutes
     "ack_delay_ms": 800,          # pause before "one moment" while the shop's assistant looks (OpenAI allows 0-800); quick answers need none
     "standby": True,              # OpenAI's standby: quiet -> the call stays connected at the lower rate, wakes on speech
-    "standby_after_s": 8,         # no words (either side) this long -> standby (OpenAI allows 5-60)
+    "standby_after_s": 5,         # no words (either side) this long -> standby (OpenAI allows 5-60; 5 is the cheapest)
     "standby_per_min": 0.02,      # OpenAI's standby rate
-    "standby_close_s": 60,        # quiet this long -> the call closes completely; the phone's detector reopens it
-    "wake_threshold": 0.6,        # how sure OpenAI must be it is speech (not noise) to wake (0-1, its default 0.5)
+    "standby_close_s": 20,        # in standby this long -> the call closes completely (free); the phone's detector reopens it
+    "wake_threshold": 0.7,        # how sure OpenAI must be it is speech (not noise) to wake (0-1, its default 0.5)
     "test_mode": True,            # the owner's test: no per-person limit and no openings limit (only the day's cap), reasons shown
 }
 
@@ -262,7 +262,7 @@ class Voice:
         if vname:
             sess["audio"] = {"output": {"voice": vname}}
         if c.get("standby"):
-            sess["idle_timeout_s"] = max(5, min(60, int(c.get("standby_after_s", 8))))
+            sess["idle_timeout_s"] = max(5, min(60, int(c.get("standby_after_s", 5))))
             sess["wake_policy"] = {"type": "speech", "vad_threshold": max(0.0, min(1.0, float(c.get("wake_threshold", 0.6))))}
         code, d = self._post(key, {"session": sess, "transport": {"type": "webrtc", "sdp": sdp}})
         dropped = []
@@ -335,7 +335,9 @@ class Voice:
                 self.store.db.execute("UPDATE voice_calls SET last_beat=? WHERE id=?", (now, row["id"]))
                 self.store.db.commit()
         row = self._row(cid)
-        return {"ok": True, "left_s": self._left_s(row, now, c)}
+        call = self._live_cost(row, now, c) + self._backend_cost(row["session"], float(row["started"]), now)
+        return {"ok": True, "left_s": self._left_s(row, now, c), "call_usd": round(call, 4),
+                "today_usd": round(self._spent_voice_today() + call, 4)}
 
     def _left_s(self, row, now, c):
         left, _ = self._budget_left(row["visitor"], c, extra=self._live_cost(row, now, c), lab=bool(row["lab"]))

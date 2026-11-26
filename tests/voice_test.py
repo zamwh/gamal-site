@@ -56,9 +56,12 @@ try:
     check('4  a call opens; the key stays on the server', o.get("ok") and o.get("sdp") == "v=0 answer" and SEEN[-1]["auth"] == "Bearer sk-test", o)
     check('5  GPT-Live with client delegation and a male voice', sent.get("model") == "gpt-live-1" and sent.get("delegation", {}).get("type") == "client"
           and sent.get("audio", {}).get("output", {}).get("voice") == "echo" and "«سالم»" in sent.get("instructions", ""), sent.get("delegation"))
-    check('5b standby: idle after 8 s of no words, wakes on real speech only', sent.get("idle_timeout_s") == 8
-          and sent.get("wake_policy") == {"type": "speech", "vad_threshold": 0.6}, (sent.get("idle_timeout_s"), sent.get("wake_policy")))
-    check('5c with standby the phone closes only after a minute of quiet', o.get("standby_s") == 8 and o.get("close_after_ms") == 60000, o)
+    check('5b standby: after 5 s of no words (the cheapest), wakes on clear speech only', sent.get("idle_timeout_s") == 5
+          and sent.get("wake_policy") == {"type": "speech", "vad_threshold": 0.7}, (sent.get("idle_timeout_s"), sent.get("wake_policy")))
+    check('5c with standby the phone closes after 20 s of standby, and one opening is at most 5 minutes',
+          o.get("standby_s") == 5 and o.get("close_after_ms") == 20000 and o.get("max_call_s") == 300, o)
+    bt = v.beat(o["call"], 0)
+    check('5d the heartbeat gives this call\'s cost and today\'s, for the call screen', "call_usd" in bt and "today_usd" in bt and bt["today_usd"] >= bt["call_usd"], bt)
     ins = sent.get("instructions", "")
     check('6  instructions: one shop, no branches, prices only from the backend, making internal, gold knowledge, greeting',
           "بجوار البوابة الرئيسية لمركز جرعان" in ins and "ذكر فروع" in ins and "اطلب من الخلفية" in ins and "المصنعية داخلية" in ins

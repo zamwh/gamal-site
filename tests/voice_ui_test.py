@@ -41,11 +41,12 @@ FAKE = r"""
       return pc2.setRemoteDescription({ type: 'offer', sdp: body.sdp }).then(function () { return pc2.createAnswer() })
         .then(function (a) { return pc2.setLocalDescription(a) })
         .then(function () { return new Promise(function (r) { if (pc2.iceGatheringState === 'complete') r(); else { pc2.onicegatheringstatechange = function () { if (pc2.iceGatheringState === 'complete') r() }; setTimeout(r, 1500) } }) })
-        .then(function () { return J({ ok: true, call: 'c' + T.opens, sdp: pc2.localDescription.sdp, budget_s: 300, close_after_ms: 2500, max_call_s: 240 }) });
+        .then(function () { return J({ ok: true, call: 'c' + T.opens, sdp: pc2.localDescription.sdp, budget_s: 300, max_call_s: 240,
+                                     close_after_ms: T.sb ? 1500 : 2500, standby_s: T.sb ? 5 : 0 }) });
     }
     if (u.indexOf('/api/voice/delegate') >= 0) { T.delegates++; return J({ say: 'عندي لك طقمين على ذوقك', pieces: [] }) }
     if (u.indexOf('/api/voice/close') >= 0) { T.closes++; T.closeBodies.push(JSON.parse(o.body)); return J({ ok: true }) }
-    if (u.indexOf('/api/voice/beat') >= 0) return J({ ok: true, left_s: 200 });
+    if (u.indexOf('/api/voice/beat') >= 0) return J({ ok: true, left_s: 200, call_usd: 0.0123, today_usd: 0.4567 });
     return F.apply(this, arguments);
   };
 })();
@@ -170,6 +171,25 @@ async def m():
         await ev("__vt.refuse = false; document.querySelector('#micBtn').click()"); await pg.wait_for_timeout(150)
         await ev("document.querySelector('#vStop').click()"); await pg.wait_for_timeout(3500)
         check('9  ended while connecting: stage closed, nothing reopens', await ev("document.querySelector('#vdock').hidden"), await ev("__vt.opens"))
+
+        # 9b standby call: once OpenAI pauses it, it closes after the standby time, whatever the room's noise
+        await ev("__vt.sb = true; document.querySelector('#micBtn').click()")
+        await until("document.querySelector('#vTx').textContent.indexOf('أسمعك') >= 0", 12000)
+        await pg.wait_for_timeout(2000)
+        cost = await ev("document.querySelector('#vCost').hidden ? '' : document.querySelector('#vCost').textContent")
+        check('9b test phase: the call screen shows this call\'s cost and today\'s', '1.2 سنت' in cost and '45.7 سنت' in cost, cost)
+        check('9c a standby call also closes when the room is simply quiet', await until("document.querySelector('#vdock').dataset.st === 'idle'", 5000))
+        await ev("document.querySelector('#vStop').click()"); await pg.wait_for_timeout(700)
+        # 9d paused by OpenAI: closes after the standby time even while the room keeps "talking" (noise can't hold it open)
+        n_open = await ev("__vt.opens")
+        await ev("document.querySelector('#micBtn').click()")
+        await until("__vt.opens > " + str(n_open) + " && document.querySelector('#vdock').dataset.st === 'live'", 12000)
+        n_close = await ev("__vt.events.filter(e => e === 'session.close').length")
+        await ev("__vt.send({type: 'session.paused'}); window.__noise = setInterval(() => __vt.send({type: 'session.output_transcript.delta', delta: ' '}), 300)")
+        closed = await until("__vt.events.filter(e => e === 'session.close').length > " + str(n_close), 5000)
+        await ev("clearInterval(window.__noise)")
+        check('9d paused by OpenAI: it closes after the standby time, whatever keeps the room busy', closed)
+        await ev("document.querySelector('#vStop').click(); __vt.sb = false"); await pg.wait_for_timeout(700)
 
         # 10 English
         await ev("window.GM_setLang ? GM_setLang('en') : document.querySelector('[data-l=en]') && document.querySelector('[data-l=en]').click()")

@@ -90,6 +90,14 @@ One button: «إنهاء المكالمة». Staff see OpenAI's own reason in th
   waits 800 ms (its maximum) and the phone hands the request over after 350 ms (was 700), so quick answers come
   without any. The stage shows «يجهّز لك…» while it looks.
 
+## Cost leak fixed (2026-11-27, 00:55): the owner paid about $1 for under 5 minutes of talking
+- Likely cause: calls stayed open far longer than the talking. Standby is billed too (2¢/min), the full close after
+  60 s of quiet could be reset forever by room noise (the phone's own detector), and noise/echo kept OpenAI active
+  (5¢/min). Test mode had no per-person cap.
+- Now: standby after 5 s without words (the minimum); the call closes 20 s after OpenAI itself pauses it, whatever
+  the room's noise; also after 40 s without any words, and one opening is at most 5 minutes; waking needs clearer speech
+  (0.7). The call screen shows, in the test phase, this call's cost and the whole day's voice cost, from the server.
+
 ## Caps (settings key `voice`)
 | Setting | Default | Meaning |
 |---|---|---|
@@ -98,10 +106,10 @@ One button: «إنهاء المكالمة». Staff see OpenAI's own reason in th
 | `daily_usd` | 1.5 | all voice calls in a day |
 | monthly | 133 (shared) | the text assistant's monthly cap; voice costs are logged in the same `ai_usage` ledger |
 | `close_after_ms` | 2500 | quiet time before a call closes |
-| `max_call_s` | 600 | longest single opening (standby keeps one opening for a whole talk) |
+| `max_call_s` | 300 | longest single opening (5 minutes); speaking again reopens it |
 | `max_live` / `opens_per_10min` | 3 / 10 | calls open at once / openings per customer in 10 minutes |
-| `standby` / `standby_after_s` / `standby_close_s` | on / 8 / 60 | standby after 8 s without words; full close after 60 s of quiet |
-| `standby_per_min` / `wake_threshold` | 0.02 / 0.6 | OpenAI's standby rate / how sure it must be that it is speech |
+| `standby` / `standby_after_s` / `standby_close_s` | on / 5 / 20 | standby after 5 s without words; full close after 20 s in standby |
+| `standby_per_min` / `wake_threshold` | 0.02 / 0.7 | OpenAI's standby rate / how sure it must be that it is speech |
 | `ack_delay_ms` | 800 | pause before GPT-Live says "one moment" while the shop's assistant looks (OpenAI allows 0–800) |
 
 Staff testing from `/admin` is limited only by the daily cap.
