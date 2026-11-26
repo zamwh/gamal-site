@@ -69,7 +69,10 @@ CORE_PROMPT = """أنت "مستشار جمال المشرقي" في موقع م�
 
 الأسلوب:
 - رد بلغة الزبون: عربي بلهجة يمنية/خليجية بيضاء ودودة (بصيغة المذكر العامة)، أو إنجليزي راقٍ وبسيط إذا كتب بالإنجليزي.
-- ممنوع الشامي والمصري: لا «شو، هلق، هيك، كتير، منيح، بدك» ولا «إزيك، عايز، دلوقتي، كده، أوي، بتاع». قل «ايش/وش، الحين، كذا، كثير، زين، تبغى».
+- ممنوع الشامي والمصري: لا «شو، هلق، هيك، كتير، منيح، بدك» ولا «إيه، إزيك، عايز، دلوقتي، كده، أوي، بتاع». قل «ايش/وش، ايوه، الحين، كذا، كثير، زين، تبغى».
+- افهم الزبون قبل العرض، سؤال واحد في كل رد وما تعيد سؤال جاوبه: للبس ولا للادخار؟ للبس: لبس يومي ولا لمناسبة ويبغاه لافت؟ ثم النوع، ثم الميزانية أو الوزن. لما تعرف النوع والميزانية (أو الوزن) اعرض على طول.
+- التزم بالميزانية والوزن بالضبط: لا تعرض قطعة فوق ميزانيته، ولا بعيدة عن الوزن اللي قاله.
+- اختياراته: لما يقول ضيفها لاختياراتي النظام يضيفها، وبعدها اقترح يكمّل ميزانيته بقطعة تكمّل اللي اختاره (نوع ثاني) ضمن الباقي. ولما يقول نكمل الشراء النظام يعرض اختياراته وخطوات الشراء والاستلام.
 - الزبون قال ميزانية: اعرض الأقرب لها (search_products يرتبها كذا)، مو الأرخص.
 - ردود قصيرة: سطر إلى ثلاثة. سؤال واحد بالكثير، ومو كل رد لازم ينتهي بسؤال.
 - كلام بيّاع ذهب ملموس من شكل القطعة الحقيقي: شغل ناعم، مليان، ثقيل، خفيف، فيه شراشيب، وردة بالوسط، طويل، قصير. بدون تكديس صفات وبدون كلام إعلانات.
@@ -234,6 +237,21 @@ OCCASIONS = {"عرس": ["عرس", "زواج", "زفاف", "عروس", "عروس�
              "هدية": ["هديه", "هدايا", "عيد ميلاد"], "يومي": ["يومي", "للدوام", "خفيف"]}
 STYLES = {"ناعم": ["ناعم", "هادي", "بسيط", "رقيق"], "فخم": ["فخم", "ملفت", "ثقيل", "كبير"],
           "كلاسيكي": ["كلاسيك", "تقليدي", "قديم"]}
+STYLES["ناعم"] += ["يومي", "يوميه", "يوميا", "للدوام", "دوام", "عملي"]
+STYLES["فخم"] += ["لافت", "يلفت", "للحضور", "حضور", "مناسبه", "مناسبات", "حفله", "حفلات"]
+# what the gold is for (owner, 2026-11-26: understand this first)
+PURPOSES = {"save": ["ادخار", "ادخر", "للادخار", "استثمار", "احتفظ فيه", "يحفظ قيمته", "للمستقبل", "توفير", "سبيكه", "سبائك",
+                     "جنيه", "جنيهات"],
+            "wear": ["للبس", "لبس", "البسه", "البسها", "تلبسه", "تلبسها", "زينه", "هديه", "اهديها", "اهديه"]}
+# "add it to my picks", "let's complete the purchase" (normalized)
+ADD_ONE = ["ضيفه", "ضيفها", "اضفه", "اضفها", "اضيفه", "اضيفها", "حطه", "حطها", "خله في", "خلها في", "ضيف الاول", "ضيف الثاني",
+           "اضف الاول", "اضف الثاني"]
+ADD_ALL = ["ضيفهم", "اضفهم", "اضيفهم", "حطهم", "ضيف الاثنين", "اضف الاثنين", "ضيف الكل", "اضف الكل"]
+ADD_TO = ["اختيار", "سله", "سلتي", "المفضل", "قايمه", "قائمه"]
+CHECKOUT = re.compile(r"(نكمل الشراء|اكمل الشراء|نكمل الطلب|اكمل الطلب|خلنا نكمل|خلينا نكمل|نكمل خلاص|نثبت|ثبت الطلب|"
+                      r"كيف اكمل|كيف اشتري|كيف ادفع|وين استلم|من وين استلم|متى استلم|ابغى اشتريها|ابغى اشتريهم|"
+                      r"اشتري الكل|اشتري اختيار|ابغى اشتري اختيار)")
+COMPLETE = re.compile(r"(نكمل الميزانيه|كمل الميزانيه|كمل لي|نكمل|كمل|الباقي|باقي الميزانيه|ايوه|ايه|نعم|تمام|اكيد|طيب)")
 W_GREET = ["السلام", "سلام", "مرحبا", "هلا", "اهلين", "صباح", "مساء", "هاي"]
 W_THANKS = ["شكرا", "مشكور", "يعطيك العافيه", "تسلم", "جزاك"]
 W_PRICE = ["سعر الجرام", "سعر الذهب", "سعر جرام", "كم الجرام", "كم سعر الذهب", "سعر الجنيه", "اسعار الذهب", "كم الذهب"]
@@ -417,6 +435,9 @@ class SalesAgent:
         for k, ws in STYLES.items():
             if has(t, ws):
                 f["style"] = k
+        for k, ws in PURPOSES.items():
+            if has(t, ws):
+                f["purpose"] = k
         if has(t, ["ميزاني", "معي", "حدود", "بحدود", "اقل من", "ما يزيد", "الف", "مليون", "سعودي", "دولار"]):
             b = extract_budget(t, self._rates())
             if b:
@@ -670,6 +691,10 @@ class SalesAgent:
 
     def _tool(self, name, args, ctx):
         if name == "search_pieces":
+            left = (ctx.get("state") or {}).get("loop", {}).get("budget_left") \
+                if (ctx.get("state") or {}).get("loop", {}).get("left_turn") == (ctx.get("state") or {}).get("turn") else None
+            if left is not None and (not args.get("max_price") or float(args["max_price"]) > left):
+                args = dict(args, max_price=left)                # completing his budget: only what is left of it
             if ctx.get("heavier_ref") and not (args.get("heavier_than_code") or args.get("lighter_than_code") or args.get("near_weight")):
                 args = dict(args, heavier_than_code=ctx["heavier_ref"])    # he asked for heavier: never lighter or the same again
             out = self.search_products(args, ctx.get("state"), ctx.get("profile"), ctx.get("facts") or {},
@@ -894,9 +919,12 @@ class SalesAgent:
     def _plain_reply(self, c, st, prof, r, why):
         """No model this turn (switched off, spending cap, very long chat, model error): the closest real pieces."""
         pieces = []
-        if why != "limit" and set(r["selling"]) & {"kind", "occasion", "budget", "browse_strong", "browse", "piece"}:
+        lp = st.get("loop") or {}
+        completing = lp.get("left_turn") == st.get("turn")             # completing his budget: another kind, inside what is left
+        if why != "limit" and (completing or set(r["selling"]) & {"kind", "occasion", "budget", "browse_strong", "browse", "piece"}):
             f = c["facts"]
-            args = {k: v for k, v in {"kind": f.get("kind"), "occasion": f.get("occasion"), "max_price": f.get("budget"),
+            args = {k: v for k, v in {"kind": None if completing else f.get("kind"), "occasion": f.get("occasion"),
+                                      "max_price": lp.get("budget_left") if completing else f.get("budget"),
                                       "count": 2}.items() if v}
             for i in self.search_products(args, st, prof, f).get("items", [])[:2]:
                 try:
@@ -1060,6 +1088,155 @@ class SalesAgent:
             return None
         return f"تمام، ميزانيتك تقريباً {float(budget):,.0f} ريال يمني. وش تحب بالضبط: {'، ولا '.join(kinds[:6])}؟"
 
+    DISCOVERY = True        # the system asks the understanding questions itself before anything is shown
+
+    def _kind_names(self):
+        kinds = []
+        for p in self._available():
+            k = self.KIND_LABEL.get(norm(p["type"] or ""), p["type"])
+            if k and k not in kinds:
+                kinds.append(k)
+        return kinds
+
+    def _discovery(self, c, st, r, t, loop, facts):
+        """Understand the customer before showing anything (owner, 2026-11-26): what the gold is for (to wear or to
+        save) -> to wear: daily or eye-catching -> the kind -> the budget or weight. One question a turn, each asked once,
+        skipped when he already said it; never once pieces were shown, nor when he asks for anything at all."""
+        f, req = c["facts"], st.get("request") or {}
+        if not self.DISCOVERY or st["shown"] or r["faq"] or set(r["intents"]) & {"injection", "complaint", "human", "discount", "account"}:
+            return None
+        if SR.ANY_PICK.search(" " + t + " "):
+            return None
+        asked = loop.setdefault("disc", [])
+        kind = f.get("kind") or req.get("category")
+        budget = f.get("budget") or req.get("budget")
+        weight = f.get("weight") or req.get("weight_max")
+        purpose = f.get("purpose") or ("save" if kind == "جنيه" else "wear" if (kind or f.get("occasion") or f.get("style")) else None)
+        ok = "تمام. " if asked else ""
+        def ask(key, text, **extra):
+            asked.append(key)
+            return dict({"text": text, "key": key}, **extra)
+        if not purpose:
+            if "purpose" in asked:
+                return None
+            lead = f"تمام، ميزانيتك تقريباً {float(budget):,.0f} ريال يمني. " if budget else ok
+            return ask("purpose", lead + "تبغى الذهب للبس ولا للادخار؟")
+        if purpose == "save":
+            ps = float(((facts.get("prices") or {}).get("pound_sell")) or 0)
+            if not ps:
+                return None
+            if not budget:
+                if "budget" in asked:
+                    return None
+                return ask("budget", f"{ok}للادخار أنسب شي الجنيهات الذهب، لأنها أسهل في البيع بعدين. سعر الجنيه اليوم {ps:,.0f} ريال يمني. "
+                                     "كم ميزانيتك تقريباً؟ وأقول لك كم جنيه تقدر تاخذ.")
+            if "save_plan" in asked:
+                return None
+            n = int(float(budget) // ps)
+            basis = "سعر اليوم" if facts.get("price_today") else "آخر سعر مسجل"
+            if n < 1:
+                return ask("save_plan", f"سعر الجنيه {ps:,.0f} ريال يمني على {basis}، وميزانيتك أقل منه شوي. تقدر تزيدها شوي، "
+                                        "ولا تحب أعرض لك قطع ذهب خفيفة ضمن ميزانيتك؟")
+            return ask("save_plan", f"بميزانية {float(budget):,.0f} تقدر تاخذ {n} جنيه ذهب، مجموعها {n * ps:,.0f} ريال يمني على {basis}، "
+                                    "والسعر النهائي بسعر يوم الشراء. فريق المبيعات يجهزها لك ويثبت معك الشراء على الواتساب (الزر تحت).",
+                       handoff=True)
+        if not (f.get("occasion") or f.get("style")) and "use" not in asked and not (kind and (budget or weight)):
+            return ask("use", ok + "لبس يومي، ولا لمناسبة وتبغاه لافت للحضور؟")
+        if not kind and "kind" not in asked:
+            kinds = self._kind_names()
+            if kinds:
+                return ask("kind", f"{ok}وش النوع اللي تحبه: {'، ولا '.join(kinds[:6])}؟")
+        if not (budget or weight) and "budget" not in asked:
+            return ask("budget", ok + "وكم ميزانيتك تقريباً، أو الوزن اللي في بالك؟ عشان أعرض لك اللي يناسبك بالضبط.")
+        return None
+
+    def _priced(self, codes):
+        """[(piece, price)] for the codes still on sale online."""
+        import core as _core
+        out = []
+        for code in codes:
+            try:
+                p = self.store.piece(code)
+            except Exception:
+                continue
+            if p["status"] in ("available", "reserved") and _core.online_ok(self.store, p):
+                out.append((p, self.store.piece_price(p)["total"]))
+        return out
+
+    @staticmethod
+    def _clean_codes(picks):
+        return [x for x in dict.fromkeys(re.sub(r"[^A-Za-z0-9]", "", str(x)).upper()[:20] for x in (picks or [])[:40]) if x]
+
+    def _add_pick(self, c, st, t, ref_code, picks, loop):
+        """"Add it to my picks": the piece he means goes to his shortlist (his browser adds it), then the total and what is
+        left of his budget, and an offer to complete it with a piece that goes with it."""
+        import shopstate
+        if not st["shown"] or not (has(t, ADD_ONE + ADD_ALL) or (has(t, ["ضيف", "اضف", "اضيف", "حط "]) and has(t, ADD_TO))):
+            return None
+        batch = shopstate.last_batch(st)
+        if has(t, ADD_ALL):
+            codes = [e["code"] for e in batch]
+        else:
+            codes = self._focus(st, ref_code)
+            if not codes:
+                if len(batch) == 1:
+                    codes = [batch[0]["code"]]
+                else:
+                    names = " ولا ".join(f"«{e.get('title') or e['code']}»" for e in batch[:3])
+                    return {"text": f"أي وحدة أضيفها لاختياراتك: {names}؟", "key": "add_which"}
+        have = self._priced(codes)
+        if not have:
+            return {"text": "هذي القطعة ما عادت متاحة، فما أقدر أضيفها. تحب أطلع لك قطع قريبة منها؟", "key": "add_gone"}
+        mine = self._clean_codes(picks)
+        new = [p["code"] for p, _ in have if p["code"] not in mine]
+        allp = self._priced(list(dict.fromkeys(mine + [p["code"] for p, _ in have])))
+        total = sum(v for _, v in allp)
+        w = f"{sum(float(p['weight']) for p, _ in allp):,.1f}".rstrip("0").rstrip(".")
+        n = len(allp)
+        count = "قطعة وحدة" if n == 1 else "قطعتين" if n == 2 else f"{n} قطع"
+        names = "، ".join(f"«{p['title'] or p['type']}»" for p, _ in have)
+        txt = (f"تمام، أضفت {names} لاختياراتك." if new else f"{names} موجودة في اختياراتك من قبل.") + \
+              f"\nفي اختياراتك الحين {count}، الوزن {w} جرام، والمجموع {total:,.0f} ريال يمني."
+        budget = c["facts"].get("budget") or (st.get("request") or {}).get("budget")
+        picked_kinds = {norm(p["type"] or "") for p, _ in allp}
+        other = [k for k in self._kind_names() if norm(k) not in picked_kinds and not any(norm(k).startswith(x[:3]) for x in picked_kinds)]
+        idea = (" مثل " + " ولا ".join(other[:2])) if other else ""
+        cheapest = min([float(p["price"]) for p in self._available() if p["code"] not in mine and p["code"] not in new] or [0])
+        if budget:
+            left = float(budget) - total
+            if left >= cheapest > 0:
+                txt += f"\nباقي من ميزانيتك {left:,.0f} ريال. تبغى نكمّلها بقطعة تناسبه{idea}؟"
+                loop["complete_offer"] = st["turn"]
+            elif left < 0:
+                txt += f"\nصرت فوق ميزانيتك بـ{-left:,.0f} ريال. تبغى نكمل الشراء كذا، ولا نبدّل قطعة بأخف منها؟"
+            else:
+                txt += "\nوصلت لميزانيتك تقريباً. تبغى نكمل الشراء؟"
+        else:
+            txt += f"\nتبغى نكمّل بقطعة ثانية تناسبه{idea}، ولا نكمل الشراء؟"
+            loop["complete_offer"] = st["turn"]
+        st["selected"] = have[-1][0]["code"]
+        return {"text": txt, "key": "add_pick", "add_picks": new, "suggest": ["نكمّل الميزانية", "نكمل الشراء"]}
+
+    def _checkout(self, st, t, picks, facts):
+        """"Let's complete the purchase" with pieces in his picks: the list and its total, then how to buy and where to collect."""
+        if not CHECKOUT.search(" " + t + " "):
+            return None
+        mine = self._clean_codes(picks)
+        if not mine:
+            return None
+        summary = self._picks_answer(mine, facts)
+        have = [p["code"] for p, _ in self._priced(mine)]
+        if not have:
+            return {"text": summary, "key": "checkout_empty"}
+        dep = facts.get("deposit") or {}
+        hs = SR._hours_short(facts.get("hours"))
+        steps = ["عشان تكمل الشراء:",
+                 "١. اضغط زر الواتساب تحت، وتوصل اختياراتك لفريق المبيعات بأرقامها.",
+                 "٢. يثبتون معك الحجز والدفع" + (f"، وتقدر تحجزها بعربون {dep.get('pct', 10)}٪ تنحفظ لك {dep.get('hours', 24)} ساعة"
+                                                 if dep.get("enabled") else "") + ". والسعر النهائي بسعر الذهب يوم الشراء.",
+                 f"٣. الاستلام من المحل: {facts.get('name') or 'جمال المشرقي للذهب والمجوهرات'}، {facts.get('address') or ''}، {hs}."]
+        return {"text": summary + "\n\n" + "\n".join(steps), "key": "checkout", "codes": have}
+
     def _picks_answer(self, picks, facts):
         """The customer's own shortlist (sent by his browser): how many pieces, their weight and their total, by the system."""
         import core as _core
@@ -1178,14 +1355,26 @@ class SalesAgent:
                                               int((time.time() - t0) * 1000), need)
                     return {"text": ptxt, "pieces": [], "stage": stage, "canned": True, "suggest": self._suggest(c)}
             # ---- "what do my picks come to?" (his shortlist, sent by his browser) and "a budget, what would you bring me?"
-            ktxt, kname = None, None
-            if SR.PICKS.search(" " + t + " ") and not r["faq"]:
+            ktxt, kname, extra = None, None, {}
+            done = None if r["faq"] else (self._checkout(st, t, picks, facts) or self._add_pick(c, st, t, ref_code, picks, loop))
+            if done:
+                ktxt, kname = done["text"], "tpl:" + done["key"]
+                if done.get("codes"):
+                    extra["handoff"] = self.whatsapp_link(done["codes"], "buy")
+                    self._record_handoff(session, "إكمال شراء اختياراته", message, done["codes"])
+                if done.get("add_picks") is not None:
+                    extra["add_picks"] = done["add_picks"]
+                if done.get("suggest"):
+                    extra["suggest"] = done["suggest"]
+            elif SR.PICKS.search(" " + t + " ") and not r["faq"]:
                 ktxt, kname = self._picks_answer(picks, facts), "tpl:picks"
             else:
-                ktxt = self._kind_question(c, st, r, t, loop)
-                if ktxt:
-                    kname = "tpl:kind_question"
-                    loop["kind_asked"] = st["turn"]
+                q = self._discovery(c, st, r, t, loop, facts)
+                if q:
+                    ktxt, kname = q["text"], "tpl:ask_" + q["key"]
+                    if q.get("handoff"):
+                        extra["handoff"] = self.whatsapp_link([], "buy")
+                        self._record_handoff(session, "ادخار: جنيهات ذهب", message, [])
             if ktxt:
                 self._log(session, message, ktxt, kname, 0, 0, 0)
                 self._save_ctx(session, c)
@@ -1193,7 +1382,14 @@ class SalesAgent:
                 self.store.db.commit()
                 if self.analytics:
                     self.analytics.log_ai(session, "-", "canned", stage, kname, 0, 0, 0, 0.0, int((time.time() - t0) * 1000), need)
-                return {"text": ktxt, "pieces": [], "stage": stage, "canned": True, "suggest": self._suggest(c)}
+                return dict({"text": ktxt, "pieces": [], "stage": stage, "canned": True, "suggest": self._suggest(c)}, **extra)
+            # he said yes to completing his budget after adding a piece: search inside what is left
+            if loop.get("complete_offer") == st["turn"] - 1 and COMPLETE.search(" " + t + " ") and picks:
+                budget0 = c["facts"].get("budget") or (st.get("request") or {}).get("budget")
+                if budget0:
+                    spent = sum(v for _, v in self._priced(self._clean_codes(picks)))
+                    loop["budget_left"] = max(0.0, float(budget0) - spent)
+                    loop["left_turn"] = st["turn"]
             # ---- the model's turn, unless it is off, capped or the chat is very long
             why = "limit" if c["msgs"] > int(cfg["session_msg_limit"]) else ("off" if not (cfg.get("enabled") and cfg.get("api_key")) else None)
             if not why:
@@ -1215,6 +1411,9 @@ class SalesAgent:
             bridal = c["facts"].get("occasion") in ("عرس", "خطوبة")
             mom, discovery = SR.moment(r, known, bool(st["shown"]), ref_code, pre, self._sold_ref(message), bridal,
                                        "browse_strong" in r["selling"], repeat, no_cards)
+            if loop.get("left_turn") == st["turn"]:
+                mom += (f"\n\nيكمّل ميزانيته بعد اختياراته: الباقي منها {loop['budget_left']:,.0f} ريال يمني. استدعِ search_pieces "
+                        "بنوع يكمّل اللي اختاره (مو نفس النوع)، والبحث يلتزم بالباقي تلقائياً. لا تعرض شي فوق الباقي.")
             if st["shown"] and SR.HEAVIER.search(" " + t + " "):      # "heavier": measured against what he means or the last batch
                 heavier_ref = ref_code or self._heaviest_last(st)
                 if heavier_ref:

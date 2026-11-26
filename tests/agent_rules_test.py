@@ -150,12 +150,15 @@ check("4b location: the one shop, no cards, no model", "جرعان" in out["text
 M = Model({"content": "حياك الله. وش المناسبة اللي تدور لها؟"})
 ag._call_any = M
 out = ag.chat("t2", "أبغى ذهب", visitor="v2")
-dyn = M.seen[0][-2]["content"]
-check("4c nothing known yet: the model is told to ask one question and show nothing", "اسأل سؤال واحد بس" in dyn and not out["pieces"], dyn[:200])
+check("4c nothing known yet: the system asks the first question itself (to wear or to save), no model, nothing shown",
+      "للبس ولا للادخار" in out["text"] and not out["pieces"] and not M.seen, out["text"])
+out = ag.chat("t2b", "أبغى طقم لعرس بحدود 6 مليون", visitor="v2b")
 check("4d the stable prompt first, the changing part last, the customer's message at the end",
-      M.seen[0][0]["content"] == CORE_PROMPT and M.seen[0][-2]["role"] == "system" and M.seen[0][-1]["content"] == "أبغى ذهب")
-check("4e the full sales library is no longer pasted in every turn", "SPIN" not in dyn and "Sandler" not in dyn and len(dyn) < 6000, len(dyn))
+      M.seen and M.seen[0][0]["content"] == CORE_PROMPT and M.seen[0][-2]["role"] == "system" and M.seen[0][-1]["content"] == "أبغى طقم لعرس بحدود 6 مليون")
+dyn = M.seen[0][-2]["content"] if M.seen else ""
+check("4e the full sales library is no longer pasted in every turn", dyn and "SPIN" not in dyn and "Sandler" not in dyn and len(dyn) < 6000, len(dyn))
 
+ag.DISCOVERY = False     # from here: the model's own behaviour (the understanding questions are tested in flow_test.py)
 S0 = SETS[0]
 M = Model({"tools": [("search_pieces", {"kind": "طقم", "occasion": "عرس", "count": 2})]},
           lambda msgs: {"content": f"هذي خيارات للعرس، سعرها 1,234,567 ريال:\n[[{S0}]]\nشغله ناعم."},

@@ -459,6 +459,10 @@
   /* ---------- shortlist ---------- */
   var LIST = []; try { LIST = JSON.parse(localStorage.getItem('gm_list') || '[]') } catch (e) { }
   function inList(c) { return LIST.indexOf(c) >= 0 }
+  function addPicks(codes) {                                 // the assistant added pieces to his picks (he asked it to)
+    var n = 0; (codes || []).forEach(function (c) { if (c && !inList(c)) { LIST.push(c); n++; T('shortlist_add', c, null, true); T('ai_add_shortlist', c, null, 1) } });
+    if (n) { saveList(); toast(n > 1 ? 'أُضيفت إلى اختياراتي' : 'أُضيفت إلى اختياراتي') }
+  }
   function saveList() { try { localStorage.setItem('gm_list', JSON.stringify(LIST)) } catch (e) { } var n = LIST.filter(function (c) { return BY[c] }).length; [$('#listCnt'), $('#mListCnt')].forEach(function (el) { el.textContent = n; el.classList.toggle('hidden', !n) }) }
   function toggleList(code, via) {
     if (inList(code)) { LIST.splice(LIST.indexOf(code), 1); T('shortlist_remove', code) }
@@ -696,7 +700,7 @@
   var chatEl = $('#chat'), msgs = $('#msgs'), busy = false;
   function openChat(text) {
     chatEl.classList.add('open'); T('ai_open'); chatUsed = true; if (window.GM_vCheck) GM_vCheck(); hideHint(); document.body.classList.remove('has-hint'); if (innerWidth < 760) document.body.style.overflow = 'hidden';
-    if (!msgs.children.length) { addMsg('حياك الله في جمال المشرقي أنا مستشارك الخاص، أعرف كل قطعة متوفرة وسعرها اليوم. تجهّز لمناسبة، ولا تدور على شيء معيّن؟', 'a'); chips(['أطقم العرايس', 'عقود', 'سعر الذهب اليوم', 'وين موقعكم؟']) }
+    if (!msgs.children.length) { addMsg('حياك الله في جمال المشرقي، أنا مستشارك الخاص، أعرف كل قطعة متوفرة وسعرها اليوم. تبغى الذهب للبس ولا للادخار؟', 'a'); chips(['للبس', 'للادخار', 'سعر الذهب اليوم', 'وين موقعكم؟']) }
     if (text) send(text); else setTimeout(function () { $('#chatIn').focus() }, 400);
   }
   window.openChat = openChat;
@@ -756,7 +760,7 @@
           setTimeout(function () { ty.remove(); addMsg(parts[i++], 'a'); next() }, i ? Math.min(1600, 350 + parts[i].length * 18) : 0);
           return;
         }
-        busy = false; cards(d.pieces);
+        busy = false; cards(d.pieces); addPicks(d.add_picks);
         if (d.handoff !== undefined) {
           var a = document.createElement('a'); a.className = 'handoff'; a.target = '_blank'; a.rel = 'noopener';
           a.innerHTML = '<svg class="b"><use href="#s-wa"/></svg>كلّم المبيعات على واتساب'; a.href = d.handoff || wa('السلام عليكم، أبغى أستفسر عن مجموعتكم') || '#';
@@ -887,6 +891,19 @@
       if (!voice) floor = floor * 0.98 + band * 0.02;                                   // the room's noise, learned slowly
       if (voice) { on += 50; off = 0 } else { off += 50; if (off > 300) on = 0 }
       var was = V.speaking; V.speaking = on >= 250 || (was && off < 600);
+      // the louder iPhone path is not covered by the phone's echo cancelling: while the assistant talks, the line to
+      // OpenAI carries silence (so it never hears itself as the customer), unless the customer clearly talks over it
+      if (V.tr) {
+        if (V.bst && V.bst.ok && (V.aSpeaking || (VO.hasLv && VO.aRaw > 0.01))) V.outT = Date.now();
+        V.guard = !!(V.bst && V.bst.ok) && Date.now() - (V.outT || 0) < 450;
+        if (V.guard) {
+          V.gT = (V.gT || 0) + 50;
+          if (V.gT <= 1000 || band <= (V.echo || 0) * 6) V.echo = Math.max((V.echo || 0) * 0.995, band);   // the echo's own level
+          V.barge = V.gT > 1000 && band > (V.echo || 0) * 6 && band > floor * 6 ? (V.barge || 0) + 50 : 0;
+        } else { V.gT = 0; V.barge = 0 }
+        var open = !V.guard || V.barge >= 300;
+        if (V.tr.enabled !== open) V.tr.enabled = open;
+      }
       if (V.speaking && !was && V.on && !V.pc && !V.opening && !V.ending) vOpen(true);   // he speaks again: reopen at once
       vTick();
     }, 50);
@@ -926,7 +943,7 @@
     if (t === 'session.started') { V.since = Date.now(); V.quiet = V.resume ? Date.now() + 4000 : 0; vSet('live', 'أسمعك، تكلم'); voBurst(); clearInterval(V.bt); V.bt = setInterval(vBeat, 10000) }
     else if (t === 'session.paused') { if (!V.paused) { V.paused = true; V.pAt = Date.now() } if (V.st === 'live') vSet('rest', 'تكلّم متى ما حبيت، أنا معك') }
     else if (t === 'session.resumed') { if (V.paused) { V.sbMs += Date.now() - V.pAt; V.paused = false } if (V.st === 'rest' || V.st === 'live') vSet('live', 'أسمعك، تكلم') }
-    else if (t === 'session.input_transcript.delta') { V.quiet = 0; if (V.st === 'rest') vSet('live', 'أسمعك، تكلم'); V.uText += m.delta || ''; if (!V.uBub) V.uBub = addMsg('', 'u'); V.uBub.textContent += m.delta || ''; V.aBub = null; msgs.scrollTop = 1e6 }
+    else if (t === 'session.input_transcript.delta') { V.quiet = 0; if (V.st === 'rest') vSet('live', 'أسمعك، تكلم'); if (!V.guard || V.barge >= 300) V.uText += m.delta || ''; V.aBub = null }
     else if (t === 'session.output_transcript.delta') {
       V.aSpeaking = true; V.quiet = 0; clearTimeout(V.aT); V.aT = setTimeout(function () { V.aSpeaking = false; if (V.st === 'live') vSet('live', 'أسمعك، تكلم') }, 1400);
       if (!V.aBub) V.aBub = addMsg('', 'a'); V.aBub.textContent += m.delta || ''; V.uBub = null; msgs.scrollTop = 1e6;
@@ -945,6 +962,7 @@
         if (d.misheard) { V.miss++; if (V.miss >= 2) { d.say = 'ما فهمت عليك زين. ممكن تكتب لي طلبك هنا في المحادثة؟'; V.miss = 0 } } else V.miss = 0;
         vSend({ type: 'session.commentary.append', event_id: 'r' + Date.now(), delegation_id: id, content: d.say || '' });
         if (d.pieces && d.pieces.length) cards(d.pieces);
+        addPicks(d.add_picks);
         if (d.offer) offerCard(d.offer);
         if (d.handoff !== undefined) vHandoff(d.handoff);
         if (d.left_s !== undefined) V.left = (Date.now() - V.since) / 1000 + d.left_s;

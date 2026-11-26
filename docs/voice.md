@@ -64,6 +64,23 @@ One button: «إنهاء المكالمة». Staff see OpenAI's own reason in th
   the side volume buttons during the call raise it.
 - New voices: «سالم» `echo` (deep, default), «فارس» `ballad` (warm), «ريم» `coral` (woman).
 
+## The selling order, picks and checkout (2026-11-26, 22:10, the owner's flow; text and voice)
+- Understand first, one question a turn, each asked once, skipped when already said (`agent._discovery`, no model,
+  free): to wear or to save? -> to wear: daily, or eye-catching for an occasion? (skipped when kind and budget are both
+  given) -> the kind (from what the shop has) -> the budget or the weight. Then it shows, inside the budget/weight.
+  "Anything you choose" skips the questions. To save: gold pounds at today's price, how many the budget buys, and the
+  sales team on WhatsApp. (Pounds and bullion as stock come later.)
+- "Add it to my picks" (`_add_pick`): the piece he means goes to his picks in his browser (`add_picks`), with the new
+  total and what is left of his budget, and an offer to complete it with another kind; "complete the budget" searches
+  only inside what is left.
+- "Let's complete the purchase" (`_checkout`): his picks, their weight and total, then how to buy (WhatsApp with the
+  pieces, deposit, final price on the day) and where to collect (the shop, hours).
+- Greeting and the chat's welcome ask «تبغى الذهب للبس ولا للادخار؟». Written replies with Levantine/Egyptian words are
+  caught by the checker (`dialect`) and rewritten; «إيه» is banned in voice and text.
+- Voice: the customer's own words are no longer shown in the chat (speech-to-text misheard him: «طيب», «إيه»). On the
+  louder iPhone path the line to OpenAI carries silence while the assistant talks (it heard itself through the
+  speaker), unless the customer clearly talks over it (6x the echo's level for 0.3 s).
+
 ## Caps (settings key `voice`)
 | Setting | Default | Meaning |
 |---|---|---|
