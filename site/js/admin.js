@@ -218,8 +218,22 @@
         '<div class="g3"><div class="box"><h3>أكثر الاحتياجات</h3><div class="sub">تجميعي، بدون نصوص المحادثات</div><div class="list2">' + (d.needs.map(function (n) { return '<div><span>' + esc(n.need) + '</span><b>' + fmt(n.n) + '</b></div>' }).join('') || '—') + '</div></div>' +
         '<div class="box"><h3>مراحل المحادثات</h3><div class="sub">زائر عادي ← مهتم ← تنسيق ← جاد</div><div class="list2">' + (d.stages.map(function (n) { return '<div><span>' + esc(({ browse: 'زائر عادي', interest: 'مهتم', taste: 'تنسيق/ذوق', objection: 'تردد/اعتراض', ready: 'نية شراء جدية' })[n.stage] || n.stage) + '</span><b>' + fmt(n.n) + '</b></div>' }).join('') || '—') + '</div></div>' +
         '<div class="box"><h3>القطع اللي نجح فيها المساعد</h3><div class="sub">عرض ← ضغط ← إضافة</div><div class="list2">' + (d.top_pieces.map(function (n) { return '<div><span>' + esc(n.code) + '</span><b>' + fmt(n.shown) + ' ← ' + fmt(n.clicks) + ' ← ' + fmt(n.lists) + '</b></div>' }).join('') || '—') + '</div><div class="sub" style="margin-top:10px">محادثات انتهت بدون أي تفاعل: ' + fmt(d.silent_sessions) + '</div></div></div>';
+      if (d.voice) mp.insertAdjacentHTML('beforeend', voiceBox(d.voice));
       bindRange();
     }).catch(err(mp));
+  }
+  // the voice salesman: what every call cost, by the second (OpenAI bills at least 15 seconds per opening)
+  function voiceBox(v) {
+    var m = function (x) { return '$' + Number(x || 0).toFixed(3) }, t = v.totals || {};
+    var WHY = { quiet: 'سكت الزبون', end: 'انتهت', user: 'أنهاها الزبون', budget: 'وصل الحد', stale: 'انقطع الاتصال', leave: 'طلع من الصفحة', hidden: 'ترك الصفحة', closed: 'سكّر المحادثة' };
+    return '<div class="box" style="margin-top:16px"><h3>المساعد الصوتي <span class="mes">' + (v.public ? 'ظاهر للزبائن' : 'تجربة للموظفين فقط') + '</span></h3>' +
+      '<div class="sub">كل مكالمة بالثانية (' + m(v.price_per_min) + ' للدقيقة) + تكلفة العقل الخلفي. المكالمة تتوقف لما يسكت الزبون وترجع لما يتكلم.</div><div class="list2">' +
+      '<div><span>المكالمات / الزبائن / المشترين</span><b>' + fmt(t.calls) + ' / ' + fmt(t.customers) + ' / ' + fmt(t.buyers) + '</b></div>' +
+      '<div><span>الثواني المحسوبة</span><b>' + fmt(t.seconds) + '</b></div><div><span>تكلفة الفترة / اليوم</span><b>' + m(t.cost) + ' / ' + m(v.today) + '</b></div>' +
+      '<div><span>الحد: للزبون / للمشتري / لليوم</span><b>' + m(v.caps.customer) + ' / ' + m(v.caps.buyer) + ' / ' + m(v.caps.day) + '</b></div></div>' +
+      (v.recent && v.recent.length ? '<table><tr><th>الوقت</th><th>ثواني</th><th>الصوت</th><th>العقل</th><th>ردود</th><th>مشتري</th><th>سبب التوقف</th></tr>' +
+        v.recent.map(function (r) { return '<tr><td>' + esc(r.when) + (r.lab ? ' <span class="sub">تجربة</span>' : '') + '</td><td class="n">' + fmt(r.seconds) + '</td><td class="n">' + m(r.voice) + '</td><td class="n">' + m(r.backend) + '</td><td class="n">' + fmt(r.turns) + '</td><td>' + (r.buyer ? 'نعم' : '') + '</td><td>' + esc(WHY[r.reason] || r.reason) + '</td></tr>' }).join('') + '</table>'
+        : '<div class="sub">ما فيه مكالمات صوتية في هذي الفترة.</div>') + '</div>';
   }
   function requests(mp) {
     api('/api/admin/requests').then(function (rows) {

@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#070605">
 <link rel="icon" href="img/logo_night.png">
 <link rel="stylesheet" href="css/site.css?v=11260035">
-<link rel="stylesheet" href="css/v7.css?v=11261900">
+<link rel="stylesheet" href="css/v7.css?v=11262000">
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
@@ -166,9 +166,11 @@
 
 <div class="chat" id="chat" role="dialog" aria-label="المستشار">
   <div class="hd"><span class="av"><svg class="b"><use href="#s-spark"/></svg></span><div><b>مستشار جمال المشرقي</b><small><i></i>مساعد ذكي</small></div><button class="ibtn x" id="chatX" aria-label="إغلاق"><svg class="i" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <div class="vbar" id="vbar" hidden><i class="vdot" aria-hidden="true"></i><span id="vbarTx" role="status">يتصل…</span><button type="button" id="vStop">إنهاء الصوت</button></div>
   <div class="msgs" id="msgs"></div>
   <div class="sug" id="sug"></div>
-  <form class="cin" id="chatForm"><input id="chatIn" placeholder="اكتب سؤالك…" autocomplete="off" maxlength="600"><button aria-label="إرسال"><svg class="i" viewBox="0 0 24 24" style="transform:scaleX(-1)"><path d="M20 4 4 11l7 2 2 7z"/></svg></button></form>
+  <form class="cin" id="chatForm"><button type="button" class="mic" id="micBtn" hidden aria-pressed="false" aria-label="كلّم المستشار بصوتك"><svg class="i" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></svg></button><input id="chatIn" placeholder="اكتب سؤالك…" autocomplete="off" maxlength="600"><button aria-label="إرسال"><svg class="i" viewBox="0 0 24 24" style="transform:scaleX(-1)"><path d="M20 4 4 11l7 2 2 7z"/></svg></button></form>
+  <audio id="vAudio" autoplay playsinline></audio>
 </div>
 
 <nav class="mbar">
@@ -181,7 +183,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="js/track.js?v=11242130"></script>
-<script src="js/site.js?v=11261900"></script>
+<script src="js/site.js?v=11262000"></script>
 <script src="js/i18n.js?v=11261900"></script>
 </body>
 </html>

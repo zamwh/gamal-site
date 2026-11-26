@@ -735,6 +735,150 @@
       .then(function (r) { return r.json() }).then(done).catch(function () { done(localReply(t)) });
   }
   $('#chatForm').onsubmit = function (e) { e.preventDefault(); send($('#chatIn').value) };
+
+  /* ---------- voice salesman (GPT-Live) — the shop's staff only, until the owner approves it for customers ----------
+     The call is paid by the second, so it only stays open while someone is talking: when the customer and the assistant
+     are both quiet it closes, and a speech detector on the phone (free) opens it again the moment the customer speaks.
+     Prices, pieces and rules come from the same assistant as the text chat, and its cards appear here. */
+  var BUSY_V = 'المساعد الصوتي مشغول الحين، كمّل معي كتابة هنا أو كلم فريق المبيعات على الواتساب.';
+  var V = { on: false, st: 'off', pc: null, dc: null, tr: null, call: null, mic: null, ac: null, vt: null, bt: null, speaking: false,
+    aSpeaking: false, aT: null, pend: 0, quiet: 0, uText: '', uBub: null, aBub: null, left: 0, since: 0, closeMs: 2500,
+    opening: false, ending: false, resume: false, miss: 0, told: false };
+  var micBtn = $('#micBtn'), vbar = $('#vbar');
+  function vSet(st, txt) { V.st = st; if (vbar) { vbar.dataset.st = st; $('#vbarTx').textContent = txt } }
+  function vPost(path, body) { return fetch('/api/voice/' + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).then(function (r) { return r.json() }) }
+  function vSend(o) { try { if (V.dc && V.dc.readyState === 'open') V.dc.send(JSON.stringify(o)) } catch (e) { } }
+  function vCheck() {
+    if (!micBtn || location.protocol.indexOf('http') !== 0 || !navigator.mediaDevices || !window.RTCPeerConnection) return;
+    fetch('/api/voice/status?v=' + encodeURIComponent((window.T && window.T.visitor) || ''), { cache: 'no-store' })
+      .then(function (r) { return r.json() }).then(function (d) { micBtn.hidden = !(d && d.on); if (d && d.close_after_ms) V.closeMs = d.close_after_ms }).catch(function () { });
+  }
+  function vStart() {
+    if (V.on) { vStop('user'); return }
+    if (!V.told) { V.told = true; addMsg('بيطلب منك المتصفح إذن المايكروفون عشان تكلمني بصوتك. اسمح له، وتكلم براحتك.', 'a') }
+    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }).then(function (s) {
+      V.mic = s; V.on = true; V.miss = 0; micBtn.classList.add('on'); micBtn.setAttribute('aria-pressed', 'true'); vbar.hidden = false;
+      vVad(s); vOpen(false);
+    }).catch(function () { addMsg('ما قدرت أوصل للمايكروفون. تقدر تسمح له من إعدادات المتصفح، أو تكتب لي هنا وأنا أرد عليك.', 'a') });
+  }
+  // a speech detector on the phone: a quarter second of real voice (the speech band, well above the room's own noise)
+  function vVad(stream) {
+    var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    V.ac = new AC(); var an = V.ac.createAnalyser(); an.fftSize = 1024; an.smoothingTimeConstant = 0.15;
+    V.ac.createMediaStreamSource(stream).connect(an);
+    var bins = new Float32Array(an.frequencyBinCount), hz = V.ac.sampleRate / an.fftSize, lo = Math.max(1, Math.floor(300 / hz)), hi = Math.ceil(3400 / hz);
+    var floor = 0, warm = 0, on = 0, off = 0;
+    V.vt = setInterval(function () {
+      if (V.ac.state === 'suspended') V.ac.resume();
+      an.getFloatFrequencyData(bins); var band = 0, all = 0;
+      for (var i = 1; i < bins.length; i++) { var p = Math.pow(10, bins[i] / 10); all += p; if (i >= lo && i <= hi) band += p }
+      if (warm < 10) { floor = (floor * warm + band) / (warm + 1); warm++; return }      // half a second to learn the room
+      floor = Math.max(floor, 1e-12);
+      var voice = band > floor * 6 && band / (all || 1) > 0.6;
+      if (!voice) floor = floor * 0.98 + band * 0.02;                                   // the room's noise, learned slowly
+      if (voice) { on += 50; off = 0 } else { off += 50; if (off > 300) on = 0 }
+      var was = V.speaking; V.speaking = on >= 250 || (was && off < 600);
+      if (V.speaking && !was && V.on && !V.pc && !V.opening && !V.ending) vOpen(true);   // he speaks again: reopen at once
+      vTick();
+    }, 50);
+  }
+  function vTick() {
+    if (V.st !== 'live') return;
+    var now = Date.now();
+    if (V.left && !V.ending && (now - V.since) / 1000 >= V.left - 6) { vEnd(); return }
+    if (V.speaking || V.aSpeaking || V.pend) { V.quiet = 0; return }
+    if (!V.quiet) V.quiet = now;
+    if (now - V.quiet >= V.closeMs) vClose('quiet');           // both quiet: stop paying, the detector keeps listening for free
+  }
+  function vIce(pc, ms) { return new Promise(function (res) { if (pc.iceGatheringState === 'complete') return res(); var t = setTimeout(res, ms); pc.addEventListener('icegatheringstatechange', function () { if (pc.iceGatheringState === 'complete') { clearTimeout(t); res() } }) }) }
+  function vOpen(resume) {
+    if (V.opening || V.pc || !V.mic) return; var tr0 = V.mic.getAudioTracks()[0]; if (!tr0) return;
+    V.opening = true; V.ending = false; vSet('dial', resume ? 'يرجع يسمعك…' : 'يتصل…');
+    var mine = tr0.clone(), pc = new RTCPeerConnection(), dc = pc.createDataChannel('oai-events');
+    pc.addTrack(mine, new MediaStream([mine])); V.pc = pc; V.dc = dc; V.tr = mine;
+    pc.ontrack = function (e) { var au = $('#vAudio'); au.srcObject = e.streams[0]; au.play().catch(function () { }) };
+    dc.onmessage = function (e) { var m; try { m = JSON.parse(e.data) } catch (x) { return } vEvent(m) };
+    pc.onconnectionstatechange = function () { if (pc.connectionState === 'failed' && V.pc === pc) vDrop('net') };
+    pc.createOffer().then(function (o) { return pc.setLocalDescription(o) }).then(function () { return vIce(pc, 2500) }).then(function () {
+      return vPost('open', { sdp: pc.localDescription.sdp, session: CHAT_ID, visitor: (window.T && window.T.visitor) || '', resume: !!resume });
+    }).then(function (d) {
+      V.opening = false; if (V.pc !== pc) return;
+      if (!d || !d.ok) { vDrop(d && d.why, d && d.say); return }
+      V.call = d.call; V.left = d.budget_s || 0; V.closeMs = d.close_after_ms || V.closeMs; V.resume = !!resume;
+      return pc.setRemoteDescription({ type: 'answer', sdp: d.sdp });
+    }).catch(function () { V.opening = false; if (V.pc === pc) vDrop('net') });
+  }
+  function vEvent(m) {
+    var t = m.type;
+    if (t === 'session.started') { V.since = Date.now(); V.quiet = V.resume ? Date.now() + 4000 : 0; vSet('live', 'أسمعك، تكلم'); clearInterval(V.bt); V.bt = setInterval(vBeat, 10000) }
+    else if (t === 'session.input_transcript.delta') { V.uText += m.delta || ''; if (!V.uBub) V.uBub = addMsg('', 'u'); V.uBub.textContent += m.delta || ''; V.aBub = null; msgs.scrollTop = 1e6 }
+    else if (t === 'session.output_transcript.delta') {
+      V.aSpeaking = true; clearTimeout(V.aT); V.aT = setTimeout(function () { V.aSpeaking = false; if (V.st === 'live') vSet('live', 'أسمعك، تكلم') }, 1400);
+      if (!V.aBub) V.aBub = addMsg('', 'a'); V.aBub.textContent += m.delta || ''; V.uBub = null; msgs.scrollTop = 1e6; vSet('live', 'يرد عليك…');
+    }
+    else if (t === 'session.delegation.created') vDelegate(m.id || (m.delegation && m.delegation.id));
+    else if (t === 'session.closed' && V.pc) vClose('server', m.usage || (m.message && m.message.usage) || null);
+  }
+  // GPT-Live asks for help: the shop's own assistant answers (same rules and checker), its cards show here
+  function vDelegate(id) {
+    V.pend++; vSet('live', 'لحظة أشوف لك…');
+    setTimeout(function () {                                   // the customer's words reach us a moment after the request
+      var text = V.uText.trim(); V.uText = '';
+      vPost('delegate', { call: V.call, text: text }).then(function (d) {
+        V.pend = Math.max(0, V.pend - 1);
+        if (d.misheard) { V.miss++; if (V.miss >= 2) { d.say = 'ما فهمت عليك زين. ممكن تكتب لي طلبك هنا في المحادثة؟'; V.miss = 0 } } else V.miss = 0;
+        vSend({ type: 'session.commentary.append', event_id: 'r' + Date.now(), delegation_id: id, content: d.say || '' });
+        if (d.pieces && d.pieces.length) cards(d.pieces);
+        if (d.offer) offerCard(d.offer);
+        if (d.handoff !== undefined) vHandoff(d.handoff);
+        if (d.left_s !== undefined) V.left = (Date.now() - V.since) / 1000 + d.left_s;
+        if (d.stop) vEnd();
+      }).catch(function () {
+        V.pend = Math.max(0, V.pend - 1);
+        vSend({ type: 'session.commentary.append', event_id: 'r' + Date.now(), delegation_id: id, content: 'صار عندي خلل بسيط، ممكن تعيد طلبك؟' });
+      });
+    }, 700);
+  }
+  function vHandoff(h) {
+    var a = document.createElement('a'); a.className = 'handoff'; a.target = '_blank'; a.rel = 'noopener';
+    a.innerHTML = '<svg class="b"><use href="#s-wa"/></svg>كلّم المبيعات على واتساب';
+    a.href = (h ? String(h).replace(/%7BBASE%7D/g, encodeURIComponent(location.origin)) : '') || wa('السلام عليكم، أبغى أستفسر عن مجموعتكم') || '#';
+    msgs.appendChild(a); msgs.scrollTop = 1e6;
+  }
+  function vBeat() { if (!V.call) return; vPost('beat', { call: V.call }).then(function (d) { if (d && d.left_s !== undefined) V.left = (Date.now() - V.since) / 1000 + d.left_s }).catch(function () { }) }
+  // close this call (the voice stays on: the detector reopens it when he speaks)
+  function vClose(reason, usage0) {
+    if (!V.pc) return; var pc = V.pc, dc = V.dc, call = V.call, tr = V.tr;
+    V.pc = V.dc = V.tr = V.call = null; V.aSpeaking = false; V.pend = 0; V.quiet = 0; V.uBub = V.aBub = null; clearInterval(V.bt);
+    var fin = false, done = function (usage) { if (fin) return; fin = true; try { pc.close() } catch (e) { } try { tr.stop() } catch (e) { } if (call) vPost('close', { call: call, usage: usage || null, reason: reason }).catch(function () { }) };
+    if (usage0 !== undefined) done(usage0);
+    else { try { dc.send(JSON.stringify({ type: 'session.close' })) } catch (e) { } dc.onmessage = function (e) { var m; try { m = JSON.parse(e.data) } catch (x) { return } if (m.type === 'session.closed') done(m.usage || (m.message && m.message.usage)) }; setTimeout(function () { done(null) }, 4000) }
+    if (V.on) vSet('idle', 'متوقف لين تتكلم، وأرجع أسمعك على طول');
+  }
+  function vDrop(why, say) {
+    var pc = V.pc; V.pc = V.dc = V.call = null; V.opening = false; try { pc && pc.close() } catch (e) { } try { V.tr && V.tr.stop() } catch (e) { } V.tr = null;
+    if (why === 'net') { addMsg('الاتصال ضعيف شوي. جرب مرة ثانية، أو اكتب لي هنا وأنا أرد عليك.', 'a'); vStop('net'); return }
+    vStop('limit'); if (why !== 'bad') { micBtn.hidden = true; addMsg(say || BUSY_V, 'a') }
+  }
+  // the customer's budget is nearly spent: say it plainly (never "a limit was reached") and carry on in writing
+  function vEnd() {
+    if (V.ending) return; V.ending = true;
+    vSend({ type: 'session.instructions.append', event_id: 'b' + Date.now(), delegation_id: null, content: 'قل الآن بالضبط وبهدوء: «' + BUSY_V + '» ثم اسكت.' });
+    setTimeout(function () { vStop('budget'); micBtn.hidden = true; addMsg(BUSY_V, 'a') }, 7000);
+  }
+  function vStop(reason) {
+    if (!V.on) return; V.on = false; vClose(reason || 'end');
+    clearInterval(V.vt); V.vt = null; try { V.ac && V.ac.close() } catch (e) { } V.ac = null; V.speaking = false;
+    if (V.mic) V.mic.getTracks().forEach(function (t) { t.stop() }); V.mic = null;
+    micBtn.classList.remove('on'); micBtn.setAttribute('aria-pressed', 'false'); vbar.hidden = true; V.st = 'off';
+  }
+  if (micBtn) {
+    micBtn.onclick = vStart; $('#vStop').onclick = function () { vStop('user') };
+    $('#chatX').addEventListener('click', function () { vStop('closed') });
+    addEventListener('pagehide', function () { if (V.call) { try { navigator.sendBeacon('/api/voice/close', JSON.stringify({ call: V.call, reason: 'leave' })) } catch (e) { } } });
+    document.addEventListener('visibilitychange', function () { if (document.hidden && V.on) vStop('hidden') });
+    vCheck();
+  }
   // offline / assistant-off replies: honest and helpful, never invented
   function localReply(t) {
     var p = SITE.prices, has = function (w) { return w.some(function (x) { return t.indexOf(x) >= 0 }) };

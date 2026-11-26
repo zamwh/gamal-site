@@ -134,6 +134,8 @@ def get(app, u, path, q):
                 d["handoffs"] = s.one("SELECT COUNT(*) n FROM handoffs WHERE substr(ts,1,10) BETWEEN ? AND ?", (a, b))["n"]
             d["spent_today"], d["spent_month"] = app.agent._spent()
             d["caps"] = {"day": cfg["daily_cap_usd"], "month": cfg["monthly_cap_usd"]}
+            v = getattr(app, "voice", None)
+            d["voice"] = v.report(a, b) if v else None      # every voice call, by the second, beside the text assistant
             return d
         if sec == "sessions":
             return an.recent_sessions(a, b, 25)

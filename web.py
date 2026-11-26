@@ -34,7 +34,7 @@ CTYPES = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp":
 CSP = ("default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; "
        "script-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; "
        "base-uri 'self'; form-action 'self'; object-src 'none'")
-LIMITS = {"login": (6, 300), "chat": (12, 60), "terms": (10, 60), "request": (3, 600), "ev": (40, 60), "api": (90, 60), "static": (600, 60)}
+LIMITS = {"voice": (60, 60), "login": (6, 300), "chat": (12, 60), "terms": (10, 60), "request": (3, 600), "ev": (40, 60), "api": (90, 60), "static": (600, 60)}
 
 
 def lan_ip():
@@ -169,6 +169,9 @@ class Server:
             def _ip(self):
                 return self.client_address[0]
 
+            def _vip(self):     # behind the tunnel every visitor arrives from 127.0.0.1: use the address Cloudflare saw
+                return (self.headers.get("Cf-Connecting-Ip") or self._ip())[:60]
+
             def _send(self, code, body, ctype="application/json; charset=utf-8", cache=None):
                 if isinstance(body, (dict, list)):
                     body = json.dumps(body, ensure_ascii=False).encode()
@@ -265,6 +268,13 @@ class Server:
                             return self._file(fp, CTYPES[fp.rsplit(".", 1)[1]], "private, no-store")
                         q = {k: v[0] for k, v in urllib.parse.parse_qs(u_q).items()}
                         return self._send(200, admin.get(app, u, path, q))
+                    if path == "/api/voice/status":     # may this visitor talk to the voice salesman now?
+                        v = getattr(app, "voice", None)
+                        if not v:
+                            return self._send(200, {"on": False})
+                        vq = {k: x[0] for k, x in urllib.parse.parse_qs(u_q).items()}
+                        staff = bool(admin.user_for(app, self.headers.get("Cookie")))
+                        return self._send(200, v.status(str(vq.get("v", ""))[:40], self._vip(), staff))
                     if path == "/api/site":
                         with app.lock:
                             return self._send(200, server.site_payload())
@@ -350,6 +360,25 @@ class Server:
                             except Exception as e:
                                 print("interest:", e, flush=True)
                         return self._send(200, res)
+                    if path.startswith("/api/voice/"):   # the voice salesman: open / delegate / beat / close
+                        v = getattr(app, "voice", None)
+                        if not v:
+                            return self._send(404, {"error": "not found"})
+                        if server.limited(self._vip(), "voice"):
+                            return self._send(429, {"ok": False, "why": "rate"})
+                        call = str(data.get("call", ""))[:20]
+                        if path == "/api/voice/open":
+                            staff = bool(admin.user_for(app, self.headers.get("Cookie")))
+                            return self._send(200, v.open(str(data.get("visitor", ""))[:40], str(data.get("session", "")),
+                                                          str(data.get("sdp", "")), self._vip(), staff, bool(data.get("resume"))))
+                        if path == "/api/voice/delegate":
+                            return self._send(200, v.delegate(call, str(data.get("text", ""))))
+                        if path == "/api/voice/beat":
+                            return self._send(200, v.beat(call))
+                        if path == "/api/voice/close":
+                            usage = data.get("usage") if isinstance(data.get("usage"), (dict, list)) else None
+                            return self._send(200, v.close(call, usage, str(data.get("reason", "end"))[:20]))
+                        return self._send(404, {"error": "not found"})
                     if path == "/api/chat":
                         if server.limited(ip, "chat"):
                             return self._send(429, {"error": "رسائل كثيرة، انتظر دقيقة"})

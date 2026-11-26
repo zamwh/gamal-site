@@ -25,6 +25,8 @@ class App:
         self.agent = SalesAgent(self.store, self.lock, self.analytics)
         from staff_agent import StaffAgent
         self.staff = StaffAgent(self.store, self.lock, self.analytics, self.agent)
+        from voice import Voice
+        self.voice = Voice(self)        # the voice salesman: staff-only until the owner approves it for customers
         self.public_url = self.store.setting("public_url", "") or ""     # last real address, until the site is opened again
         try:
             n = core.refresh_demo_photos(self.store)
