@@ -1,5 +1,6 @@
 # Changelog — AI assistants (text and voice)
 
+- 2026-11-26 (22:50) — Nothing inside the budget or weight: the closest pieces anyway, with the honest difference. Voice: waiting words only when they fit («لحظة أشوف لك» new request, «لحظة من فضلك» same piece), never repeated; automatic acknowledgement at 800 ms, hand-over after 350 ms.
 - 2026-11-26 (22:15) — Selling order: understand first (wear/save -> daily/eye-catching -> kind -> budget or weight), one question a turn; add to picks from the conversation, complete the budget inside what is left, checkout with the picks, how to buy and where to collect; saving -> gold pounds. Dialect checker on written replies; voice: customer transcripts hidden, echo guard on the louder iPhone path.
 - 2026-11-26 (21:35) — No repeated pieces when the customer asks for something else; the asked kind first and closest to the budget, with an honest note when far below it; louder voice on iPhone (with a safe fallback); new voices echo / ballad / coral.
 - 2026-11-26 (21:20) — Voice test mode (no per-person or openings limit, only the day cap; reasons shown; admin button); changing the voice no longer ends the call. A stated budget shows the pieces closest to it first. Yemeni/Gulf dialect only (Levantine and Egyptian words banned) in voice and text.

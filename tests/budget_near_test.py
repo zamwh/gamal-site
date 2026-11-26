@@ -37,6 +37,19 @@ r4 = ag.search_products({"kind": "عقد", "max_price": 10_000_000, "count": 2},
 check('8  necklaces far below a 10 million budget: the highest first, and a note to say it and help reach the budget',
       r4["items"] and r4["items"][0]["price"] == max(p["price"] for p in ag._available() if p["type"] == "عقد") and "note_budget" in r4,
       [i["price"] for i in r4["items"]])
+# 9-10 owner, 22:45: "my budget is X and it shows nothing": nothing inside the budget -> the closest above, said honestly
+cheapest_set = min(p["price"] for p in ag._available() if p["type"] == "طقم")
+r5 = ag.search_products({"kind": "طقم", "max_price": cheapest_set - 300_000, "count": 2}, shopstate.new_state())
+check('9  budget under every set: the closest sets anyway, with how much over', r5["items"] and r5.get("over_budget")
+      and r5["items"][0]["price"] == cheapest_set and r5["items"][0]["over_by"] == 300_000, [(i["price"], i.get("over_by")) for i in r5["items"]])
+lightest = min(p["weight"] for p in ag._available() if ag._match_kind(p, "عقد"))
+r6 = ag.search_products({"kind": "عقد", "max_weight": lightest - 5, "count": 2}, shopstate.new_state())
+check('10 weight under every necklace: the closest heavier anyway, with how much over', r6["items"] and r6.get("over_weight")
+      and r6["items"][0]["w"] == lightest and r6["items"][0]["over_weight_g"] == 5, [(i.get("w"), i.get("over_weight_g")) for i in r6["items"]])
+st7 = shopstate.new_state()
+out7 = ag.chat("bud7", f"ابغى طقم لعرس ميزانيتي {int((cheapest_set - 300_000) / 1_000_000 * 10) / 10} مليون")
+check('11 in the chat (no model): the closest pieces are shown and the reply says they are a little over', out7["pieces"]
+      and "تزيد عنها" in out7["text"], (out7["text"], len(out7["pieces"])))
 import voice, agent
 ins = voice.PERSONA
 check('4  voice: Yemeni or Gulf only, Levantine and Egyptian words banned', "ممنوع الشامي والمصري" in ins and "دلوقتي" in ins and "هلق" in ins)

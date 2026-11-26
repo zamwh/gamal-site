@@ -113,7 +113,7 @@ async def m():
         await ev("__vt.gain.gain.value = 0")
         await ev("__vt.send({type: 'session.input_transcript.delta', delta: 'وريني أطقم'})")
         await ev("__vt.send({type: 'session.delegation.created', id: 'd1'})"); await pg.wait_for_timeout(300)
-        check('5  while it looks: "one moment"', await ev("document.querySelector('#vTx').textContent") == 'لحظة أشوف لك…')
+        check('5  while it looks: "getting it ready"', await ev("document.querySelector('#vTx').textContent") == 'يجهّز لك…')
         await pg.wait_for_timeout(1200)
         check('5b the shop\'s answer goes back to the call', 'session.commentary.append' in await ev("__vt.events") and await ev("__vt.delegates") == 1)
 

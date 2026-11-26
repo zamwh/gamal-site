@@ -3,7 +3,7 @@
 (function () {
   var D = {
     "يتصل…": "Connecting…", "يرجع يسمعك…": "Listening again…", "أسمعك، تكلم": "I'm listening", "يرد عليك…": "Answering…",
-    "لحظة أشوف لك…": "One moment…", "أول ما تتكلم، أرجع أسمعك": "Just speak, I'll be right back", "إنهاء المكالمة": "End call",
+    "لحظة أشوف لك…": "One moment…", "يجهّز لك…": "Getting it ready…", "أول ما تتكلم، أرجع أسمعك": "Just speak, I'll be right back", "إنهاء المكالمة": "End call",
     "كلّم المستشار بصوتك": "Talk to the advisor",
     "وين موقعكم؟": "Where are you located?", "للبس": "To wear", "للادخار": "To save", "نكمّل الميزانية": "Complete my budget",
     "نكمل الشراء": "Complete the purchase", "تبغى الذهب للبس ولا للادخار؟": "Is the gold for wearing or for saving?",

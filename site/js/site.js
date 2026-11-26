@@ -954,7 +954,7 @@
   }
   // GPT-Live asks for help: the shop's own assistant answers (same rules and checker), its cards show here
   function vDelegate(id) {
-    V.pend++; vSet('live', 'لحظة أشوف لك…');
+    V.pend++; vSet('live', 'يجهّز لك…');
     setTimeout(function () {                                   // the customer's words reach us a moment after the request
       var text = V.uText.trim(); V.uText = '';
       vPost('delegate', { call: V.call, text: text, picks: LIST.slice(0, 40) }).then(function (d) {
@@ -971,7 +971,7 @@
         V.pend = Math.max(0, V.pend - 1);
         vSend({ type: 'session.commentary.append', event_id: 'r' + Date.now(), delegation_id: id, content: 'صار عندي خلل بسيط، ممكن تعيد طلبك؟' });
       });
-    }, 700);
+    }, 350);                                                   // short: a quick answer comes before any "one moment"
   }
   function vHandoff(h) {
     var a = document.createElement('a'); a.className = 'handoff'; a.target = '_blank'; a.rel = 'noopener';

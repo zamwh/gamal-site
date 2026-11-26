@@ -81,6 +81,15 @@ One button: «إنهاء المكالمة». Staff see OpenAI's own reason in th
   louder iPhone path the line to OpenAI carries silence while the assistant talks (it heard itself through the
   speaker), unless the customer clearly talks over it (6x the echo's level for 0.3 s).
 
+## Flexible budget and fewer waiting words (2026-11-26, 22:45)
+- Nothing inside the budget (or the weight): the closest pieces are shown anyway, with how much they go over
+  (`over_budget` / `over_by`, `over_weight` / `over_weight_g`), and the reply says it honestly and asks whether he can add
+  a little or wants a lighter kind. The reply without the model says it too.
+- Voice waiting words: «لحظة أشوف لك» only for a new request; «لحظة من فضلك» (or nothing when quick) for the piece already
+  being discussed; never the same one twice in a row, never before every reply. OpenAI's automatic "one moment" now
+  waits 800 ms (its maximum) and the phone hands the request over after 350 ms (was 700), so quick answers come
+  without any. The stage shows «يجهّز لك…» while it looks.
+
 ## Caps (settings key `voice`)
 | Setting | Default | Meaning |
 |---|---|---|
@@ -93,7 +102,7 @@ One button: «إنهاء المكالمة». Staff see OpenAI's own reason in th
 | `max_live` / `opens_per_10min` | 3 / 10 | calls open at once / openings per customer in 10 minutes |
 | `standby` / `standby_after_s` / `standby_close_s` | on / 8 / 60 | standby after 8 s without words; full close after 60 s of quiet |
 | `standby_per_min` / `wake_threshold` | 0.02 / 0.6 | OpenAI's standby rate / how sure it must be that it is speech |
-| `ack_delay_ms` | 600 | pause before GPT-Live says "one moment" while the shop's assistant looks (OpenAI allows 0–800) |
+| `ack_delay_ms` | 800 | pause before GPT-Live says "one moment" while the shop's assistant looks (OpenAI allows 0–800) |
 
 Staff testing from `/admin` is limited only by the daily cap.
 

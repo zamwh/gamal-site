@@ -594,7 +594,10 @@ class SalesAgent:
             else:
                 eligible.append(p)
         within = [p for p in eligible if not budget or p["price"] <= float(budget)]
-        over = sorted([p for p in eligible if budget and p["price"] > float(budget)], key=lambda p: p["price"])[:2]
+        over = sorted([p for p in eligible if budget and p["price"] > float(budget) and p["code"] not in shown],
+                      key=lambda p: p["price"])[:max(2, min(5, int(args.get("count") or 2)))]
+        wover = sorted([p for p in avail if wmax and ok(p) == "weight" and p["code"] not in shown
+                        and (not budget or p["price"] <= float(budget))], key=lambda p: p["weight"])[:2]
         sort = args.get("sort") or "taste"
         if heavier is not None and sort in ("taste", "weight_desc"):
             sort = "weight_asc"                       # "heavier": the next step up first, not the heaviest in the shop
@@ -669,7 +672,14 @@ class SalesAgent:
                                   "(مثل طقم كامل)، وإذا يبغى ابحث له.")
         if not items and over:
             out["outside_budget"] = [dict(self._brief(p), over_by=round(p["price"] - float(budget))) for p in over]
-            out["note"] = "ما فيه قطعة ضمن الميزانية بهذه الشروط. outside_budget أقرب الأسعار فوقها؛ لا تعرضها على إنها ضمن الميزانية، قل الفرق بصراحة."
+            out["items"] = items = [dict(self._brief(p), **describe(p), over_by=round(p["price"] - float(budget))) for p in over[:n]]
+            out["over_budget"] = True
+            out["note"] = ("ما فيه قطعة ضمن ميزانيته بالضبط بهذه الشروط، وهذي أقرب القطع لها (over_by = كم تزيد). اعرضها، وقل الفرق "
+                           "بصراحة بجملة وحدة، واسأله لو يقدر يزيد شوي، ولا يبغى نوع أخف ضمن ميزانيته.")
+        elif not items and wover:
+            out["items"] = items = [dict(self._brief(p), **describe(p), over_weight_g=round(p["weight"] - float(wmax), 1)) for p in wover]
+            out["over_weight"] = True
+            out["note"] = ("ما فيه قطعة ضمن الوزن اللي قاله بالضبط، وهذي الأقرب له (over_weight_g = كم تزيد). اعرضها وقل الفرق بصراحة.")
         elif not items and within and shown:
             out["note"] = (f"كل المطابق لطلبه ({len(within)} قطعة) عرضته له قبل. لا تعيد عرضه كأنه جديد، ولا تقل إن المحل ما فيه غيره: "
                            "اعرض عليه نوع ثاني من other_categories_available.")
@@ -926,11 +936,15 @@ class SalesAgent:
             args = {k: v for k, v in {"kind": None if completing else f.get("kind"), "occasion": f.get("occasion"),
                                       "max_price": lp.get("budget_left") if completing else f.get("budget"),
                                       "count": 2}.items() if v}
-            for i in self.search_products(args, st, prof, f).get("items", [])[:2]:
+            found = self.search_products(args, st, prof, f)
+            for i in found.get("items", [])[:2]:
                 try:
                     pieces.append(self._public(self.store.piece(i["code"])))
                 except Exception:
                     pass
+            if pieces and found.get("over_budget"):
+                return ("ما لقيت شي ضمن ميزانيتك بالضبط، وهذي أقرب القطع لها، تزيد عنها شوي. والسعر في البطاقة نهائي على سعر اليوم. "
+                        "تقدر تزيد ميزانيتك شوي، ولا تبغى نوع أخف؟"), pieces
         if pieces:
             return ("هذي أقرب القطع لطلبك، والسعر في البطاقة نهائي على سعر اليوم. "
                     "وإذا تحب يكمل معك فريق المبيعات، الزر تحت."), pieces

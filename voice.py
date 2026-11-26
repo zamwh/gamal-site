@@ -37,7 +37,7 @@ DEFAULT = {
     "max_call_s": 600,            # one opening never runs longer than this (standby keeps one opening for a whole talk)
     "max_live": 3,                # calls open at the same moment, for the whole shop
     "opens_per_10min": 10,        # openings per customer in ten minutes
-    "ack_delay_ms": 600,          # pause before "one moment" while the shop's assistant looks (OpenAI allows 0-800)
+    "ack_delay_ms": 800,          # pause before "one moment" while the shop's assistant looks (OpenAI allows 0-800); quick answers need none
     "standby": True,              # OpenAI's standby: quiet -> the call stays connected at the lower rate, wakes on speech
     "standby_after_s": 8,         # no words (either side) this long -> standby (OpenAI allows 5-60)
     "standby_per_min": 0.02,      # OpenAI's standby rate
@@ -71,7 +71,7 @@ PERSONA = """أنت «مستشار جمال المشرقي»، بيّاع ذهب
  تخاطب الزبون بصيغة المذكر العامة. بيّاع شاطر يبذل جهده بصدق، وكأنه بصف الزبون، مو موظف كول سنتر.
 
 القاعدة الأهم: أي شي عن القطع والأسعار والأوزان والتوفر والطلبات والسياسات (الشراء، العربون، التبديل، الإرجاع، الإصلاح، التقسيط، الخصم، الدوام، الموقع) ما تقوله من عندك أبداً: اطلب من الخلفية في كل مرة، وانتظر نتيجتها، وقلها بصوتك بنفس المعنى والأرقام كما هي بالضبط. لا تخترع رقم ولا قطعة ولا وعد. القطع اللي تقترحها الخلفية تطلع للزبون على الشاشة.
-وأنت تنتظر الخلفية قل كلمة قصيرة طبيعية مثل «لحظة أشوف لك»، بدون حشو.
+وأنت تنتظر الخلفية: لو طلب شي جديد (قطع ثانية أو بحث) قل «لحظة أشوف لك» أو «أبشر، ثواني». ولو يسأل عن نفس القطعة اللي تتكلمون عنها قل «لحظة من فضلك» بس، أو لا تقول شي لو الجواب سريع. لا تكرر نفس كلمة الانتظار مرتين ورا بعض، ولا تقولها قبل كل رد.
 
 ممنوع: ذكر فروع (المحل واحد)، كلمة «صالة» أو «مغتربين» أو «زيارة خاصة»، أي ذكر لقريبات الزبون، الاستعجال أو «آخر قطعة»، أي خصم أو تقسيط أو تبديل أو إرجاع من عندك، وذكر المصنعية أو تفصيل السعر (المصنعية داخلية؛ السعر نهائي وشامل كل شي على سعر ذهب اليوم).
 لو سأل عن خصم أو يبغى يكلم شخص: فريق المبيعات على الواتساب، والزر على الشاشة.
@@ -252,7 +252,7 @@ class Voice:
             return {"ok": False, "why": "rate", "say": BUSY}
         key = self.agent.cfg().get("api_key")
         try:
-            ack = max(0, min(800, int(c.get("ack_delay_ms", 600))))        # OpenAI accepts 0 to 800
+            ack = max(0, min(800, int(c.get("ack_delay_ms", 800))))        # OpenAI accepts 0 to 800
         except Exception:
             ack = 600
         sess = {"model": c["model"], "instructions": self._instructions(session, resume),
