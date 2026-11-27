@@ -117,7 +117,7 @@ try:
     ins = b.get("session", {}).get("instructions", "")
     check('6  the script: Gulf Arabic, greets him by name and asks how he is, the strong drop, WhatsApp offer, one shop',
           "أستاذ محمد" in ins and "كيف الحال" in ins and "نزول واضح" in ins and "الواتساب" in ins and "خليجية" in ins
-          and "بجوار البوابة الرئيسية لمركز جرعان" in ins and "لا تقول «فرع»" in ins and b["session"]["audio"]["output"]["voice"] == "echo")
+          and "بجوار البوابة الرئيسية لمركز جرعان" in ins and "لا تقول «فرع»" in ins and b["session"]["audio"]["output"]["voice"] == "coral" and "المستشارة الآلية" in ins and "بصوت عالي" in ins)
     ok = wait(lambda: any(x.get("type") == "session.instructions.append" for x in SEEN["client"]), 6)
     check('7  at the wrap-up time the advisor is told to close', ok, SEEN["client"])
     ok = wait(lambda: len(SEEN["hangup"]) >= 1, 6)

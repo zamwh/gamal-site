@@ -38,7 +38,7 @@ DEFAULT = {
     "sip_pass": "",               # its password: kept on the server only
     "caller": "",                 # the number the customer sees (Zadarma's confirmed caller number), e.g. +966...
     "provider_url": "sips:sip.zadarma.com:5061",
-    "voice": "echo",
+    "voice": "coral",             # the owner picks it in the admin; female voices: coral, marin, shimmer
     "model": "gpt-live-1",
     "wrap_s": 90,                 # answered this long -> the advisor is told to close
     "max_s": 118,                 # answered this long -> the server hangs up (the line bills whole minutes)
@@ -59,7 +59,8 @@ DEFAULT = {
 
 SCRIPT = """أنت «المستشار الآلي لمجوهرات جمال المشرقي»، تتصل بالهاتف على عميل مميز من عملاء المحل.
 المحل واحد: «جمال المشرقي للذهب والمجوهرات»، بجوار البوابة الرئيسية لمركز جرعان، إب. لا تقول «فرع» أبداً.
-اللهجة: خليجية بس، جمل قصيرة ودافية ومحترمة. لا تستخدم كلمات شامية ولا مصرية (ولا «إيه» ولا «كده» ولا «بدك»).
+اللهجة: خليجية بس، جمل قصيرة ودافية ومحترمة.
+الصوت: تكلم بصوت عالي وقوي وواضح وممتلئ، كأنك تكلم في جوال والطرف الثاني لازم يسمعك زين، بثقة وطاقة، بدون صراخ وبدون همس. لا تستخدم كلمات شامية ولا مصرية (ولا «إيه» ولا «كده» ولا «بدك»).
 
 اسم العميل: {name}
 الخبر: {news}
@@ -221,6 +222,19 @@ class Phone:
             return bool(c["pbx_ext"])
         return bool(c["sip_user"] and c["sip_pass"] and norm_phone(c["caller"]))
 
+    def _female(self, voice):
+        return voice in ("coral", "marin", "shimmer", "sage", "nova", "alloy")
+
+    def _gendered(self, instr, voice):
+        """A female voice speaks of herself as a woman (the customer is still «أستاذ»)."""
+        if not self._female(voice):
+            return instr
+        for a, b in (("أنت «المستشار الآلي لمجوهرات جمال المشرقي»، تتصل", "أنتِ «المستشارة الآلية لمجوهرات جمال المشرقي»، تتصلين"),
+                     ("«الحمد لله، بخير.» ثم: «معك المستشار الآلي لمجوهرات جمال المشرقي.»", "«الحمد لله، بخير.» ثم: «معك المستشارة الآلية لمجوهرات جمال المشرقي.»"),
+                     ("«أبشر، أرسلها لك", "«أبشر، أرسلها لك"), ("تكلم بصوت عالي", "تكلمي بصوت عالي"), ("كأنك تكلم في جوال", "كأنك تكلمين في جوال")):
+            instr = instr.replace(a, b)
+        return instr + "\nأنتِ امرأة: تكلمي عن نفسك بصيغة المؤنث (أنا معك، أنا جاهزة)."
+
     def _gram(self):
         try:
             p = self.store.current_prices()
@@ -253,7 +267,7 @@ class Phone:
         if n >= int(c["per_day"]):
             return {"ok": False, "why": "وصلت حد المكالمات اليومي (%d)" % int(c["per_day"])}
         news, line = NEWS[kind]
-        instr = SCRIPT.format(name=name, news=news, news_line=line, gram=self._gram())
+        instr = self._gendered(SCRIPT.format(name=name, news=news, news_line=line, gram=self._gram()), c["voice"])
         if self.mode(c) == "callback":
             return self._callback(c, name, dest, kind, by_user, today, instr)
         body = {"session": {"model": c["model"], "instructions": instr, "audio": {"output": {"voice": c["voice"]}}},
@@ -524,7 +538,7 @@ class Phone:
         return {"sip_user": c["sip_user"], "has_pass": bool(c["sip_pass"]), "sip_pass": ("••••" + c["sip_pass"][-2:]) if c["sip_pass"] else "",
                 "caller": c["caller"], "enabled": c["enabled"] is not False, "mode": self.mode(c),
                 "zd_key": m(c["zd_key"]), "zd_secret": m(c["zd_secret"]), "wh_secret": m(c["wh_secret"]),
-                "pbx_ext": c["pbx_ext"], "proj_id": c["proj_id"],
+                "pbx_ext": c["pbx_ext"], "proj_id": c["proj_id"], "voice": c["voice"],
                 "sip_uri": ("sip:%s@sip.api.openai.com;transport=tls" % c["proj_id"]) if c["proj_id"] else ""}
 
     def save(self, d):
@@ -542,6 +556,8 @@ class Phone:
             v = str(d.get(k) or "").strip()
             if v and not v.startswith("••••"):
                 cur[k] = v[:200]
+        if str(d.get("voice") or "") in ("coral", "marin", "shimmer", "echo", "ballad", "ash", "cedar"):
+            cur["voice"] = str(d["voice"])
         if "pbx_ext" in d:
             cur["pbx_ext"] = re.sub(r"[^\w-]", "", str(d["pbx_ext"]))[:20]
         if "proj_id" in d:
