@@ -9,7 +9,7 @@ from collections import Counter
 import ops
 
 # the keyboard under the chat: one button per section; each opens its own options inside the chat
-SECTIONS = [["📊 التقارير", "🔔 التنبيهات"], ["💎 القطع والصور", "📢 قناة المحل"], ["❤️ اهتمامات العملاء", "👥 المسؤولين"]]
+SECTIONS = [["📊 التقارير", "🔔 التنبيهات"], ["💎 القطع والصور", "📢 قناة المحل"], ["❤️ اهتمامات العملاء", "👥 المسؤولين"], ["⚙️ التحكم"]]
 # section -> options (label, callback). Pressing an option rewrites the section's message in place.
 OPTIONS = {
     "التقارير": [("📅 مبيعات اليوم", "r:today"), ("⏮️ مبيعات أمس", "r:yday"), ("🗓️ آخر 7 أيام", "r:week"), ("📆 هذا الشهر", "r:month"),
@@ -33,13 +33,13 @@ REPORT_CB = {"r:today": "مبيعات اليوم", "r:yday": "مبيعات أم�
              "r:stock": "المخزون الحالي", "r:inv": "آخر الفواتير", "r:int": "الأكثر اهتماماً", "r:web": "زوار الموقع اليوم",
              "r:dem": "طلبات ما توفرت", "r:price": "سعر الذهب اليوم", "r:restock": "تنبيه الشراء", "r:res": "الحجوزات"}
 BUTTONS = set(REPORT_CB.values())       # typing a report's name still works
-VERSION = 4          # bump when the buttons change: linked staff get the new keyboard once
+VERSION = 5          # bump when the buttons change: linked staff get the new keyboard once
 
 
 def section_name(text):
     """A section button's text, with or without its emoji (older keyboards had none)."""
     t = (text or "").strip()
-    for name in list(OPTIONS) + ["قناة المحل"]:
+    for name in list(OPTIONS) + ["قناة المحل", "التحكم"]:
         if t == name or t.endswith(" " + name):
             return name
     return None

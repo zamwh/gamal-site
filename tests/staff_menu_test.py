@@ -52,7 +52,7 @@ bot.handle("T", msg(111, "/start"))
 kb = (sent(111)[-1].get("reply_markup") or {}).get("keyboard") if sent(111) else None
 check("7 staff /start: six section buttons stay under the chat",
       kb and [b["text"] for r in kb for b in r] == ["📊 التقارير", "🔔 التنبيهات", "💎 القطع والصور", "📢 قناة المحل", "❤️ اهتمامات العملاء",
-                                                   "👥 المسؤولين"], kb)
+                                                   "👥 المسؤولين", "⚙️ التحكم"], kb)
 bot.handle("T", msg(111, "❤️ اهتمامات العملاء"))
 ik2 = (sent(111)[-1].get("reply_markup") or {}).get("inline_keyboard") or []
 check("7b the button with its emoji opens customer interests, with its own options",

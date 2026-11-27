@@ -57,7 +57,7 @@ class Bot(threading.Thread):
             with open(path, "rb") as f:
                 data = f.read()
             body += (f"--{bnd}\r\nContent-Disposition: form-data; name=\"{k}\"; filename=\"{os.path.basename(path)}\"\r\n"
-                     f"Content-Type: {mimetypes.guess_type(path)[0] or 'image/jpeg'}\r\n\r\n").encode() + data + b"\r\n"
+                     f"Content-Type: {mimetypes.guess_type(path)[0] or ('application/octet-stream' if method == 'sendDocument' else 'image/jpeg')}\r\n\r\n").encode() + data + b"\r\n"
         body += f"--{bnd}--\r\n".encode()
         req = urllib.request.Request(API.format(token, method), body, {"Content-Type": f"multipart/form-data; boundary={bnd}"})
         return json.loads(urllib.request.urlopen(req, timeout=90).read())
@@ -200,7 +200,14 @@ class Bot(threading.Thread):
         if text.startswith("o:"):
             self._officials(token, chat, uid, text, mid)
             return True
+        if text.startswith("c:"):
+            self._control(token, chat, uid, text, mid)
+            return True
         sec = staff_menu.section_name(text)
+        if sec == "التحكم":
+            import control
+            self.send(token, chat, control.INTRO, markup=control.kb(app))
+            return True
         if sec == "قناة المحل":
             self._channel_cmd(token, chat, uid, "/channel")
             return True
@@ -236,6 +243,88 @@ class Bot(threading.Thread):
                 self.send(token, chat, rep or "ما فيه بيانات.")
             return True
         return False
+
+    # ---------- full control from the chat (control.py): status, switches, price, premium customers, calls, backup, restart
+    def _control(self, token, chat, uid, text, mid=None):
+        import control
+        app = self.app
+        try:
+            if text == "c:menu":
+                return self._edit(token, chat, mid, control.INTRO, control.kb(app))
+            if text == "c:st":
+                with app.lock:
+                    t = control.status(app)
+                return self._edit(token, chat, mid, t, control._back([[{"text": "🔁 تحديث", "callback_data": "c:st"}]]))
+            if text in ("c:ai", "c:vo", "c:ph"):
+                with app.lock:
+                    t, k = control.state_view(app, text[2:])
+                return self._edit(token, chat, mid, t, k)
+            if text in ("c:tai", "c:tvo", "c:tph"):
+                control.toggle(app, text[3:])
+                with app.lock:
+                    t, k = control.state_view(app, text[3:])
+                return self._edit(token, chat, mid, "تم ✅\n" + t, k)
+            if text == "c:pr":
+                with app.lock:
+                    p = app.store.current_prices()
+                cur = ("الحالي: بيع {:,.0f} · شراء {:,.0f} ({})".format(float(p["k21_sell"]), float(p["k21_buy"]), str(p["created_at"])[:16])
+                       if p else "ما فيه سعر مسجل.")
+                return self._edit(token, chat, mid, "💰 سعر جرام 21\n" + cur + "\n\nللتحديث اكتب:\n/price سعر_البيع سعر_الشراء\nمثال: /price 52000 51000",
+                                  control._back())
+            if text == "c:vip":
+                with app.lock:
+                    t = control.vip_view(app)
+                return self._edit(token, chat, mid, t, control._back())
+            if text == "c:call":
+                t, k = control.bulk_view(app)
+                return self._edit(token, chat, mid, t, k)
+            if text in ("c:cn", "c:cs"):
+                t, k = control.bulk_confirm("normal" if text == "c:cn" else "strong", app)
+                return self._edit(token, chat, mid, t, k)
+            if text in ("c:cyn", "c:cys"):
+                t = control.bulk_start(app, "normal" if text == "c:cyn" else "strong", self.notify)
+                return self._edit(token, chat, mid, t, control._back())
+            if text == "c:cstop":
+                control._bulk["stop"] = True
+                return self._edit(token, chat, mid, "⏹️ بيوقف بعد المكالمة الحالية.", control._back())
+            if text == "c:bk":
+                path = control.backup(app)
+                try:
+                    self.upload(token, "sendDocument", {"chat_id": str(chat), "caption": "💾 نسخة احتياطية كاملة من قاعدة البيانات. احفظها عندك."},
+                                {"document": path})
+                    return self._edit(token, chat, mid, "💾 انرسلت النسخة الاحتياطية تحت.", control._back())
+                except Exception as e:
+                    return self._edit(token, chat, mid, f"💾 انحفظت النسخة في السيرفر، بس ما قدرت أرسلها: {e}", control._back())
+            if text == "c:rs":
+                return self._edit(token, chat, mid, "🔄 أعيد تشغيل النظام؟ يرجع خلال ثواني، والبيانات ما تتأثر.",
+                                  control._back([[{"text": "نعم، أعد التشغيل", "callback_data": "c:rsy"}]]))
+            if text == "c:rsy":
+                self._edit(token, chat, mid, "🔄 جاري إعادة التشغيل... اضغط «🩺 حالة النظام» بعد دقيقة.", control._back())
+                control.restart_later()
+                return None
+            if text == "c:help":
+                return self._edit(token, chat, mid, control.HELP, control._back())
+        except Exception as e:
+            print("control:", text, e, flush=True)
+            return self._edit(token, chat, mid, f"صار خطأ: {e}", control._back())
+        return None
+
+    def _control_cmd(self, token, chat, text):
+        import control
+        app = self.app
+        t = text.strip()
+        try:
+            if t.startswith("/price"):
+                return self.send(token, chat, control.set_price(app, t[6:]))
+            if t.startswith("/vip"):
+                return self.send(token, chat, control.vip_cmd(app, t))
+            if t.startswith("/call"):
+                return self.send(token, chat, control.one_call(app, t))
+            if t.startswith("/status"):
+                with app.lock:
+                    return self.send(token, chat, control.status(app))
+        except Exception as e:
+            return self.send(token, chat, f"صار خطأ: {e}")
 
     # ---------- officials: invite by a one-time link, see who is linked, remove someone
     WELCOME = ("تم ربطك. يوصلك هنا كل بيع وكل حجز وتنبيهات الشراء، وكل قطعة جديدة تطلب صورها.\n"
@@ -691,6 +780,8 @@ class Bot(threading.Thread):
             return self._save_photo(token, chat, msg, target[0], target[1])
         if not chat or not text:
             return
+        if staff and re.match(r"/(price|vip|call|status)\b", text):
+            return self._control_cmd(token, chat, text)
         if staff and text in ("/photos", "/صور", "قطع بدون صور"):
             return self._pending_list(token, chat)
         if text.startswith("/start inv_"):
