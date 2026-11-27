@@ -302,10 +302,8 @@ Keyboard under the chat (sections):
                       «➕ إضافة عميل» -> type the Yemeni number in any form
                       (771234567, 0771234567, Arabic digits, spaces); +967
                       is added by itself; non-Yemeni numbers are refused.
-                      The name is looked up in the shop's own records
-                      (customers, invoices, reservations; last 9 digits):
-                      found -> «✅ أضفه بهذا الاسم» or «✏️ اكتب اسم ثاني»;
-                      not found -> it asks for the name. Tap a customer -> «📞 اتصل (نزول
+                      Then it asks for the name, typed by hand (the owner's
+                      choice). The call greets the customer by this name. Tap a customer -> «📞 اتصل (نزول
                       عادي)» / «📞 اتصل (نزول قوي)» / «❌ احذفه».
    📣 اتصل بالمميزين  "normal drop" = first 10, "strong drop" = first 20;
                       asks to confirm; calls ONE AT A TIME (required: the
