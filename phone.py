@@ -499,6 +499,11 @@ class Phone:
 
     # ---- the owner's view
     def recent(self, n=20):
+        # a Zadarma call that never reached the advisor (the customer did not answer, or OpenAI's notice never came)
+        stale = self.store.q("SELECT id FROM phone_calls WHERE status='dialing' AND session_id IS NULL AND created<?", (time.time() - 120,))
+        for r in stale:
+            self._update(r["id"], status="no_answer", ended=time.time(),
+                         reason="ما وصل المستشار: العميل ما رد، أو Zadarma ما حوّل المكالمة، أو إشعار OpenAI ما وصل")
         rows = self.store.q("SELECT * FROM phone_calls ORDER BY created DESC LIMIT ?", (n,))
         out = []
         for r in rows:
