@@ -189,7 +189,8 @@ def get(app, u, path, q):
                                  "username": getattr(getattr(app, "bot", None), "username", ""),
                                  "channel": __import__("tg_channel").status(s)})(__import__("telegram_bot").cfg(s)),
                     "policy": dict(__import__("agent").DEFAULT_POLICY, **{k: v for k, v in (s.setting("policy", {}) or {}).items() if (v or "").strip()}),
-                    "phone": app.phone.settings_view() if getattr(app, "phone", None) else None}
+                    "phone": app.phone.settings_view() if getattr(app, "phone", None) else None,
+                    "whatsapp": dict(app.wa.settings_view(), **app.wa.stats()) if getattr(app, "wa", None) else None}
     raise GoldError("غير موجود")
 
 
@@ -260,6 +261,8 @@ def post(app, u, path, d):
                     ai["api_key"] = key.strip()
                     ai["enabled"] = True
                 s.set_setting("ai", ai)
+            if isinstance(d.get("whatsapp"), dict) and getattr(app, "wa", None):   # Meta's WhatsApp values: kept on the server only
+                app.wa.save(d["whatsapp"])
             if isinstance(d.get("phone"), dict) and getattr(app, "phone", None):   # the Zadarma line: kept on the server only
                 app.phone.save(d["phone"])
             if isinstance(d.get("voice"), dict):           # the voice assistant: on/off for the site

@@ -277,6 +277,12 @@ class Server:
                         vq = {k: x[0] for k, x in urllib.parse.parse_qs(u_q).items()}
                         staff = bool(admin.user_for(app, self.headers.get("Cookie")))
                         return self._send(200, v.status(str(vq.get("v", ""))[:40], self._vip(), staff))
+                    if path == "/api/wa/webhook":     # Meta checks the WhatsApp webhook address once
+                        wa = getattr(app, "wa", None)
+                        ch = wa.verify_get(urllib.parse.parse_qs(u_q)) if wa else None
+                        if ch is None:
+                            return self._send(403, {"error": "forbidden"})
+                        return self._send(200, ch.encode(), "text/plain; charset=utf-8", "no-cache")
                     if path == "/api/site":
                         with app.lock:
                             return self._send(200, server.site_payload())
@@ -321,6 +327,17 @@ class Server:
                 host = self.headers.get("Host", "")
                 if origin and urllib.parse.urlparse(origin).netloc != host:
                     return self._send(403, {"error": "forbidden"})
+                if path == "/api/wa/webhook":         # Meta: WhatsApp messages (signed with the app secret, raw body)
+                    wa = getattr(server.app, "wa", None)
+                    raw = self.rfile.read(n)
+                    if not wa:
+                        return self._send(404, {"error": "not found"})
+                    try:
+                        code = wa.webhook(raw, self.headers.get("X-Hub-Signature-256", ""))
+                    except Exception:
+                        import traceback; traceback.print_exc()
+                        code = 500
+                    return self._send(code, {"ok": code == 200})
                 if path == "/api/phone/webhook":      # OpenAI: a call reached the shop's project (signed, raw body)
                     ph = getattr(server.app, "phone", None)
                     raw = self.rfile.read(n)

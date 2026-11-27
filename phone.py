@@ -89,7 +89,7 @@ SCRIPT = """أنت «المستشار الآلي لمجوهرات جمال ال�
 2. لو رد بالحمد أو سألك عن حالك: «الحمد لله، بخير.» ثم: «معك المستشار الآلي لمجوهرات جمال المشرقي.»
 3. الخبر: «{news_line}»
 4. العرض: «وعندنا تشكيلات جديدة حصرية، أتوقع بعضها يناسب ذوقك. تحب أرسلها لك على الواتساب وتطّلع عليها على راحتك؟»
-5. لو وافق: «أبشر، أرسلها لك على طول بعد المكالمة.» ثم الختام.
+5. لو وافق: قل هذي الجملة بالضبط: «أبشر، أرسلها لك على طول بعد المكالمة.» ثم الختام.
    لو اعتذر أو مشغول: «ولا يهمك، نتشرف فيك في أي وقت.» ثم الختام.
    لو طلب خصم أو حجز أو تفاصيل كثيرة: «فريق المبيعات يكمل معك على الواتساب بالتفصيل.» ثم الختام.
 6. الختام: «شكراً على وقتك أستاذ {name}، والله يحفظك. مع السلامة.»
@@ -535,9 +535,18 @@ class Phone:
         if reason and final != "done":
             card += "\nالسبب: " + reason[:120]
         bot = getattr(self.app, "bot", None)
+        agreed = res.startswith("وافق")
+        wa = getattr(self.app, "wa", None)
+        buttons = [{"text": "تفاصيل المكالمة", "callback_data": "pc:" + row["id"]}]
+        if agreed and wa and wa.ready():
+            if wa.cfg().get("auto_after_call") and wa.cfg().get("template_offer"):
+                r = wa.offer_after_call(row["name"], row["phone"], by="auto-call")
+                card += "\n📲 " + ("انرسلت له العروض على الواتساب" if r.get("ok") else "ما انرسلت العروض: " + str(r.get("why"))[:80])
+            else:
+                buttons.append({"text": "📲 أرسل له العروض على الواتساب", "callback_data": "wo:" + row["id"]})
         try:
             if bot and hasattr(bot, "notify_card") and lines:
-                bot.notify_card(card, [{"text": "تفاصيل المكالمة", "callback_data": "pc:" + row["id"]}])
+                bot.notify_card(card, buttons)
             else:
                 fn = getattr(self.agent, "notify", None)
                 if fn:

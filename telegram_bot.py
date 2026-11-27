@@ -258,11 +258,11 @@ class Bot(threading.Thread):
                 with app.lock:
                     t = control.status(app)
                 return self._edit(token, chat, mid, t, control._back([[{"text": "🔁 تحديث", "callback_data": "c:st"}]]))
-            if text in ("c:ai", "c:vo", "c:ph"):
+            if text in ("c:ai", "c:vo", "c:ph", "c:wa"):
                 with app.lock:
                     t, k = control.state_view(app, text[2:])
                 return self._edit(token, chat, mid, t, k)
-            if text in ("c:tai", "c:tvo", "c:tph"):
+            if text in ("c:tai", "c:tvo", "c:tph", "c:twa"):
                 control.toggle(app, text[3:])
                 with app.lock:
                     t, k = control.state_view(app, text[3:])
@@ -875,6 +875,14 @@ class Bot(threading.Thread):
         with app.lock:
             c = cfg(app.store)
         staff = uid in c["staff"]
+        if staff and text.startswith("wo:"):           # the call's customer agreed: the offers on WhatsApp
+            with app.lock:
+                r = app.store.one("SELECT name, phone FROM phone_calls WHERE id=?", (text[3:20],))
+            wa = getattr(app, "wa", None)
+            if not r or not wa:
+                return self.send(token, chat, "ما لقيت المكالمة، أو الواتساب ما انربط.")
+            res = wa.offer_after_call(r["name"], r["phone"], by="telegram")
+            return self.send(token, chat, ("📲 انرسلت العروض لـ%s على الواتساب." % r["name"]) if res.get("ok") else "ما انرسلت: " + str(res.get("why")))
         if staff and text.startswith("pc:"):           # a phone call's card: its details on request
             with app.lock:
                 r = app.store.one("SELECT * FROM phone_calls WHERE id=?", (text[3:20],))

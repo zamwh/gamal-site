@@ -28,7 +28,9 @@ class App:
         from voice import Voice
         self.voice = Voice(self)        # the voice salesman: staff-only until the owner approves it for customers
         from phone import Phone
-        self.phone = Phone(self)        # phone calls to premium customers (Zadarma line, GPT-Live over SIP)
+        self.phone = Phone(self)
+        from whatsapp import WhatsApp
+        self.wa = WhatsApp(self)        # the shop's WhatsApp (Meta Cloud API): off until the owner links it        # phone calls to premium customers (Zadarma line, GPT-Live over SIP)
         self.public_url = self.store.setting("public_url", "") or ""     # last real address, until the site is opened again
         try:
             n = core.refresh_demo_photos(self.store)

@@ -14,7 +14,7 @@ START = time.time()
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 OPTIONS = [("🩺 حالة النظام", "c:st"), ("🤖 وكيل الزبائن", "c:ai"), ("🎙️ الصوت للزبائن", "c:vo"),
-           ("📞 المكالمات", "c:ph"), ("💰 تحديث سعر الذهب", "c:pr"), ("🖼️ صور الواجهة", "c:hero"), ("⭐ العملاء المميزين", "c:vip"),
+           ("📞 المكالمات", "c:ph"), ("💬 الواتساب", "c:wa"), ("💰 تحديث سعر الذهب", "c:pr"), ("🖼️ صور الواجهة", "c:hero"), ("⭐ العملاء المميزين", "c:vip"),
            ("📣 اتصل بالمميزين", "c:call"), ("💾 نسخة احتياطية", "c:bk"), ("🔄 إعادة تشغيل", "c:rs"),
            ("📘 الأوامر", "c:help")]
 INTRO = "⚙️ التحكم: كل شي في النظام من هنا. اختر من تحت."
@@ -81,6 +81,7 @@ def status(app):
         f"وكيل الزبائن: {_on(ai.get('enabled') and ai.get('api_key'))}" + ("" if ai.get("api_key") else " (المفتاح ناقص)"),
         f"الصوت للزبائن: {_on(vo.get('public'))}" + (" · وضع التجربة" if vo.get("test_mode", True) else ""),
         f"المكالمات: {_on(ph.get('enabled'))} · اليوم {pd['n']} من {ph.get('per_day')}",
+        "الواتساب: " + (("ما انربط" if not app.wa.ready() else _on(app.wa.cfg().get("enabled"))) if getattr(app, "wa", None) else "غير موجود"),
         f"سعر جرام 21: {price}",
         f"العملاء المميزين: {len(vip)}",
         "",
@@ -111,6 +112,12 @@ def toggle(app, what):
             s.set_setting("voice", c)
             on = c["public"]
             name = "الصوت للزبائن في الموقع"
+        elif what == "wa":
+            c = dict(s.setting("whatsapp", {}) or {})
+            c["enabled"] = not c.get("enabled")
+            s.set_setting("whatsapp", c)
+            on = c["enabled"]
+            name = "وكيل الواتساب"
         else:
             c = dict(s.setting("phone", {}) or {})
             cur = app.phone.cfg().get("enabled", True)
@@ -128,6 +135,15 @@ def state_view(app, what):
         on, name, note = bool((s.setting("ai", {}) or {}).get("enabled")), "🤖 وكيل الزبائن", "يرد على الزبائن في الموقع (والواتساب لما ينربط)."
     elif what == "vo":
         on, name, note = bool((s.setting("voice", {}) or {}).get("public")), "🎙️ الصوت للزبائن", "زر الكلام بالصوت في الموقع للزبائن."
+    elif what == "wa":
+        wa = getattr(app, "wa", None)
+        on = bool(wa and wa.cfg().get("enabled"))
+        name = "💬 وكيل الواتساب"
+        if not (wa and wa.ready()):
+            note = "الواتساب للحين ما انربط. القيم تنحط في لوحة الإدارة ← الإعدادات ← الواتساب."
+        else:
+            st = wa.stats()
+            note = f"يرد على الزبائن في واتساب المحل.\nاليوم: {st['customers_today']} زبون · {st['in_today']} رسالة · {st['out_today']} رد"
     else:
         on, name, note = bool(app.phone.cfg().get("enabled", True)), "📞 المكالمات", "اتصال المستشار بالعملاء المميزين."
     btn = ("⛔ وقّفه" if on else "✅ شغّله")

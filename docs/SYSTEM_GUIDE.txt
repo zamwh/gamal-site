@@ -94,7 +94,8 @@ Parts:
     reports, invoices A4/A5. Works offline and syncs to the server.
  f) Phone calls: the AI advisor (female voice) calls premium customers
     when gold drops, in Gulf dialect, under 2 minutes.
- g) WhatsApp agent: NOT linked yet (see section 17).
+ g) WhatsApp agent: BUILT and ready (whatsapp.py), waiting only for Meta's
+    values to be typed in the admin (section 11b).
 
 Tech: Python standard library only on the server (no frameworks),
 SQLite databases, plain HTML/CSS/JS front end, OpenAI APIs.
@@ -190,6 +191,8 @@ taste.py         Anonymous taste profile and taste-aware ranking.
 staff_agent.py   Internal agent for staff (read-only tools: sales, stock,
                  demand, website, AI cost).
 staff_menu.py    Telegram report buttons (no AI, straight from the DB).
+whatsapp.py      NEW: WhatsApp Cloud API (Meta): webhook, the agent's
+                 answers, coexistence quiet time, offers template.
 control.py       NEW: Telegram «⚙️ التحكم» — status, switches, gold price,
                  premium customers, calls to them, backup, restart.
 telegram_bot.py  The staff bot (long polling, stdlib only).
@@ -232,6 +235,10 @@ phone      enabled, voice (coral = female), model gpt-live-1,
            pbx_ext "100", wh_secret, proj_id, predicted False ...
 telegram   token, enabled, staff {telegram_id: name}, link_code,
            muted [...], invites {...}, channel {...}
+whatsapp   NEW: enabled, phone_number_id, waba_id, token, app_secret,
+           verify_token (made by the server), graph_version v23.0,
+           per_customer_day 40, human_quiet_min 30, template_offer,
+           template_lang ar, auto_after_call, notify_staff
 vip        NEW: premium customers [{name, phone(+967...)}]
 hero       NEW: up to 3 hero photo file names for the site's top slider
 showcase   new_days (14): how long a new piece stays in «وصل حديثاً»
@@ -253,6 +260,9 @@ Public
   GET  /api/voice/status; POST /api/voice/open|turn|delegate|beat|close
   POST /api/pos/sync    POS branch sync (branch key)
   POST /api/phone/webhook  OpenAI call notices (signed, Standard Webhooks)
+  GET  /api/wa/webhook     Meta's one-time webhook check (verify token)
+  POST /api/wa/webhook     WhatsApp messages from Meta (X-Hub-Signature-256,
+                           HMAC-SHA256 of the raw body with the App secret)
 Admin (/api/admin/...)
   login, logout, me, settings (GET/POST), stock, piece_photos, photo,
   piece_add, piece_status, sell, confirm, close, prices, branches,
@@ -287,6 +297,8 @@ Keyboard under the chat (sections):
    🤖 وكيل الزبائن    on/off of the customer AI agent (key kept)
    🎙️ الصوت للزبائن  on/off of the website microphone for customers
    📞 المكالمات      on/off of phone calls
+   💬 الواتساب       on/off of the WhatsApp agent + today's numbers
+                      (shows "not linked" until Meta's values are in)
    💰 تحديث سعر الذهب shows the current price, then asks in TWO messages:
                       first the BUYING price, then the SELLING price
                       (Arabic or English digits, commas OK). Selling below
@@ -423,8 +435,59 @@ Recordings: in Zadarma's web account, enable "Call recording -> To the
 cloud" on extensions 100/101. Transcripts are saved by our system anyway.
 Failed approach (do not retry): OpenAI dialing out directly over SIP
 through Zadarma returned 480.
-Later (owner said «بعدين بنرتب»): if the customer agrees on the call,
-send him on WhatsApp the site link + one piece offer (needs WhatsApp).
+After the call: when the card says the customer agreed (the advisor says
+the fixed sentence «أبشر، أرسلها لك على طول بعد المكالمة.»), the card
+gets a button «📲 أرسل له العروض على الواتساب» (callback wo:<id>) that
+sends the approved offers template with his name. With
+whatsapp.auto_after_call on, it is sent by itself.
+
+
+=====================================================================
+11b. WHATSAPP (BUILT, READY TO LINK)
+=====================================================================
+File: whatsapp.py. Official Meta WhatsApp Cloud API (graph.facebook.com),
+no unofficial tools (no ban risk).
+What it does once linked:
+ - A customer writes -> the SAME sales agent as the website answers
+   (session "wa<digits>"); [[CODE]] markers removed; up to 3 pieces sent
+   as photo + caption (title, weight, karat, today's price, piece link).
+   Photos need the public https address (app.public_url).
+ - One answer at a time per customer; 40 agent answers per customer per
+   day; the agent's own daily/monthly money caps still apply.
+ - Coexistence: when someone from the shop answers from the WhatsApp
+   Business app, Meta sends an echo (smb_message_echoes); the agent then
+   stays quiet with that customer for 30 minutes.
+ - First message of a new customer -> short notice on Telegram.
+ - Agent switched off but linked -> one polite welcome, then silence;
+   staff answer from the phone.
+ - All messages kept in table wa_messages (in/out, who, status).
+ - Duplicate deliveries from Meta are answered once.
+ - Business-started messages (e.g. after a call) MUST be an approved
+   template; free text is only allowed within 24 h of the customer's
+   last message (Meta error 131047 otherwise).
+Linking steps (owner, once):
+ 1. Meta Business account + a Meta app of type Business with the
+    WhatsApp product (developers.facebook.com).
+ 2. Add the shop's number. Keep it on the phone with Coexistence if it is
+    on the WhatsApp BUSINESS app (2.24.17+) — Embedded Signup with the
+    coexistence option. Otherwise a new Yemeni SIM.
+ 3. Create a System User with a permanent token (whatsapp_business_messaging
+    + whatsapp_business_management).
+ 4. In /admin > Settings > «الواتساب (وكيل المبيعات)» type: Phone number
+    ID, WABA ID, the permanent token, App secret (App settings > Basic),
+    and the offers template name (optional). Save.
+ 5. In Meta > WhatsApp > Configuration > Webhook: Callback URL =
+    <public address>/api/wa/webhook, Verify token = the one shown in the
+    admin. Subscribe to "messages" (and "smb_message_echoes" with
+    coexistence).
+ 6. Create and get approved an offers template in Arabic (marketing),
+    body with {{1}} = the customer's name, plus a URL button to the site.
+ 7. Tick «تشغيل الوكيل على الواتساب» (or Telegram ⚙️ التحكم > 💬).
+ NOTE: the public address must be stable (a domain). The trycloudflare
+ address changes and would break the webhook.
+Tests: tests/whatsapp_test.py (20) with a fake Graph API; the web routes
+were also checked end to end (challenge 200, bad token 403, signed POST
+200, unsigned 401).
 
 
 =====================================================================
@@ -498,7 +561,8 @@ Running locally:  python3 server.py --mode demo --port 8095 --data ./data
 =====================================================================
 Fast unit/flow tests (no internet), each prints "N/N passed" or
 "SUMMARY N / N":
- control_test (18) — the new Telegram control section
+ control_test (39) — the Telegram control section
+ whatsapp_test (20) — WhatsApp, with a fake Graph API
  phone_test (22), voice_test (35), voice_turn_test (28),
  voice_turn_ui_test (17), voice_switch_test (8), voice_ui_test,
  staff_menu_test (29), channel_test, agent_rules_test, agent_v3_test,
@@ -537,7 +601,8 @@ All fast tests passed on 2026-11-28.
 =====================================================================
 17. OPEN ITEMS / NOT BUILT YET
 =====================================================================
-1. WhatsApp agent (Cloud API). Yemen is not blocked by WhatsApp.
+1. WhatsApp: the code is DONE (section 11b); only Meta's linking steps
+   remain. Yemen is not blocked by WhatsApp.
    The shop can keep its SAME number via Meta "Coexistence" if the
    number is on the WhatsApp BUSINESS app (version 2.24.17+): onboard
    through Embedded Signup with the coexistence option; the phone app
@@ -546,7 +611,7 @@ All fast tests passed on 2026-11-28.
    listed, but confirm during signup). If the shop uses regular
    WhatsApp, convert to WhatsApp Business first, or use a new Yemeni SIM.
    Waiting for the owner's answer: regular or Business WhatsApp?
-   After linking: post-call WhatsApp message (site link + piece offer).
+   The post-call offers message is built (button on the call card).
 2. Stable domain (replace trycloudflare) — needed for the webhook,
    links and the channel.
 3. Admin "control center" page (editable texts, premium list in the web
