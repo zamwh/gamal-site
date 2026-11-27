@@ -166,7 +166,7 @@ try:
     r = ph.call("خالد", "777123456", "normal")
     z = SEEN["zd"][-1] if SEEN["zd"] else {}
     check('18 Zadarma is asked to ring: from the PBX extension to the customer, signed with the key (OpenAI not dialing)',
-          r.get("ok") and "from=100" in z.get("path", "") and "to=967777123456" in z.get("path", "") and z.get("auth", "").startswith("zdkey123:") and "sip=454051" in z.get("path", "") and "predicted=1" in z.get("path", "")
+          r.get("ok") and "from=100" in z.get("path", "") and "to=967777123456" in z.get("path", "") and z.get("auth", "").startswith("zdkey123:") and "sip=101" in z.get("path", "") and "predicted=1" in z.get("path", "")
           and len(SEEN["create"]) == nc, (r, z))
     def hook(body, good=True):
         raw = json.dumps(body).encode(); wid, ts = "msg_1", str(int(time.time()))

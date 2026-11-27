@@ -313,7 +313,10 @@ class Phone:
                                                                    json.dumps({"instructions": instr}, ensure_ascii=False)))
             self.store.db.commit()
         params = {"from": str(c["pbx_ext"]), "to": dest.lstrip("+")}
-        line = str(c.get("zd_sip") or c.get("sip_user") or "").strip()
+        # Zadarma: with a PBX extension in "from", the line in "sip" must be a PBX extension too. Extension 100
+        # forwards to OpenAI (it cannot dial out itself), so the customer's leg goes out from extension 101.
+        ext = str(c["pbx_ext"])
+        line = str(c.get("zd_sip") or ("101" if ext.isdigit() and len(ext) <= 4 and ext != "101" else c.get("sip_user")) or "").strip()
         if line:
             params["sip"] = line                   # the customer's leg goes out from the line that can call Yemen
         if c.get("predicted"):
