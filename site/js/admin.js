@@ -311,7 +311,7 @@
         ((d.phone || {}).sip_uri ? '<div class="sub" style="margin:6px 0">وانسخ هذا في تحويلة Zadarma (External server): <b dir="ltr" style="user-select:all">' + esc(d.phone.sip_uri) + '</b></div>' : '') +
         '<label class="chk"><input type="checkbox" id="phOn"' + ((d.phone || {}).enabled !== false ? ' checked' : '') + '><span>تشغيل المكالمات</span></label><button class="btn g full" id="svPh">حفظ</button></div>' +
         '<div class="box"><h3>اتصال تجريبي</h3><div class="sub">اكتب اسم العميل ورقمه، والمستشار يتصل عليه الحين.</div>' +
-        f('pc_name', 'اسم العميل (يقول له: أستاذ ...)', '', 'text') + f('pc_phone', 'رقم الجوال (يمني أو سعودي)', '', 'text') +
+        f('pc_name', 'اسم العميل (يقول له: أستاذ ...)', '', 'text') + f('pc_phone', 'رقم الجوال اليمني', '', 'text') +
         '<label class="fld"><span>الخبر</span><select class="inp" id="pc_kind"><option value="normal">نزول عادي</option><option value="strong">نزول قوي</option></select></label>' +
         '<button class="btn g full" id="pcGo">اتصل الحين</button><div id="pcR" style="margin-top:12px;font-size:14px;line-height:1.9"></div></div></div>' +
         '<div class="g2"><div class="box"><h3>روابط التواصل</h3>' + f('l_tiktok', 'تيك توك', L.tiktok, 'text') + f('l_instagram', 'إنستغرام', L.instagram, 'text') + f('l_facebook', 'فيسبوك', L.facebook, 'text') + f('l_whatsapp', 'رقم واتساب (مع رمز الدولة)', L.whatsapp, 'text') + '<button class="btn g full" id="svL">حفظ الروابط</button></div>' +

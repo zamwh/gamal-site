@@ -245,7 +245,9 @@ class Phone:
         if not key:
             return {"ok": False, "why": "مفتاح OpenAI غير موجود"}
         if not name or not dest:
-            return {"ok": False, "why": "اكتب اسم العميل ورقم جوال صحيح (يمني أو سعودي)"}
+            return {"ok": False, "why": "اكتب اسم العميل ورقم جوال يمني صحيح"}
+        if not dest.startswith("+967"):            # Zadarma's line to other countries answered with recordings (27 Nov)
+            return {"ok": False, "why": "المكالمات لأرقام اليمن بس (طريق Zadarma لباقي الدول يرد بتسجيلات ويحسب دقائق)"}
         today = dt.date.today().isoformat()
         n = self.store.one("SELECT COUNT(*) n FROM phone_calls WHERE day=?", (today,))["n"]
         if n >= int(c["per_day"]):
