@@ -320,6 +320,17 @@ class Server:
                 host = self.headers.get("Host", "")
                 if origin and urllib.parse.urlparse(origin).netloc != host:
                     return self._send(403, {"error": "forbidden"})
+                if path == "/api/phone/webhook":      # OpenAI: a call reached the shop's project (signed, raw body)
+                    ph = getattr(server.app, "phone", None)
+                    raw = self.rfile.read(n)
+                    if not ph:
+                        return self._send(404, {"error": "not found"})
+                    try:
+                        code, out = ph.webhook(raw, {k.lower(): v for k, v in self.headers.items()})
+                    except Exception:
+                        import traceback; traceback.print_exc()
+                        code, out = 500, {"error": "server error"}
+                    return self._send(code, out)
                 try:
                     data = json.loads(self.rfile.read(n).decode() or "{}")
                     if not isinstance(data, dict):

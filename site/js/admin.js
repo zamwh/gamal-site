@@ -304,6 +304,11 @@
         '<label class="chk"><input type="checkbox" id="aiOn"' + (d.ai.enabled ? ' checked' : '') + '><span>تشغيل المساعد في الموقع</span></label><button class="btn g full" id="svA">حفظ</button><button class="btn full" id="tsA" style="margin-top:10px">اختبار المساعد</button><div id="tsR" style="margin-top:12px;font-size:14px;line-height:1.9"></div></div></div>' +
         '<div class="g2"><div class="box"><h3>مكالمات العملاء المميزين</h3><div class="sub">المستشار الآلي يتصل على العميل من خط Zadarma ويقفل المكالمة قبل الدقيقتين. البيانات تُحفظ في السيرفر فقط.</div>' +
         f('ph_user', 'رقم الدخول في Zadarma (Login)', (d.phone || {}).sip_user, 'text') + f('ph_pass', 'كلمة السر (Password)', (d.phone || {}).sip_pass, 'text') + f('ph_caller', 'الرقم اللي يظهر للعميل', (d.phone || {}).caller, 'text') +
+        '<div class="sub" style="margin-top:14px">الطريقة الثانية: Zadarma يتصل على العميل ويحوّل المكالمة للمستشار' + ((d.phone || {}).mode === 'callback' ? ' <span class="mes">شغّالة</span>' : '') + '</div>' +
+        f('ph_zk', 'Zadarma: Key', (d.phone || {}).zd_key, 'text') + f('ph_zs', 'Zadarma: Secret', (d.phone || {}).zd_secret, 'text') + f('ph_ext', 'رقم التحويلة في السنترال (مثل 100)', (d.phone || {}).pbx_ext, 'text') +
+        f('ph_proj', 'رقم مشروع OpenAI (يبدأ بـ proj_)', (d.phone || {}).proj_id, 'text') + f('ph_wh', 'سر الويب هوك من OpenAI (يبدأ بـ whsec_)', (d.phone || {}).wh_secret, 'text') +
+        '<div class="sub" style="margin:6px 0">انسخ هذا في OpenAI (Webhooks): <b dir="ltr" style="user-select:all">' + esc(location.origin + '/api/phone/webhook') + '</b></div>' +
+        ((d.phone || {}).sip_uri ? '<div class="sub" style="margin:6px 0">وانسخ هذا في تحويلة Zadarma (External server): <b dir="ltr" style="user-select:all">' + esc(d.phone.sip_uri) + '</b></div>' : '') +
         '<label class="chk"><input type="checkbox" id="phOn"' + ((d.phone || {}).enabled !== false ? ' checked' : '') + '><span>تشغيل المكالمات</span></label><button class="btn g full" id="svPh">حفظ</button></div>' +
         '<div class="box"><h3>اتصال تجريبي</h3><div class="sub">اكتب اسم العميل ورقمه، والمستشار يتصل عليه الحين.</div>' +
         f('pc_name', 'اسم العميل (يقول له: أستاذ ...)', '', 'text') + f('pc_phone', 'رقم الجوال (يمني أو سعودي)', '', 'text') +
@@ -341,7 +346,7 @@
         }).catch(function (e) { $('#tsR').textContent = e.error || 'تعذر الاختبار' }).then(function () { b.disabled = false; b.textContent = 'اختبار المساعد' });
       };
       $('#svA').onclick = function () { api('/api/admin/settings', { ai: { api_key: $('#f_api_key').value, model: $('#f_model').value, model_strong: $('#f_model_strong').value, daily_cap_usd: parseFloat($('#f_daily_cap_usd').value), monthly_cap_usd: parseFloat($('#f_monthly_cap_usd').value), enabled: $('#aiOn').checked } }).then(function () { toast('تم الحفظ'); load() }).catch(function (e) { toast(e.error || 'خطأ') }) };
-      $('#svPh').onclick = function () { api('/api/admin/settings', { phone: { sip_user: $('#f_ph_user').value.trim(), sip_pass: $('#f_ph_pass').value.trim(), caller: $('#f_ph_caller').value.trim(), enabled: $('#phOn').checked } }).then(function () { toast('تم الحفظ'); settings(mp) }).catch(function (e) { toast(e.error || 'خطأ') }) };
+      $('#svPh').onclick = function () { api('/api/admin/settings', { phone: { sip_user: $('#f_ph_user').value.trim(), sip_pass: $('#f_ph_pass').value.trim(), caller: $('#f_ph_caller').value.trim(), zd_key: $('#f_ph_zk').value.trim(), zd_secret: $('#f_ph_zs').value.trim(), pbx_ext: $('#f_ph_ext').value.trim(), proj_id: $('#f_ph_proj').value.trim(), wh_secret: $('#f_ph_wh').value.trim(), enabled: $('#phOn').checked } }).then(function () { toast('تم الحفظ'); settings(mp) }).catch(function (e) { toast(e.error || 'خطأ') }) };
       var ST = { dialing: 'يتصل…', ringing: 'يرن…', answered: 'رد، المكالمة شغالة', done: 'انتهت', no_answer: 'ما رد', failed: 'ما اتصلت' };
       function phList() {
         api('/api/admin/phone_calls').then(function (r) {

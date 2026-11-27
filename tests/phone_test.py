@@ -9,7 +9,7 @@ import phone, server, admin
 res = []
 def check(n, ok, i=''): res.append(bool(ok)); print(('PASS ' if ok else 'FAIL ') + n, '' if ok else i)
 
-SEEN = {"create": [], "hangup": [], "client": []}
+SEEN = {"create": [], "hangup": [], "client": [], "zd": [], "accept": [], "reject": []}
 MODE = {"answer": True, "status": 200, "err": None}
 
 def frame(text):
@@ -27,11 +27,18 @@ class Fake(BaseHTTPRequestHandler):
         raw = self.rfile.read(int(self.headers.get("Content-Length") or 0))
         if self.path.endswith("/hangup"):
             SEEN["hangup"].append(time.time()); return self._out(200, {})
+        if self.path.endswith("/accept"):
+            SEEN["accept"].append(json.loads(raw or b"{}")); return self._out(200, {})
+        if self.path.endswith("/reject"):
+            SEEN["reject"].append(json.loads(raw or b"{}")); return self._out(200, {})
         SEEN["create"].append({"auth": self.headers.get("Authorization"), "body": json.loads(raw or b"{}")})
         if MODE["status"] != 200:
             return self._out(MODE["status"], MODE["err"] or {"error": {"message": "x"}})
         return self._out(200, {"session": {"id": "live_%d" % len(SEEN["create"])}, "transport": {"type": "sip"}})
-    def do_GET(self):                                   # the sideband: a websocket
+    def do_GET(self):                                   # the sideband: a websocket (or Zadarma's API)
+        if self.path.startswith("/v1/request/callback/"):
+            SEEN["zd"].append({"path": self.path, "auth": self.headers.get("Authorization")})
+            return self._out(200, {"status": "success", "from": 100, "to": 967777123456, "time": int(time.time())})
         key = self.headers.get("Sec-WebSocket-Key", "")
         acc = base64.b64encode(hashlib.sha1((key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11").encode()).digest()).decode()
         self.send_response(101); self.send_header("Upgrade", "websocket"); self.send_header("Connection", "Upgrade")
@@ -69,6 +76,7 @@ threading.Thread(target=fake.serve_forever, daemon=True).start()
 base = "127.0.0.1:%d" % fake.server_address[1]
 phone.LIVE_URL = "http://%s/v1/live/sessions" % base
 phone.WS_BASE = "ws://%s/v1/live/sessions" % base
+phone.ZD_API = "http://%s" % base
 
 def wait(fn, s):
     end = time.time() + s
@@ -144,6 +152,38 @@ try:
     check('15 the password is never in the list', "SecretPass9" not in json.dumps(lst, ensure_ascii=False))
     r = ph.call("", "abc", "normal")
     check('16 a missing name or a wrong number: refused', not r["ok"])
+
+    # ---- the second way: Zadarma rings the customer, OpenAI's webhook hands the call to the advisor
+    import hmac as _h, hashlib as _hl
+    sec = "whsec_" + base64.b64encode(b"0123456789abcdef0123456789abcdef").decode()
+    app.store.set_setting("phone", dict(app.store.setting("phone"), per_day=50, cb_wrap_s=1.2, cb_max_s=2.5))
+    admin.post(app, owner, "/api/admin/settings", {"phone": {"zd_key": "zdkey123", "zd_secret": "zdsecret456", "pbx_ext": "100",
+                                                             "proj_id": "proj_abc", "wh_secret": sec}})
+    sv = admin.get(app, owner, "/api/admin/settings", {})["phone"]
+    check('17 callback settings: secrets masked, the SIP address to paste in Zadarma', sv["mode"] == "callback" and sv["zd_secret"] == "••••t456"
+          and "whsec" not in sv["wh_secret"] and sv["sip_uri"] == "sip:proj_abc@sip.api.openai.com;transport=tls", sv)
+    nc = len(SEEN["create"])
+    r = ph.call("خالد", "777123456", "normal")
+    z = SEEN["zd"][-1] if SEEN["zd"] else {}
+    check('18 Zadarma is asked to ring: from the PBX extension to the customer, signed with the key (OpenAI not dialing)',
+          r.get("ok") and "from=100" in z.get("path", "") and "to=967777123456" in z.get("path", "") and z.get("auth", "").startswith("zdkey123:")
+          and len(SEEN["create"]) == nc, (r, z))
+    def hook(body, good=True):
+        raw = json.dumps(body).encode(); wid, ts = "msg_1", str(int(time.time()))
+        key = base64.b64decode(sec.split("_", 1)[1]) if good else b"wrong"
+        sig = base64.b64encode(_h.new(key, ("%s.%s." % (wid, ts)).encode() + raw, _hl.sha256).digest()).decode()
+        return ph.webhook(raw, {"webhook-id": wid, "webhook-timestamp": ts, "webhook-signature": "v1," + sig})
+    code, _ = hook({"type": "live.transport.incoming", "data": {"type": "sip", "session_id": "live_cb1"}}, good=False)
+    check('19 a notice without OpenAI\'s signature is refused', code == 401 and not SEEN["accept"])
+    code, _ = hook({"type": "live.transport.incoming", "data": {"type": "sip", "session_id": "live_cb1"}})
+    acc = SEEN["accept"][-1] if SEEN["accept"] else {}
+    check('20 OpenAI\'s notice: the advisor takes the call with the customer\'s script and waits for his voice first',
+          code == 200 and acc.get("session", {}).get("type") == "live" and "أستاذ خالد" in acc.get("session", {}).get("instructions", "")
+          and "اسكت تماماً وانتظر" in acc["session"]["instructions"], acc)
+    ok = wait(lambda: app.store.one("SELECT status FROM phone_calls WHERE id=?", (r["id"],))["status"] == "done", 8)
+    check('21 the call is followed and closed on time like the first way', ok and len(SEEN["hangup"]) >= 2)
+    code, _ = hook({"type": "live.transport.incoming", "data": {"type": "sip", "session_id": "live_stranger"}})
+    check('22 a call nobody asked for is refused (busy)', SEEN["reject"] and SEEN["reject"][-1].get("status_code") == 486)
 finally:
     time.sleep(0.5)
     shutil.rmtree(tmp, ignore_errors=True)
