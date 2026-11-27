@@ -65,7 +65,7 @@ try:
     ins = sent.get("instructions", "")
     check('6  instructions: one shop, no branches, prices only from the backend, making internal, gold knowledge, greeting',
           "بجوار البوابة الرئيسية لمركز جرعان" in ins and "ذكر فروع" in ins and "اطلب من الخلفية" in ins and "المصنعية داخلية" in ins
-          and "عيار 21 يعني" in ins and "للزينة، ولا للادخار" in ins and "للذهب والمجوهرات" in ins)
+          and "عيار 21 يعني" in ins and "كيف أقدر أخدمك اليوم" in ins and "للذهب والمجوهرات" in ins)
 
     # the shop's own assistant answers the delegated request
     calls = []
