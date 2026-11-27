@@ -135,7 +135,8 @@ class Server:
                 "pieces": [dict(self.app.agent._public(p, p["price"]), gallery=self.gallery(p))
                            for p in s.list_pieces(status="available") if core.online_ok(s, p, bid)],
                 "policy": {"deposit": s.policy_text("deposit"), "full": s.policy_text("full")},
-                "ai": bool(ai.get("enabled") and ai.get("api_key"))}
+                "ai": bool(ai.get("enabled") and ai.get("api_key")),
+                "hero": ["/media/" + n for n in (s.setting("hero", []) or []) if n][:3]}
 
     def gallery(self, p):
         """A piece's photos for the swipe strip inside its card: the card photo first, then the close-up and the original."""

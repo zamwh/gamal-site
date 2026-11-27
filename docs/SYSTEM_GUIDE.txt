@@ -1,0 +1,588 @@
+=====================================================================
+GAMAL ALMSHRQI GOLD & JEWELRY — FULL SYSTEM GUIDE
+For continuing the work with another AI assistant (ChatGPT / Codex)
+Owner of the project: Nashwan Ahmed
+Last updated: 2026-11-28 (code commit c7f7480 and later)
+=====================================================================
+
+HOW TO USE THIS FILE
+- Paste this whole file into the first message of a new ChatGPT/Codex chat,
+  then say what you want. It holds everything needed to keep the system
+  running and to make small fixes ("ترقيع") safely.
+- Section 1 is the rulebook for the assistant. Read it first.
+- Section 13 is the emergency playbook (site down, bad update, bills).
+
+---------------------------------------------------------------------
+TABLE OF CONTENTS
+ 1. Rules for the assistant (must follow)
+ 2. What the system is
+ 3. Where everything lives
+ 4. How an update reaches the live site
+ 5. Code map (every file)
+ 6. Settings stored in the database
+ 7. Website and API routes
+ 8. Telegram bot (staff only) — every button and command
+ 9. The customer sales agent (text)
+10. Voice on the website
+11. Phone calls to premium customers (Zadarma + OpenAI)
+12. Costs and spending caps
+13. Emergency playbook
+14. How to make a safe change (step by step)
+15. Tests
+16. Shop policy and wording rules (the agent must obey)
+17. Open items / what is not built yet
+18. History of key decisions and lessons learned
+---------------------------------------------------------------------
+
+
+=====================================================================
+1. RULES FOR THE ASSISTANT (MUST FOLLOW)
+=====================================================================
+Talking to Nashwan
+- Reply in Arabic only, short, plain, no jargon, minimal English letters.
+  He reads English well but prefers Arabic replies.
+- When giving steps, list them briefly. No long explanations.
+- Anything he must paste somewhere (a command, a prompt) goes in ONE
+  complete copy-paste block. Never "add this line to the previous one".
+- Get his approval before building a new feature. When he says «ابدأ»
+  or "yes", start at once.
+- Prototype first, improve step by step. Speed matters.
+- Do not suggest switching tools, providers or services unless he asks.
+- He worries about money. Never ask him to pay for something on a guess.
+  Verify from official docs/statistics first, then tell him the cost.
+- Work reports and deliverables in English. Credit only "Nashwan Ahmed"
+  (no title, no phone number).
+
+Security (never break these)
+- The GitHub repo zamwh/gamal-site is PUBLIC. Never commit keys,
+  tokens, passwords, SIP credentials, phone-provider secrets.
+  All keys are typed by the owner in the admin settings page and live
+  only in the server database.
+- The OpenAI key lives on the server. The browser never gets a key.
+- Keep the rate limits and spending caps. Nobody may drain the balance.
+- Do not overwrite or delete production data (data/*.db). Back up first.
+- The Lightsail server also runs OTHER services that must not be touched:
+  the Telegram work bot (@ZamWHBot), Sentinel IT, the warehouse program,
+  and AuraTech on port 8790. Only touch the gamal service/folder.
+- Do not try default/guessed logins on the live admin.
+
+Wording rules for anything a customer sees: see section 16.
+
+
+=====================================================================
+2. WHAT THE SYSTEM IS
+=====================================================================
+A complete system for a gold shop in Ibb, Yemen:
+  "جمال المشرقي للذهب والمجوهرات"
+  Address shown to customers: «بجوار البوابة الرئيسية لمركز جرعان، إب»
+  The owner is Nashwan's brother-in-law. Internally there are 3 shops
+  (branches), but customers only ever see ONE shop (the "البوابة" one).
+
+Parts:
+ a) Website (customer storefront): pieces with photos, today's gold price,
+    gold value calculator, piece pages /p/CODE, buy/reserve flow,
+    an AI sales advisor (text chat) and a voice advisor.
+ b) Admin dashboard at /admin: prices, pieces, photos, AI settings,
+    voice, phone calls, Telegram, POS linking, analytics, chats.
+ c) Telegram bot @AlmshrqiGoldBot — STAFF ONLY: sale/reservation
+    notices, piece photos from the phone, reports, internal agent,
+    the shop channel, and (new) full control «⚙️ التحكم».
+ d) Telegram channel of the shop: every new piece is posted with its
+    photos; sold pieces become «تم البيع» with a «أبغى مثلها» button.
+ e) POS desktop program (Windows, Python + pywebview) for the shop
+    counter: cashier F1–F8, stock, suppliers, customers, shifts,
+    reports, invoices A4/A5. Works offline and syncs to the server.
+ f) Phone calls: the AI advisor (female voice) calls premium customers
+    when gold drops, in Gulf dialect, under 2 minutes.
+ g) WhatsApp agent: NOT linked yet (see section 17).
+
+Tech: Python standard library only on the server (no frameworks),
+SQLite databases, plain HTML/CSS/JS front end, OpenAI APIs.
+
+
+=====================================================================
+3. WHERE EVERYTHING LIVES
+=====================================================================
+Code
+- GitHub: https://github.com/zamwh/gamal-site  (public)
+- Commit identity used so far:
+    git -c user.name="zamwh" -c user.email="zamwh@users.noreply.github.com" commit ...
+
+Live server (AWS Lightsail, Ubuntu)
+- Folder: /home/ubuntu/gamal-preview  (a git checkout of the repo)
+- It pulls from GitHub about every minute and restarts the site.
+  (The exact pull mechanism is a cron job or systemd timer on the server,
+   not inside the repo. Check with:  crontab -l   and
+   systemctl list-units --all | grep -i gamal )
+- The site runs as:  python3 server.py --mode ... --port ... --data ...
+  Older install notes (نشر_الموقع.txt) used service "gamal-site" on
+  port 8095 bound to 127.0.0.1. Confirm the live port with:
+    sudo ss -ltnp | grep python
+- Data folder: the --data path (on the server, inside the gamal folder:
+  data/). Holds demo.db or live.db, analytics-*.db, backups/, tts cache.
+  data/ is in .gitignore — it is never in GitHub.
+- Public address: a temporary Cloudflare tunnel:
+    https://ours-dave-grew-servers.trycloudflare.com
+  Admin: same address + /admin
+  WARNING: trycloudflare addresses CHANGE if the tunnel restarts. Then
+  the site link, the OpenAI webhook URL and the Telegram links break.
+  A stable domain is still pending (section 17).
+  To read the current tunnel address on the server:
+    grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' ~/tunnel.log | tail -1
+
+Laptop (Windows, Huawei D16)
+- POS program folder: C:\Users\nshwa\Desktop\GamalAlmshrqi_POS\GamalAlmshrqi
+  Run with run.bat. Data in %LOCALAPPDATA%\GamalAlmshrqi (demo.db/live.db,
+  daily backups folder).
+- Handoff notes: C:\ArvioStudio\handoff.md (cumulative, never delete).
+- Updates to the laptop were delivered as folders of changed files
+  (pos_update1 … pos_update20). The newest batch pos_update20 may not be
+  copied yet.
+
+Accounts (owner enters secrets in /admin only)
+- OpenAI: API key in Admin > Settings > AI. Project id (proj_...) and
+  webhook secret (whsec_...) in the phone settings box.
+- Zadarma (phone line): API key/secret in the phone settings box.
+  Canada virtual number +1 437 800 5342 ($4/month) connected so the PBX
+  can make outgoing calls; Yemeni customers see a local number.
+- Telegram: bot token in Admin > Settings > Telegram bot.
+
+
+=====================================================================
+4. HOW AN UPDATE REACHES THE LIVE SITE
+=====================================================================
+1. Change code locally, run the tests (section 15).
+2. Commit and push to GitHub main.
+3. Within about a minute the server pulls and restarts.
+4. Check: open the site, open /admin, press «🩺 حالة النظام» in Telegram.
+   The status shows the running commit ("النسخة").
+Static files (site/js/*.js) are cached by browsers: when you change one,
+bump its ?v= number in site/index.html or site/admin.html.
+
+Undo a bad update (safe way):
+   git revert <bad_commit>   then push. The server pulls the revert.
+Never force-push over main.
+
+
+=====================================================================
+5. CODE MAP (EVERY FILE)
+=====================================================================
+server.py        Starts everything on the server: Store, analytics, sales
+                 agent, staff agent, voice, phone, web server, Telegram bot,
+                 photo-trait tagger thread, daily backup loop.
+app.py           Desktop POS entry (pywebview window + local website).
+core.py          The shop database and business logic (pieces, prices,
+                 sales, invoices, reservations, users/roles, settings,
+                 backups, storefront filter: only the one public shop).
+                 demo.db and live.db are separate files.
+web.py           HTTP server: website, piece pages, /api/*, security
+                 headers + CSP, per-IP rate limits, body-size limits.
+admin.py         /api/admin/* for the dashboard (login by shop users,
+                 HttpOnly cookie).
+agent.py         The customer sales agent (text). Tools read the live
+                 catalog; numbers never come from the model's head.
+sales_rules.py   Fixed rules outside the model: message router, ready
+                 answers for common questions, per-reply instruction,
+                 reply checker (blocks invented numbers, banned words,
+                 false scarcity, forbidden promises, "فرع", etc.).
+shopstate.py     Shopping-session state kept by the backend.
+taste.py         Anonymous taste profile and taste-aware ranking.
+staff_agent.py   Internal agent for staff (read-only tools: sales, stock,
+                 demand, website, AI cost).
+staff_menu.py    Telegram report buttons (no AI, straight from the DB).
+control.py       NEW: Telegram «⚙️ التحكم» — status, switches, gold price,
+                 premium customers, calls to them, backup, restart.
+telegram_bot.py  The staff bot (long polling, stdlib only).
+tg_channel.py    The shop's Telegram channel posting/sold/likes.
+voice.py         Website voice advisor: live mode (GPT-Live WebRTC) and
+                 «رد ورد» turn mode (speech-to-text -> agent -> TTS).
+speak_ar.py      Makes text speakable in Arabic (numbers in words, no
+                 links/emoji, trims long answers).
+phone.py         Phone calls to premium customers (Zadarma callback +
+                 OpenAI GPT-Live over SIP, webhook, sideband control).
+analytics.py     Website + AI analytics in its own DB (no personal data).
+ops.py           Customers, suppliers, shifts, stocktake, notifications.
+pos_sync.py      Server side of POS <-> server sync.
+sync_client.py   POS side of the sync.
+media.py         Photo processing (orient, resize, watermark).
+site/            Website + admin front end (index.html, admin.html,
+                 js/site.js, js/admin.js, js/i18n.js, css, fonts, img).
+ui/              POS desktop UI.
+skills/          Approved knowledge files the agent may use.
+assets/          Logo, icon, velvet reference photo.
+installer/, .github/workflows/build-pos.yml
+                 Windows installer build (run by hand on GitHub Actions).
+docs/voice.md    Voice notes.  CHANGELOG_AI.md  AI changelog.
+tests/           All tests (section 15).
+
+
+=====================================================================
+6. SETTINGS STORED IN THE DATABASE (table settings, JSON values)
+=====================================================================
+ai         enabled, api_key, model (gpt-6-luna), model_strong,
+           daily_cap_usd (4.5), monthly_cap_usd (133), history_msgs,
+           session_msg_limit (40) ...
+voice      public (mic for customers), test_mode, voice (default t:echo),
+           per_customer_usd 0.10, buyer_usd 0.25, daily_usd 1.5,
+           stt_model gpt-4o-mini-transcribe, tts_model gpt-4o-mini-tts,
+           tts_max_chars 320, turn_max_s 25 ...
+phone      enabled, voice (coral = female), model gpt-live-1,
+           wrap_s 90 / max_s 118 (direct), cb_wrap_s 105 / cb_max_s 135
+           (callback), ring_s 45, per_day 25, zd_key, zd_secret,
+           pbx_ext "100", wh_secret, proj_id, predicted False ...
+telegram   token, enabled, staff {telegram_id: name}, link_code,
+           muted [...], invites {...}, channel {...}
+vip        NEW: premium customers [{name, phone(+967...)}]
+hero       NEW: up to 3 hero photo file names for the site's top slider
+showcase   new_days (14): how long a new piece stays in «وصل حديثاً»
+storefront {"only": true} -> customers see only the one public shop
+public_url last real public address
+last_backup_date
+Never print or commit the secret values.
+
+
+=====================================================================
+7. WEBSITE AND API ROUTES
+=====================================================================
+Public
+  /                     storefront          /p/CODE   piece page (QR target)
+  /admin                dashboard           /scene    design prototype
+  GET  /api/site        site data           GET /api/avail  live stock
+  POST /api/chat        text sales agent    POST /api/terms /api/request
+  POST /api/ev          analytics event
+  GET  /api/voice/status; POST /api/voice/open|turn|delegate|beat|close
+  POST /api/pos/sync    POS branch sync (branch key)
+  POST /api/phone/webhook  OpenAI call notices (signed, Standard Webhooks)
+Admin (/api/admin/...)
+  login, logout, me, settings (GET/POST), stock, piece_photos, photo,
+  piece_add, piece_status, sell, confirm, close, prices, branches,
+  pos_keys, analytics, path, requests, chats, trace, demand,
+  demand_resolve, agent, ai_test, handoff_done,
+  phone_calls (GET log), phone_call (POST, owner: place a test call).
+
+
+=====================================================================
+8. TELEGRAM BOT (STAFF ONLY) — EVERY BUTTON AND COMMAND
+=====================================================================
+Linking an official: in /admin > Settings > Telegram the owner sees a
+code; he sends /admin CODE to the bot. More officials: «👥 المسؤولين» >
+«➕ إضافة مسؤول» gives a one-time invite link (24 h).
+Customers who write to the bot get a short note pointing to the channel
+and WhatsApp (no AI).
+
+Keyboard under the chat (sections):
+ 📊 التقارير       today / yesterday / 7 days / month sales, stock,
+                   last invoices, website visitors, gold price, agent QA
+ 🔔 التنبيهات      last notices, restock alert, open reservations,
+                   mute/unmute notices for me
+ 💎 القطع والصور   pieces without photos, missing velvet/macro, latest
+ 📢 قناة المحل     channel status, re-post existing pieces, auto-post on/off
+ ❤️ اهتمامات العملاء  "want one like it", channel reactions, views,
+                   interest by type, unmet requests, searched-not-found
+ 👥 المسؤولين      add official (invite link), list, remove
+ ⚙️ التحكم  (NEW, full control)
+   🩺 حالة النظام     running version, uptime, public link, switches,
+                      21K price + last update, premium count, spending
+                      today/month (agent, voice, calls), last backup
+   🤖 وكيل الزبائن    on/off of the customer AI agent (key kept)
+   🎙️ الصوت للزبائن  on/off of the website microphone for customers
+   📞 المكالمات      on/off of phone calls
+   💰 تحديث سعر الذهب shows the current price, then asks in TWO messages:
+                      first the BUYING price, then the SELLING price
+                      (Arabic or English digits, commas OK). Selling below
+                      buying is refused. 15-minute timeout; «إلغاء» cancels;
+                      pressing any other button cancels too.
+   🖼️ صور الواجهة     the 3 rotating hero photos at the top of the site:
+                      press «الصورة 1/2/3», then send the photo. Stored in
+                      setting "hero" (file names in the media folder; no
+                      watermark). «رجّعها كلها تلقائي» = back to the pieces'
+                      own photos (featured pieces first). Empty slots are
+                      filled from piece photos.
+   ⭐ العملاء المميزين the premium list
+   📣 اتصل بالمميزين  "normal drop" = first 10, "strong drop" = first 20;
+                      asks to confirm; calls ONE AT A TIME (required: the
+                      webhook matches the latest dialing call); a card
+                      after each call; a summary at the end; stop button
+   💾 نسخة احتياطية   makes a full DB backup and SENDS the file to the chat
+   🔄 إعادة تشغيل     asks to confirm, then the server re-executes itself
+                      in place (comes back in seconds; data untouched)
+   📘 الأوامر         the command list below
+Commands (type in the chat):
+   /price 52000 51000         quick way: 21K SELL then BUY in one line
+                              (other karats and the pound are derived)
+   /vip                       list premium customers
+   /vip add محمد علي 771234567 add (Yemeni numbers only)
+   /vip del 771234567         remove
+   /call الاسم 771234567       one call (normal drop)
+   /call الاسم 771234567 قوي   one call (strong drop)
+   /status                    system status
+   /start or /menu            show the keyboard
+   /photos                    pieces without photos
+   /channel, /post CODE       channel link/status, post one piece
+   /customer, /staff          test the advisor as a customer / back
+   Any other text             goes to the internal (read-only) agent
+Phone call card: after each call a short card arrives; tapping
+«التفاصيل» (callback pc:<id>) sends the full transcript.
+
+
+=====================================================================
+9. THE CUSTOMER SALES AGENT (TEXT)
+=====================================================================
+- Model: gpt-6-luna for all replies (owner's decision). A stronger model
+  exists in settings but is not used by default.
+- Every number (price, weight, stock) comes from a tool reading the DB.
+- sales_rules.route() classifies each message; common questions get ready
+  answers with no AI cost (greeting, location, hours, gold price, karat,
+  returns, exchange, repair, selling gold to the shop, price locking,
+  deposit, installments, discount, complaint, human request, "are you a
+  bot", forecasts, competitor, account number, prompt-injection...).
+- check_reply() blocks: numbers without a source, false scarcity,
+  "your taste" unless the customer said it, internal words, banned words,
+  female relatives, the word «فرع/فروع», forbidden promises, karat other
+  than 21, repeats, more than one question, invented stock stories.
+  It rewrites once, then falls back to a safe reply.
+- Hands over to the sales team after 2 misunderstandings, the same
+  question 3 times, 16 messages, or a ready bride-set buyer.
+- «وصل حديثاً»: EVERY newly added piece (any category, including clean
+  used pieces) shows there for 14 days (setting showcase.new_days), and
+  is always in its own type section from day one. After 14 days it simply
+  leaves «وصل حديثاً». Pieces synced from the POS keep these 14 days even
+  if the POS sent no date (pos_sync keep_new). The owner can still change
+  a piece's days from the admin/POS (set_showcase).
+- Deposit button «احجزها بعربون 10%» exists on the site; the agent never
+  offers it first; if asked: from the piece page, holds 24 h only, does
+  not fix the price.
+- Making charge (المصنعية) is internal and never shown or mentioned.
+- 25 "tough customer" scenarios ×5 runs passed 25/25 (tests/tough25.py).
+
+
+=====================================================================
+10. VOICE ON THE WEBSITE
+=====================================================================
+Two modes, picked in the voice menu:
+ a) «رد ورد» (turn by turn, cheapest, default): the phone records one
+    sentence (local silence detection), sends it to /api/voice/turn;
+    server: speech-to-text (gpt-4o-mini-transcribe) -> the same sales
+    agent -> speakable() -> TTS (gpt-4o-mini-tts) -> mp3 cached in
+    data/tts/<voice> (newest 800 kept) -> played (iPhone volume boost).
+    Voices: t:echo «سالم», t:ballad «فارس», t:coral «ريم».
+    It cannot laugh or change tone much: it reads text.
+    Note: gpt-4o-mini-tts retires 6 Jan 2027 -> switch before then.
+ b) Live (GPT-Live, WebRTC): real speech-to-speech like ChatGPT voice,
+    more natural, about 3× the cost ($0.05/min).
+Greetings: several variants chosen at random; female wording for female
+voices («مستشارتك»).
+ElevenLabs was tried and REMOVED completely. Do not bring it back.
+
+
+=====================================================================
+11. PHONE CALLS TO PREMIUM CUSTOMERS
+=====================================================================
+Goal: when gold drops, the AI advisor calls premium customers.
+Owner's plan: 40 premium customers; normal drop -> call 10, strong
+drop -> call 20; each call under 2 minutes.
+
+How it works now ("callback" mode, the one that works):
+ 1. Server calls Zadarma API GET /v1/request/callback/ with
+    from = PBX extension 100, to = the customer number WITH "+",
+    sip = 101. (Signature: base64(hmac_sha1_hex(secret,
+    method + query + md5(query))); header Authorization: key:sig.)
+ 2. Zadarma PBX extension 100 is forwarded "Always active" to the
+    external SIP server  sip:proj_XXXX@sip.api.openai.com;transport=tls
+ 3. OpenAI sends a webhook to /api/phone/webhook
+    (event live.transport.incoming). The server verifies the signature,
+    matches the latest "dialing" call within 90 s, and accepts with the
+    call instructions (script + voice). Unknown calls are rejected (486).
+ 4. The server attaches to the call's sideband WebSocket
+    (wss://api.openai.com/v1/live/sessions/{id}/attach): tells the
+    advisor to wrap up at 105 s, hangs up at 135 s from pickup,
+    collects the transcript and cost.
+ 5. A Telegram card is sent; tap for the transcript.
+Rules in code:
+ - Yemeni numbers (+967) ONLY. Zadarma's route to Saudi answered with
+   fake recordings and billed minutes.
+ - per_day limit 25; one call at a time for bulk calling.
+ - The webhook needs a stable public URL. If the tunnel address changes,
+   update the webhook URL in the OpenAI project settings.
+Script (phone.py SCRIPT): Gulf dialect only; greets by name and asks how
+he is; «معك المستشارة الآلية لمجوهرات جمال المشرقي»; gold went down;
+offers the newest collections on WhatsApp; no piece prices on the call;
+no discounts, no making charge, no female relatives; closes politely.
+Pronunciation guide with diacritics (المَشْرِقي، جَرْعان، إِبّ ...) and
+natural, situational tone (light laugh, excitement for the news, calm
+if busy) were added 2026-11-27.
+Voice: coral (female), loud and clear. Picker in admin: coral, marin,
+shimmer, echo, ash.
+Recordings: in Zadarma's web account, enable "Call recording -> To the
+cloud" on extensions 100/101. Transcripts are saved by our system anyway.
+Failed approach (do not retry): OpenAI dialing out directly over SIP
+through Zadarma returned 480.
+Later (owner said «بعدين بنرتب»): if the customer agrees on the call,
+send him on WhatsApp the site link + one piece offer (needs WhatsApp).
+
+
+=====================================================================
+12. COSTS AND SPENDING CAPS
+=====================================================================
+- Text agent cap: $4.5/day, $133/month. When reached it answers simply
+  and notifies the owner once a day.
+- Voice: $1.5/day total; $0.10 per customer per day ($0.25 if buying).
+  test_mode = True still (owner testing). Turn off before going public.
+- Phone call: OpenAI $0.05/min + Zadarma $0.144/min (whole minutes)
+  -> about $0.39 max per call. 10 calls ≈ $3.9, 20 calls ≈ $7.8.
+- Zadarma: Canada number $4/month; top-ups of $5 work.
+- WhatsApp (when linked, Meta prices): marketing ~ $0.039/message;
+  service replies charged after 1,000 free a month (~ $0.009–0.010).
+  One campaign a month to 500 buyers ≈ $20.
+Check spending any time: Telegram «⚙️ التحكم» > «🩺 حالة النظام».
+
+
+=====================================================================
+13. EMERGENCY PLAYBOOK
+=====================================================================
+A) Customers abuse the agent / spending jumps
+   Telegram: ⚙️ التحكم > 🤖 وكيل الزبائن > ⛔ وقّفه.
+   Same for 🎙️ الصوت للزبائن and 📞 المكالمات.
+B) The site feels stuck / errors
+   Telegram: ⚙️ التحكم > 🔄 إعادة تشغيل > نعم. Wait 1 minute, then
+   🩺 حالة النظام. If the bot itself does not answer, the server process
+   is down: on the server run
+     sudo systemctl status gamal-site --no-pager   (or the service name
+     found with: systemctl list-units --all | grep -i gamal)
+     sudo systemctl restart <that service>
+C) A code update broke something
+   On GitHub: revert the last commit (git revert <hash>, push). The server
+   pulls it within a minute. Status shows the running version.
+D) Site link stopped working
+   The trycloudflare tunnel changed. On the server:
+     grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' ~/tunnel.log | tail -1
+   If no tunnel is running, start it again (from نشر_الموقع.txt step 3).
+   Then update the webhook URL in OpenAI (phone calls) and share the new
+   link. Permanent fix: a stable domain (section 17).
+E) Gold price is old
+   /price SELL BUY in Telegram. The status shows the last update date.
+F) Need a copy of the data
+   ⚙️ التحكم > 💾 نسخة احتياطية: the DB file arrives in Telegram.
+   Daily automatic backups also go to data/backups on the server.
+G) Restore a backup (only if data is lost): stop the service, copy the
+   backup .db over data/<mode>.db (keep the broken file renamed, never
+   delete), start the service.
+
+
+=====================================================================
+14. HOW TO MAKE A SAFE CHANGE (STEP BY STEP)
+=====================================================================
+1. git clone https://github.com/zamwh/gamal-site && cd gamal-site
+2. Read the file(s) you will change and their test in tests/.
+3. Make the smallest change that fixes the problem.
+4. Run the related test, then the whole suite:
+     for t in tests/*_test.py; do python3 $t | tail -1; done
+5. If a JS file changed, bump its ?v= number in the HTML.
+6. Commit with a clear message; push to main.
+7. Verify on the live site and with 🩺 حالة النظام.
+8. Never put secrets in code. Never edit data/*.db by hand on the server
+   without a backup.
+Running locally:  python3 server.py --mode demo --port 8095 --data ./data
+  then open http://127.0.0.1:8095/ and /admin (demo users are created
+  in the demo DB; change passwords on any real deployment).
+
+
+=====================================================================
+15. TESTS (tests/)
+=====================================================================
+Fast unit/flow tests (no internet), each prints "N/N passed" or
+"SUMMARY N / N":
+ control_test (18) — the new Telegram control section
+ phone_test (22), voice_test (35), voice_turn_test (28),
+ voice_turn_ui_test (17), voice_switch_test (8), voice_ui_test,
+ staff_menu_test (29), channel_test, agent_rules_test, agent_v3_test,
+ sale_v2_test, taste_test, photos_test, swipe_test, storefront_test,
+ branches_test, sync_test, pos_sync_test, link_test, flow_test,
+ making_internal_test, budget_near_test, home_v7_test, ui_test.
+Live evaluations (use the real API, cost money): tough25.py,
+eval_live.py, eval_backend.py, regress_chat1.py, replay_owner_chat.py.
+Results history: tests/RESULTS.md, tests/results/.
+All fast tests passed on 2026-11-28.
+
+
+=====================================================================
+16. SHOP POLICY AND WORDING RULES (THE AGENT MUST OBEY)
+=====================================================================
+- Gold 21K and gold pounds (جنيه) only. Sold by today's gold price and
+  weight.
+- Making charge is internal: never shown, never mentioned.
+- No exchange/trade-in; the shop BUYS gold for cash.
+- No returns, no repairs.
+- Open daily 9 am – 10 pm.
+- One shop name and address to customers:
+  «جمال المشرقي للذهب والمجوهرات بجوار البوابة الرئيسية لمركز جرعان، إب»
+  Never say «فرع» or «فروع». If asked "do you have branches?" do not
+  deny and do not list.
+- Never mention a customer's female relatives.
+- No emoji in AI replies to customers.
+- Yemeni/Gulf dialect only. No Levantine or Egyptian words (no «إيه»،
+  «كده»، «بدك»). Phone calls: Gulf dialect specifically.
+- Banned words: «صالة»، «مغتربين»، «زيارة خاصة».
+- No price locking, no installments, no "pay later", no discount
+  promises. Prices are "today's selling price" with date/time.
+- Sales WhatsApp shown to customers: +967770088801.
+
+
+=====================================================================
+17. OPEN ITEMS / NOT BUILT YET
+=====================================================================
+1. WhatsApp agent (Cloud API). Yemen is not blocked by WhatsApp.
+   The shop can keep its SAME number via Meta "Coexistence" if the
+   number is on the WhatsApp BUSINESS app (version 2.24.17+): onboard
+   through Embedded Signup with the coexistence option; the phone app
+   keeps working; linked companion devices (e.g. WhatsApp Web) get
+   unlinked; excluded countries listed: Nigeria, South Africa (Yemen not
+   listed, but confirm during signup). If the shop uses regular
+   WhatsApp, convert to WhatsApp Business first, or use a new Yemeni SIM.
+   Waiting for the owner's answer: regular or Business WhatsApp?
+   After linking: post-call WhatsApp message (site link + piece offer).
+2. Stable domain (replace trycloudflare) — needed for the webhook,
+   links and the channel.
+3. Admin "control center" page (editable texts, premium list in the web
+   admin, status page) — Telegram control already covers the essentials.
+4. Automatic rollback after a failed update (now: manual git revert).
+5. test_mode for voice must be turned off before going public.
+6. Gold price in the system was last set on 23 Nov (update it).
+7. Gold pounds and bullion as stock items.
+8. Scale question (unanswered): does the cashier type the weight each
+   sale, or press «الوزن مطابق»? Agreed: price by actual weight, never
+   blocks the sale, difference is an internal alert to the owner only.
+9. Windows installer (EXE) after the owner approves the POS.
+10. Laptop: copy update batch pos_update20 into the POS folder.
+11. Real stock: the site has 7 demo pieces; real pieces + velvet photos
+    (made in Google Flow / Nano Banana) are needed.
+12. Site redesign proposal (black base, day mode toggle, today's price
+    card, calculator) was shown; not applied to the live site.
+
+
+=====================================================================
+18. HISTORY OF KEY DECISIONS AND LESSONS LEARNED
+=====================================================================
+- Bot is for staff only; customers go to the channel and WhatsApp.
+- One public shop only; other shops' pieces are hidden from customers.
+- Telegram channel first because official WhatsApp does not allow
+  automated posting to WhatsApp Channels.
+- No appointment booking/visits (market not ready).
+- No staff training/simulation; training targets the AI agent only.
+- ElevenLabs removed; OpenAI only for all voice.
+- Phone: Twilio ($20) rejected as too expensive; Zadarma with $5 top-ups.
+  The owner did not want his Saudi number shown; a Canada virtual number
+  was bought ($4/month, no documents). Yemeni customers see a local
+  number.
+- Zadarma Saudi route gave fake answers/recordings and billed minutes
+  -> calls limited to Yemen; a refund request was drafted.
+- Several Zadarma callback failures were solved by: sip=101 (not the SIP
+  login), "+" in the destination, predicted mode off, and connecting a
+  virtual number to the account (the call audio literally said "Please
+  connect the phone number in your Zadarma personal account").
+- First surprise call to the shop owner succeeded.
+- Lesson: verify causes from provider statistics, support and docs
+  before asking the owner to pay for anything.
+
+Prepared for: Nashwan Ahmed
+=====================================================================

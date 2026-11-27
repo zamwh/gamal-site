@@ -90,4 +90,48 @@ bot.handle("T", msg(222, "/price 1 1"))
 bot.handle("T", cbq(222, "c:tai"))
 check("18 a stranger can't use control", float(s.current_prices()["k21_sell"]) == 61500 and (s.setting("ai") or {}).get("enabled") is False,
       (dict(s.current_prices()), s.setting("ai")))
+
+# the gold price in two messages: buying first, then selling
+bot.handle("T", cbq(111, "c:pr"))
+check("19 price button asks for the buying price first", "سعر الشراء" in last()["text"])
+bot.handle("T", msg(111, "٥٩٥٠٠"))
+check("20 then asks for the selling price", "سعر البيع" in last()["text"] and float(s.current_prices()["k21_sell"]) == 61500)
+bot.handle("T", msg(111, "59000"))
+check("21 selling below buying is refused", "أقل من الشراء" in last()["text"] and float(s.current_prices()["k21_sell"]) == 61500)
+bot.handle("T", msg(111, "62,000"))
+p = s.current_prices()
+check("22 saved: buy 59500, sell 62000", float(p["k21_buy"]) == 59500 and float(p["k21_sell"]) == 62000, dict(p))
+bot.handle("T", cbq(111, "c:pr"))
+bot.handle("T", cbq(111, "r:today"))
+check("23 another button cancels the price entry", 111 not in bot.price_wait)
+# hero photos from Telegram
+import io, urllib.request
+from PIL import Image
+buf = io.BytesIO(); Image.new("RGB", (1600, 900), (120, 90, 30)).save(buf, "JPEG"); raw = buf.getvalue()
+class R:
+    def read(self): return raw
+urllib.request.urlopen = lambda *a, **k: R()
+bot.call = lambda token, method, data=None, timeout=35: calls.append((method, data or {})) or (
+    {"ok": True, "result": {"file_path": "x.jpg"}} if method == "getFile" else {"ok": True, "result": {}})
+bot.handle("T", cbq(111, "c:hero"))
+check("24 hero menu shows three slots", {"c:h1", "c:h2", "c:h3", "c:h0"} <= cbs(last()), last())
+bot.handle("T", cbq(111, "c:h2"))
+bot.handle("T", {"update_id": 3, "message": {"chat": {"id": 111}, "from": {"id": 111}, "photo": [{"file_id": "F"}]}})
+h = s.setting("hero")
+import web
+check("25 the photo is saved in slot 2 and the file exists", h and h[1] and not h[0] and os.path.exists(os.path.join(web.media_dir(s), h[1])), h)
+class FakeSrv: pass
+srv = web.Server.__new__(web.Server); srv.app = app
+app.agent.cfg = app.agent.cfg
+try:
+    pay = srv.site_payload()
+    check("26 the website gets the hero photo", pay["hero"] == ["/media/" + h[1]], pay.get("hero"))
+except Exception as e:
+    check("26 the website gets the hero photo", False, e)
+bot.handle("T", cbq(111, "c:h0"))
+check("27 reset to automatic", not (s.setting("hero") or []))
+# new arrivals: any added piece is new for 14 days, whatever its category
+pc = s.add_piece(owner, "خاتم", 21, 3.1, "gram", 1000, s.q("SELECT id FROM branches LIMIT 1")[0]["id"], category="clean_scrap", cost_per_gram=50000)
+import core as _c, datetime as _dt
+check("28 a clean used piece shows in «وصل حديثاً» for 14 days", _c.showcase_state(pc)["new"] and pc["new_until"] == (_dt.date.today() + _dt.timedelta(days=14)).isoformat(), dict(pc))
 print(f"{sum(res)}/{len(res)} passed")

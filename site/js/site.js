@@ -134,6 +134,9 @@
     var box = $('#g2hIms'); if (!box) return;
     var ph = SITE.pieces.filter(function (p) { return p.photo });
     var list = ph.filter(function (p) { return p.featured }).concat(ph.filter(function (p) { return !p.featured })).slice(0, 3);
+    // the owner's own hero photos (chosen from Telegram) come first; pieces fill the rest
+    var own = (SITE.hero || []).map(function (u) { return { photo: u, title: 'جمال المشرقي للذهب والمجوهرات' } });
+    if (own.length) list = own.concat(list).slice(0, 3);
     box.innerHTML = list.map(function (p) { return '<img src="' + esc(p.photo) + '" alt="' + esc(p.title) + '">' }).join('');
     $('#g2hDots').innerHTML = list.length > 1 ? list.map(function (p, i) { return '<button type="button" data-h="' + i + '" aria-label="الصورة ' + (i + 1) + '"><i></i></button>' }).join('') : '';
     $$('#g2hDots [data-h]').forEach(function (b) { b.onclick = function () { g2Go(+b.dataset.h, true) } });

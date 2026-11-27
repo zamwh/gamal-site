@@ -26,6 +26,8 @@ class Bot(threading.Thread):
         self.status = "stopped"
         self.username = ""
         self.waiting = {}       # staff chat id -> (piece code, photo role) after pressing a photo button
+        self.price_wait = {}    # staff chat id -> {"step": "buy"|"sell", "buy": n} while the gold price is typed in two messages
+        self.hero_wait = {}     # staff chat id -> {"slot": 0..2} after pressing «الصورة N» in «صور الواجهة»
         self._ch_last = 0       # last channel check
         self._pub = {}          # chat -> last time the "staff only" note went out
         self._admin_fail = {}   # user -> wrong /admin codes in the last hour
@@ -267,10 +269,27 @@ class Bot(threading.Thread):
             if text == "c:pr":
                 with app.lock:
                     p = app.store.current_prices()
-                cur = ("الحالي: بيع {:,.0f} · شراء {:,.0f} ({})".format(float(p["k21_sell"]), float(p["k21_buy"]), str(p["created_at"])[:16])
+                cur = ("الحالي: شراء {:,.0f} · بيع {:,.0f} ({})".format(float(p["k21_buy"]), float(p["k21_sell"]), str(p["created_at"])[:16])
                        if p else "ما فيه سعر مسجل.")
-                return self._edit(token, chat, mid, "💰 سعر جرام 21\n" + cur + "\n\nللتحديث اكتب:\n/price سعر_البيع سعر_الشراء\nمثال: /price 52000 51000",
-                                  control._back())
+                self.price_wait[chat] = {"step": "buy", "ts": time.time()}
+                return self._edit(token, chat, mid, "💰 سعر جرام 21\n" + cur + "\n\n1️⃣ اكتب سعر الشراء الحين (رقم بس):",
+                                  control._back([[{"text": "إلغاء", "callback_data": "c:prx"}]]))
+            if text == "c:prx":
+                self.price_wait.pop(chat, None)
+                return self._edit(token, chat, mid, "انلغى تحديث السعر.", control._back())
+            if text == "c:hero":
+                t, k = control.hero_view(app)
+                return self._edit(token, chat, mid, t, k)
+            if text in ("c:h1", "c:h2", "c:h3"):
+                self.hero_wait[chat] = {"slot": int(text[3]) - 1, "ts": time.time()}
+                return self._edit(token, chat, mid, f"🖼️ أرسل الحين الصورة {text[3]} (صورة عريضة وواضحة).",
+                                  control._back([[{"text": "إلغاء", "callback_data": "c:hero"}]]))
+            if text == "c:h0":
+                with app.lock:
+                    app.store.set_setting("hero", [])
+                    app.store.db.commit()
+                t, k = control.hero_view(app)
+                return self._edit(token, chat, mid, "✅ رجعت صور الواجهة تلقائي من صور القطع.\n\n" + t, k)
             if text == "c:vip":
                 with app.lock:
                     t = control.vip_view(app)
@@ -308,6 +327,53 @@ class Bot(threading.Thread):
             print("control:", text, e, flush=True)
             return self._edit(token, chat, mid, f"صار خطأ: {e}", control._back())
         return None
+
+    def _price_step(self, token, chat, text):
+        """The gold price in two messages: first the buying price, then the selling price."""
+        import control
+        w = self.price_wait.get(chat) or {}
+        if time.time() - w.get("ts", 0) > 900:
+            self.price_wait.pop(chat, None)
+            return self.send(token, chat, "انتهى وقت تحديث السعر. اضغط «💰 تحديث سعر الذهب» من جديد.")
+        v = control.num(text)
+        if v is None:
+            return self.send(token, chat, "اكتب رقم بس، مثل 51000. أو اضغط «إلغاء».")
+        if w.get("step") == "buy":
+            self.price_wait[chat] = {"step": "sell", "buy": v, "ts": time.time()}
+            return self.send(token, chat, "سعر الشراء: {:,.0f}\n2️⃣ اكتب الحين سعر البيع:".format(v),
+                             markup={"inline_keyboard": [[{"text": "إلغاء", "callback_data": "c:prx"}]]})
+        buy = w.get("buy")
+        if v < buy:
+            return self.send(token, chat, "سعر البيع ({:,.0f}) أقل من الشراء ({:,.0f}). اكتب سعر البيع مرة ثانية:".format(v, buy))
+        self.price_wait.pop(chat, None)
+        try:
+            return self.send(token, chat, control.save_price(self.app, buy, v))
+        except Exception as e:
+            return self.send(token, chat, f"ما انحفظ السعر: {e}")
+
+    def _save_hero(self, token, chat, msg):
+        import control, media
+        from web import media_dir
+        w = self.hero_wait.get(chat) or {}
+        fid = msg["photo"][-1]["file_id"] if msg.get("photo") else (
+            msg["document"]["file_id"] if (msg.get("document") or {}).get("mime_type", "").startswith("image/") else None)
+        if not fid:
+            return self.send(token, chat, "أرسل صورة.")
+        try:
+            f = self.call(token, "getFile", {"file_id": fid})["result"]
+            raw = urllib.request.urlopen(f"https://api.telegram.org/file/bot{token}/{f['file_path']}", timeout=60).read()
+            from PIL import Image
+            import io
+            im = Image.open(io.BytesIO(raw))
+            im.load()
+            with self.app.lock:
+                name = media.save_image(im, media_dir(self.app.store), None, None, False)
+            control.set_hero(self.app, int(w.get("slot", 0)), name)
+        except Exception as e:
+            return self.send(token, chat, f"ما انحفظت الصورة: {e}")
+        self.hero_wait.pop(chat, None)
+        t, k = control.hero_view(self.app)
+        return self.send(token, chat, f"✅ تغيرت الصورة {int(w.get('slot', 0)) + 1} في واجهة الموقع.\n\n" + t, markup=k)
 
     def _control_cmd(self, token, chat, text):
         import control
@@ -760,6 +826,8 @@ class Bot(threading.Thread):
             if role in dict(self.ROLES):
                 self.waiting[chat] = (code, role)
                 return self.send(token, chat, f"أرسل الحين {dict(self.ROLES)[role]} للقطعة {code}.")
+        if staff and (msg.get("photo") or msg.get("document")) and chat in self.hero_wait:
+            return self._save_hero(token, chat, msg)
         if staff and (msg.get("photo") or msg.get("document")):
             cap = (msg.get("caption") or "").strip()
             target = self.waiting.get(chat)
@@ -780,6 +848,12 @@ class Bot(threading.Thread):
             return self._save_photo(token, chat, msg, target[0], target[1])
         if not chat or not text:
             return
+        if staff and chat in self.price_wait:
+            import staff_menu
+            if text.startswith("/") or re.match(r"^[a-z]{1,3}:", text) or staff_menu.section_name(text):
+                self.price_wait.pop(chat, None) if not text.startswith("c:pr") else None
+            else:
+                return self._price_step(token, chat, text)
         if staff and re.match(r"/(price|vip|call|status)\b", text):
             return self._control_cmd(token, chat, text)
         if staff and text in ("/photos", "/صور", "قطع بدون صور"):

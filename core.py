@@ -408,7 +408,7 @@ class Store:
             self._write_roles(pid, {k: v for k, v in media.items() if k in PHOTO_ROLES}, None)
         # every new piece shows as "new arrival" for a set number of days, then moves to its normal section by itself
         days = int((self.setting("showcase", {}) or {}).get("new_days", 14) or 0)
-        if days > 0 and category == "new":
+        if days > 0 and category != "weighed":
             self.db.execute("UPDATE pieces SET new_until=? WHERE id=?",
                             ((dt.date.today() + dt.timedelta(days=days)).isoformat(), pid))
         self.log(uid, "piece_add", "piece", pid, {"code": code, "weight": weight, "karat": karat})

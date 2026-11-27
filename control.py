@@ -14,7 +14,7 @@ START = time.time()
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 OPTIONS = [("🩺 حالة النظام", "c:st"), ("🤖 وكيل الزبائن", "c:ai"), ("🎙️ الصوت للزبائن", "c:vo"),
-           ("📞 المكالمات", "c:ph"), ("💰 تحديث سعر الذهب", "c:pr"), ("⭐ العملاء المميزين", "c:vip"),
+           ("📞 المكالمات", "c:ph"), ("💰 تحديث سعر الذهب", "c:pr"), ("🖼️ صور الواجهة", "c:hero"), ("⭐ العملاء المميزين", "c:vip"),
            ("📣 اتصل بالمميزين", "c:call"), ("💾 نسخة احتياطية", "c:bk"), ("🔄 إعادة تشغيل", "c:rs"),
            ("📘 الأوامر", "c:help")]
 INTRO = "⚙️ التحكم: كل شي في النظام من هنا. اختر من تحت."
@@ -146,6 +146,45 @@ def set_price(app, text):
         app.store.set_prices(owner, sell, buy)
         app.store.db.commit()
     return "✅ تحدّث سعر جرام 21: بيع {:,.0f} · شراء {:,.0f}\nالموقع والوكيل والمكالمات يستخدمونه الحين.".format(sell, buy)
+
+
+def num(text):
+    """A price typed in a message: 52000, 52,000 or ٥٢٠٠٠ -> 52000.0 (None if it is not a number)."""
+    t = (text or "").translate(str.maketrans("٠١٢٣٤٥٦٧٨٩٫٬", "0123456789.,")).replace(",", "").strip()
+    try:
+        v = float(t)
+    except ValueError:
+        return None
+    return v if v > 0 else None
+
+
+def save_price(app, buy, sell):
+    with app.lock:
+        owner = app.store.one("SELECT id FROM users WHERE role='owner' ORDER BY id LIMIT 1")["id"]
+        app.store.set_prices(owner, sell, buy)
+        app.store.db.commit()
+    return "✅ تحدّث سعر جرام 21:\nالشراء {:,.0f}\nالبيع {:,.0f}\nالموقع والوكيل والمكالمات يستخدمونه الحين.".format(buy, sell)
+
+
+def hero_view(app):
+    h = list(app.store.setting("hero", []) or [])
+    h += [""] * (3 - len(h))
+    lines = ["🖼️ صور الواجهة (الثلاث اللي تتغير فوق في الموقع):"]
+    for i in range(3):
+        lines.append(f"{i + 1}. " + ("صورة خاصة ✅" if h[i] else "من صور القطع (تلقائي)"))
+    lines.append("\nاضغط على رقم الصورة، وبعدها أرسل الصورة الجديدة.")
+    rows = [[{"text": f"🔁 الصورة {i + 1}", "callback_data": f"c:h{i + 1}"} for i in range(3)],
+            [{"text": "↩️ رجّعها كلها تلقائي", "callback_data": "c:h0"}]]
+    return "\n".join(lines), _back(rows)
+
+
+def set_hero(app, slot, name):
+    with app.lock:
+        h = list(app.store.setting("hero", []) or [])
+        h += [""] * (3 - len(h))
+        h[slot] = name
+        app.store.set_setting("hero", h[:3])
+        app.store.db.commit()
 
 
 def vip_list(app):

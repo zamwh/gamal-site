@@ -48,11 +48,14 @@ def _branch_user(store, branch_id):
     return store.one("SELECT id FROM users WHERE username=?", (name,))["id"]
 
 
-def _apply_show(store, code, sh):
+def _apply_show(store, code, sh, keep_new=False):
     import re as _re
     d = lambda v: v if isinstance(v, str) and _re.fullmatch(r"\d{4}-\d{2}-\d{2}", v) else None
+    nu = d(sh.get("new_until"))
+    if nu is None and keep_new:          # a new piece from the POS with no date: it keeps its «وصل حديثاً» days
+        nu = (store.one("SELECT new_until FROM pieces WHERE code=?", (code,)) or {"new_until": None})["new_until"]
     store.db.execute("UPDATE pieces SET new_until=?, featured=?, featured_until=? WHERE code=?",
-                     (d(sh.get("new_until")), 1 if sh.get("featured") else 0, d(sh.get("featured_until")), code))
+                     (nu, 1 if sh.get("featured") else 0, d(sh.get("featured_until")), code))
     store.db.commit()
 
 
@@ -86,7 +89,7 @@ def sync(store, data):
                             str(np.get("title", ""))[:80], photos, str(np.get("style", ""))[:20], str(np.get("occasion", ""))[:20],
                             str(np.get("description", ""))[:400], code=code, media=roles or None)
             if isinstance(np.get("showcase"), dict):
-                _apply_show(store, code, np["showcase"])
+                _apply_show(store, code, np["showcase"], keep_new=True)
             pieces_in.append({"code": code, "ok": True})
         except Exception as e:
             pieces_in.append({"code": code, "error": str(e)[:120]})
