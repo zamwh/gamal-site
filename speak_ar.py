@@ -57,6 +57,10 @@ def _number(m):
 _AR_DIGITS = str.maketrans("٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹", "01234567890123456789")
 
 
+SAY_AS = [(r"(?<![\u0600-\u06FF])للبس(?![\u0600-\u06FF])", "لِلُّبْس"), (r"(?<![\u0600-\u06FF])اللبس(?![\u0600-\u06FF])", "اللُّبْس"),
+          (r"المشرقي", "المَشْرِقي"), (r"جرعان", "جَرْعان")]
+
+
 def speakable(text, max_chars=320):
     """What the voice says for a written reply: no codes, links, symbols or emoji, numbers in words, short."""
     t = (text or "").translate(_AR_DIGITS).replace("ـ", "")
@@ -86,4 +90,6 @@ def speakable(text, max_chars=320):
         if stop < max_chars * 0.45:
             stop = cut.rfind("،")
         t = (cut[:stop + 1] if stop > 40 else cut.rsplit(" ", 1)[0]).rstrip("،, ") + " والباقي مكتوب لك على الشاشة."
+    for a, b in SAY_AS:
+        t = re.sub(a, b, t)
     return t
