@@ -860,7 +860,7 @@
     V.vv = id; try { localStorage.setItem('gm_vv', id) } catch (e) { } vVoicesUI();
     if (!V.on) return;
     if (vIsTurn(id)) {                                         // to a «رد ورد» voice: no call stays open
-      vtAc(); if (V.pc || V.call || V.opening) vClose('voice'); V.opening = false;
+      vtAc(); if (V.pc || V.call || V.opening) vClose('voice'); V.opening = false; vBoostOff(); $('#vAudio').muted = false;
       vtStopAll(); V.tm = true; vSet('dial', 'يحوّل لصوت ' + vName().name + '…'); vtSend({ hello: true });
       return;
     }
