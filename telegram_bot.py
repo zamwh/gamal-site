@@ -88,6 +88,22 @@ class Bot(threading.Thread):
                 print("telegram notify:", e, flush=True)
         threading.Thread(target=go, daemon=True).start()
 
+    def notify_card(self, text, buttons):
+        """A short notice with buttons (e.g. a phone call's card: the details only when the owner taps)."""
+        def go():
+            try:
+                with self.app.lock:
+                    c = cfg(self.app.store)
+                token = (c.get("token") or "").strip()
+                if not token or not c.get("enabled", True):
+                    return
+                for chat in list((c.get("staff") or {}).keys()):
+                    if chat not in (c.get("muted") or []):
+                        self.send(token, chat, text, buttons)
+            except Exception as e:
+                print("telegram card:", e, flush=True)
+        threading.Thread(target=go, daemon=True).start()
+
     # ---------- piece photos from the phone: buttons -> send a photo -> saved in its place on the site
     ROLES = (("card", "صورة المخمل"), ("macro", "اللقطة القريبة"), ("orig", "الصورة الأصلية"))
 
@@ -643,6 +659,12 @@ class Bot(threading.Thread):
         with app.lock:
             c = cfg(app.store)
         staff = uid in c["staff"]
+        if staff and text.startswith("pc:"):           # a phone call's card: its details on request
+            with app.lock:
+                r = app.store.one("SELECT * FROM phone_calls WHERE id=?", (text[3:20],))
+            if not r:
+                return self.send(token, chat, "ما لقيت المكالمة.")
+            return self.send(token, chat, "تفاصيل مكالمة %s (%s):\n\n%s" % (r["name"], r["phone"], r["transcript"] or "ما فيه كلام مسجل."))
         # piece photos: a button press, then the photo (or a photo captioned "D000123 مخمل")
         if staff and text.startswith("ph:"):
             _, code, role = (text.split(":") + ["", ""])[:3]

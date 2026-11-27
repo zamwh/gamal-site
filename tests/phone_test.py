@@ -127,7 +127,8 @@ try:
     check('9  the call is written down: done, talk time, cost (whole minute + OpenAI), both sides\' words',
           ok and row["talk_s"] >= 2 and abs(row["cost"] - (0.144 + 0.0)) < 0.05 and "العميل: وعليكم السلام، الحمد لله" in (row["transcript"] or "")
           and "المستشار: معك المستشار الآلي" in (row["transcript"] or ""), dict(row))
-    check('10 the owner gets a note with the words, to send the WhatsApp', notes and "محمد" in notes[-1] and "الواتساب" in notes[-1], notes[-1:] )
+    check('10 the owner gets a short card (who, result, time, cost), not the whole conversation', notes and "محمد" in notes[-1]
+          and "مكالمة عميل مميز" in notes[-1] and "وعليكم السلام" not in notes[-1], notes[-1:])
 
     MODE["answer"] = False
     app.store.set_setting("phone", dict(app.store.setting("phone"), ring_s=1.5))

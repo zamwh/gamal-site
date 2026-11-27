@@ -500,16 +500,31 @@ class Phone:
             except Exception:
                 pass
         row = self.store.one("SELECT * FROM phone_calls WHERE id=?", (cid,))
-        st = {"done": "تمت المكالمة", "no_answer": "ما رد", "failed": "ما اتصلت"}.get(final, final)
-        note = "📞 مكالمة عميل مميز: %s (%s)\n%s · %d ثانية · حوالي %.0f سنت" % (row["name"], row["phone"], st, int(talk), cost * 100)
+        self._card(row, final, talk, cost, reason, lines)
+
+    def _card(self, row, final, talk, cost, reason, lines):
+        """The owner's Telegram card: who, how it went, whether he agreed; the words behind a button."""
+        said = " ".join(x for x in lines if x.startswith("المستشار"))
+        heard = " ".join(x for x in lines if x.startswith("العميل"))
+        if final != "done":
+            res = {"no_answer": "ما رد", "failed": "ما اتصلت"}.get(final, final)
+        elif "أبشر" in said or "أرسلها لك على طول" in said:
+            res = "وافق يستقبل التشكيلات على الواتساب ✅"
+        elif any(w in heard for w in ("لا شكرا", "لا شكراً", "مشغول", "ما ابغى", "ما أبغى", "مو الحين")):
+            res = "اعتذر"
+        else:
+            res = "تمت المكالمة (افتح التفاصيل)"
+        card = "📞 مكالمة عميل مميز\n%s · %s\n%s\n%d:%02d · حوالي %.0f سنت" % (row["name"], row["phone"], res, int(talk) // 60, int(talk) % 60, cost * 100)
         if reason and final != "done":
-            note += "\nالسبب: " + reason
-        if lines:
-            note += "\n\n" + "\n".join(lines)[:1500] + "\n\nلو وافق: أرسلوا له التشكيلات على الواتساب."
+            card += "\nالسبب: " + reason[:120]
+        bot = getattr(self.app, "bot", None)
         try:
-            fn = getattr(self.agent, "notify", None)
-            if fn:
-                fn(note)
+            if bot and hasattr(bot, "notify_card") and lines:
+                bot.notify_card(card, [{"text": "تفاصيل المكالمة", "callback_data": "pc:" + row["id"]}])
+            else:
+                fn = getattr(self.agent, "notify", None)
+                if fn:
+                    fn(card)
         except Exception:
             pass
 
