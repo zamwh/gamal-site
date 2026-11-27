@@ -69,9 +69,9 @@ DEFAULT = {
 }
 
 # «رد ورد»: the same three voices, answering one sentence at a time through OpenAI's speech model
-TURN_VOICES = [{"id": "t:echo", "oai": "echo", "name": "سالم", "g": "m", "sub": "رد ورد · الأوفر", "turn": True},
-               {"id": "t:ballad", "oai": "ballad", "name": "فارس", "g": "m", "sub": "رد ورد · الأوفر", "turn": True},
-               {"id": "t:coral", "oai": "coral", "name": "ريم", "g": "f", "sub": "رد ورد · الأوفر", "turn": True}]
+TURN_VOICES = [{"id": "t:echo", "oai": "echo", "name": "سالم", "g": "m", "sub": "صوت عميق", "turn": True},
+               {"id": "t:ballad", "oai": "ballad", "name": "فارس", "g": "m", "sub": "صوت دافئ", "turn": True},
+               {"id": "t:coral", "oai": "coral", "name": "ريم", "g": "f", "sub": "صوت نسائي", "turn": True}]
 TURN_BY_ID = {x["id"]: x for x in TURN_VOICES}
 TTS_STYLE = {"m": "تكلم بالعربي بلهجة خليجية بيضاء، بصوت رجل واثق ومبتسم وودود، مثل بيّاع ذهب يسولف مع زبونه، مو مثل واحد يقرأ. "
                   "سرعة طبيعية مثل الكلام اليومي، نبرة حية متنوعة، ونطق واضح لكل حرف وللأرقام والأسعار. "
@@ -92,6 +92,8 @@ MISHEARD = "ما سمعتك زين، ممكن تعيدها؟"
 STT_PROMPT = ("زبون يكلم محل ذهب في إب باللهجة اليمنية أو الخليجية. كلمات تتكرر: ذهب، عيار 21، جنيه، سبيكة، خاتم، عقد، "
               "سلسلة، أسوارة، حلق، طقم، تعليقة، جرام، ريال، مليون، ألف، ميزانيتي، للبس، للادخار، يومي، مناسبة، اختياراتي، نكمل الشراء.")
 JUNK = re.compile(r"نانسي|قنقر|اشتركوا|اشترك في|لمشاهدتكم|للمشاهدة|ترجمة|subtitle|amara|\bmusic\b|موسيقى", re.I)
+
+LIVE_ON = False      # the live voice on the site: removed by the owner (28 Nov 2026); «رد ورد» only
 
 # the customer picks one of these from the call screen («تغيير الصوت»); each has its own name and manner
 VOICES = [
@@ -273,8 +275,9 @@ class Voice:
             out["why"] = "customer"
             return out
         out.update({"on": True, "budget_s": int(left / self._per_s(c)), "buyer": buyer})
-        voices = [{k: x[k] for k in ("id", "name", "g", "sub", "turn") if k in x} for x in TURN_VOICES + VOICES]
-        dv = c.get("voice") if (c.get("voice") in VOICE_BY_ID or c.get("voice") in TURN_BY_ID) else "t:echo"
+        voices = [{k: x[k] for k in ("id", "name", "g", "sub", "turn") if k in x} for x in TURN_VOICES]   # «رد ورد» only
+        v0 = c.get("voice") or ""
+        dv = v0 if v0 in TURN_BY_ID else ("t:" + v0 if "t:" + v0 in TURN_BY_ID else "t:echo")
         out.update({"voices": voices, "voice": dv})
         return out
 
@@ -320,6 +323,10 @@ class Voice:
             return 0, {"error": {"message": str(e)[:200]}}
 
     def open(self, visitor, session, sdp, ip, lab, resume=False, voice=None):
+        # the live voice (GPT-Live in the browser) was removed from the site on 28 Nov 2026: only «رد ورد» talks,
+        # so nothing here can open a paid live call (LIVE_ON stays False; the old tests switch it on to keep the code checked)
+        if not LIVE_ON:
+            return {"ok": False, "why": "off", "say": BUSY}
         c = self.cfg()
         session = re.sub(r"[^A-Za-z0-9_-]", "", session or "")[:40]
         who = self._who(visitor, ip)

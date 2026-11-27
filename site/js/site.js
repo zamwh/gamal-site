@@ -703,7 +703,7 @@
   var chatEl = $('#chat'), msgs = $('#msgs'), busy = false;
   function openChat(text) {
     chatEl.classList.add('open'); T('ai_open'); chatUsed = true; if (window.GM_vCheck) GM_vCheck(); hideHint(); document.body.classList.remove('has-hint'); if (innerWidth < 760) document.body.style.overflow = 'hidden';
-    if (!msgs.children.length) { addMsg('حياك الله في جمال المشرقي للذهب والمجوهرات، أنا مستشارك الخاص، أعرف كل قطعة متوفرة وسعرها اليوم. تبغى الذهب للبس ولا للادخار؟', 'a'); chips(['للبس', 'للادخار', 'سعر الذهب اليوم', 'وين موقعكم؟']) }
+    if (!msgs.children.length) { addMsg('حياك الله في جمال المشرقي للذهب والمجوهرات. كيف أقدر أخدمك اليوم؟', 'a'); chips(['سعر الذهب اليوم', 'أبغى أشوف القطع', 'وين موقعكم؟']) }
     if (text) send(text); else setTimeout(function () { $('#chatIn').focus() }, 400);
   }
   window.openChat = openChat;

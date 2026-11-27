@@ -75,7 +75,7 @@ try:
     st = v.status("vis1", "1.2.3.4", True)
     tv = [x for x in st["voices"] if x.get("turn")]
     check('5  the three voices turn by turn come first, and are the default (the cheapest)', len(tv) == 3 and st["voices"][0].get("turn")
-          and st["voice"] == "t:echo" and len(st["voices"]) == 6, st.get("voices"))
+          and st["voice"] == "t:echo" and len(st["voices"]) == 3, st.get("voices"))
     check('6  no ElevenLabs anywhere: no «جداوي», no other company\'s key', "جداوي" not in json.dumps(st, ensure_ascii=False))
     app.store.set_setting("eleven", {"api_key": "el-old"}); server_app2 = server.App("demo", tmp)
     check('7  a saved ElevenLabs key from before is wiped', not (app.store.setting("eleven", {}) or {}).get("api_key"))

@@ -391,8 +391,16 @@ Two modes, picked in the voice menu:
     Voices: t:echo «سالم», t:ballad «فارس», t:coral «ريم».
     It cannot laugh or change tone much: it reads text.
     Note: gpt-4o-mini-tts retires 6 Jan 2027 -> switch before then.
- b) Live (GPT-Live, WebRTC): real speech-to-speech like ChatGPT voice,
-    more natural, about 3× the cost ($0.05/min).
+ b) Live (GPT-Live, WebRTC) was REMOVED from the site on 2026-11-28 by
+    the owner (cost). voice.LIVE_ON = False: /api/voice/open always
+    answers "off", the voice menu lists only the three «رد ورد» voices, the
+    admin voice box shows «رد ورد» numbers only. The old live code stays
+    in voice.py (tests switch LIVE_ON on to keep it checked). Phone calls
+    (phone.py) still use GPT-Live over SIP — that is separate.
+Opening (voice and text chat): «حياك الله في جمال المشرقي للذهب
+والمجوهرات. كيف أقدر أخدمك اليوم؟» — no sales question in the greeting;
+selling starts after the customer's first reply. Never «للبس» (heard as
+«للبَسّ») and never «تلبسه» (men buy for others): use «للزينة».
 Greetings: several variants chosen at random; female wording for female
 voices («مستشارتك»).
 ElevenLabs was tried and REMOVED completely. Do not bring it back.
@@ -500,7 +508,12 @@ were also checked end to end (challenge 200, bad token 403, signed POST
 =====================================================================
 - Text agent cap: $4.5/day, $133/month. When reached it answers simply
   and notifies the owner once a day.
-- Voice: $1.5/day total; $0.10 per customer per day ($0.25 if buying).
+- Voice («رد ورد» only): about $0.003–0.005 per exchange (speech-to-text
+  ~$0.0003, the agent ~$0.001, the spoken answer ~$0.002–0.004; repeated
+  sentences such as greetings are cached and free). Hard caps: $1.5/day
+  for all voice; $0.10 per customer per day ($0.25 if buying) once
+  test_mode is off; one sentence ≤ 25 s; a spoken answer ≤ 320 chars;
+  20 turns/min per IP. Silence costs nothing (no open call).
   test_mode = True still (owner testing). Turn off before going public.
 - Phone call: OpenAI $0.05/min + Zadarma $0.144/min (whole minutes)
   -> about $0.39 max per call. 10 calls ≈ $3.9, 20 calls ≈ $7.8.

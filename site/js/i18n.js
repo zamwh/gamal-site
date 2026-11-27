@@ -7,7 +7,7 @@
     "كلّم المستشار بصوتك": "Talk to the advisor",
     "وين موقعكم؟": "Where are you located?", "للبس": "To wear", "للادخار": "To save", "نكمّل الميزانية": "Complete my budget",
     "نكمل الشراء": "Complete the purchase", "تبغى الذهب للبس ولا للادخار؟": "Is the gold for wearing or for saving?",
-    "حياك الله في جمال المشرقي للذهب والمجوهرات، أنا مستشارك الخاص، أعرف كل قطعة متوفرة وسعرها اليوم. تبغى الذهب للبس ولا للادخار؟": "Welcome to Gamal Almshrqi Gold & Jewelry. I'm your personal advisor and I know every piece in stock and today's price. Is the gold for wearing or for saving?", "تغيير الصوت": "Change voice", "اختر الصوت": "Choose a voice", "سالم": "Salem", "فارس": "Fares", "ريم": "Reem",
+    "حياك الله في جمال المشرقي للذهب والمجوهرات. كيف أقدر أخدمك اليوم؟": "Welcome to Gamal Almshrqi Gold & Jewelry. How can I help you today?", "أبغى أشوف القطع": "Show me the pieces", "تغيير الصوت": "Change voice", "اختر الصوت": "Choose a voice", "سالم": "Salem", "فارس": "Fares", "ريم": "Reem",
     "هادئ": "Calm", "حيوي": "Lively", "صوت عميق": "Deep voice", "صوت دافئ": "Warm voice", "صوت نسائي": "Female voice", "رد ورد · الأوفر": "Turn by turn · cheapest", "أسمعك…": "Listening…", "تكلّم متى ما حبيت، أنا معك": "Speak anytime, I'm here",
     "اسمٌ رائد في عالم": "A leading name in", "الذهب والمجوهرات": "gold and jewellery", "اكتشف المجموعة": "Discover the collection",
     "تصاميم حصرية بروح الجمال المشرقي، مختارة بعناية لتليق بذوقكم وبأجمل مناسباتكم.": "Exclusive designs with an Eastern soul, chosen with care for your taste and your finest occasions.",

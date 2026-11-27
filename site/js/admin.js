@@ -233,27 +233,21 @@
     }).catch(err(mp));
   }
   // the voice salesman: what every call cost, by the second (OpenAI bills at least 15 seconds per opening)
+  // the voice salesman («رد ورد»: he speaks one sentence, the shop's assistant answers, the voice reads it). No open call.
   function voiceBox(v) {
-    var m = function (x) { return '$' + Number(x || 0).toFixed(3) }, t = v.totals || {};
-    var WHY = { quiet: 'سكت الزبون', end: 'انتهت', user: 'أنهاها الزبون', budget: 'وصل الحد', stale: 'انقطع الاتصال', leave: 'طلع من الصفحة', hidden: 'ترك الصفحة', closed: 'سكّر المحادثة' };
+    var m = function (x) { return '$' + Number(x || 0).toFixed(3) }, tr = v.turns || {};
     return '<div class="box" style="margin-top:16px"><h3>المساعد الصوتي <span class="mes">' + (v.public ? 'شغّال في الموقع' : 'موقّف') + '</span></h3>' +
       '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:6px 0 12px"><button type="button" class="btn' + (v.public ? '' : ' g') + '" id="vPub" data-on="' + (v.public ? 1 : 0) + '">' +
       (v.public ? 'إيقاف المساعد الصوتي' : 'تشغيل المساعد الصوتي') + '</button><span class="sub">' + (v.public ? 'زر المايك ظاهر في محادثة الموقع.' : 'زر المايك مخفي، والمحادثة الكتابية شغالة.') + '</span></div>' +
       '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:0 0 12px"><button type="button" class="btn" id="vTest" data-on="' + (v.test_mode ? 1 : 0) + '">' +
-      (v.test_mode ? 'إنهاء وضع التجربة' : 'تشغيل وضع التجربة') + '</button><span class="sub">' + (v.test_mode ? 'وضع التجربة شغّال: بدون حد للشخص، بس حد اليوم.' : 'حدود الزبائن شغالة: 10 سنت للزبون و25 للمشتري.') + '</span></div>' +
-      '<div class="sub">كل مكالمة بالثانية (' + m(v.price_per_min) + ' للدقيقة وقت الكلام، وأقل وقت الانتظار) + تكلفة العقل الخلفي. لو سكت الزبون دقيقة كاملة تنقفل وترجع لما يتكلم.</div><div class="list2">' +
-      '<div><span>المكالمات / الزبائن / المشترين</span><b>' + fmt(t.calls) + ' / ' + fmt(t.customers) + ' / ' + fmt(t.buyers) + '</b></div>' +
-      '<div><span>الثواني المحسوبة</span><b>' + fmt(t.seconds) + '</b></div><div><span>تكلفة الفترة / اليوم</span><b>' + m(t.cost) + ' / ' + m(v.today) + '</b></div>' +
-      '<div><span>الحد: للزبون / للمشتري / لليوم</span><b>' + m(v.caps.customer) + ' / ' + m(v.caps.buyer) + ' / ' + m(v.caps.day) + '</b></div></div>' +
-      (v.turns ? '<div class="sub" style="margin-top:14px">«رد ورد» (الأوفر): ما فيه مكالمة مفتوحة، وما يندفع شيء وقت السكوت.</div><div class="list2">' +
-        '<div><span>محادثات / ردود</span><b>' + fmt(v.turns.talks) + ' / ' + fmt(v.turns.turns) + '</b></div>' +
-        '<div><span>حروف قالها (ردود محفوظة ما تكلف)</span><b>' + fmt(v.turns.chars) + ' (' + fmt(v.turns.cached) + ')</b></div>' +
-        '<div><span>السماع / الصوت / العقل</span><b>' + m(v.turns.stt) + ' / ' + m(v.turns.tts) + ' / ' + m(v.turns.backend) + '</b></div>' +
-        '<div><span>تكلفة الفترة</span><b>' + m(v.turns.cost) + '</b></div>' +
-        (v.turns.errors ? '<div><span>أخطاء (آخرها)</span><b dir="ltr">' + fmt(v.turns.errors) + ' · ' + esc(v.turns.last_error || '') + '</b></div>' : '') + '</div>' : '') +
-      (v.recent && v.recent.length ? '<table><tr><th>الوقت</th><th>ثواني</th><th>الصوت</th><th>العقل</th><th>ردود</th><th>مشتري</th><th>سبب التوقف</th></tr>' +
-        v.recent.map(function (r) { return '<tr><td>' + esc(r.when) + (r.lab ? ' <span class="sub">تجربة</span>' : '') + '</td><td class="n">' + fmt(r.seconds) + '</td><td class="n">' + m(r.voice) + '</td><td class="n">' + m(r.backend) + '</td><td class="n">' + fmt(r.turns) + '</td><td>' + (r.buyer ? 'نعم' : '') + '</td><td>' + esc(WHY[r.reason] || r.reason) + '</td></tr>' }).join('') + '</table>'
-        : '<div class="sub">ما فيه مكالمات صوتية في هذي الفترة.</div>') + '</div>';
+      (v.test_mode ? 'إنهاء وضع التجربة' : 'تشغيل وضع التجربة') + '</button><span class="sub">' + (v.test_mode ? 'وضع التجربة شغّال: بدون حد للشخص، بس حد اليوم. وقّفه قبل الإطلاق.' : 'حدود الزبائن شغالة: 10 سنت للزبون و25 للمشتري.') + '</span></div>' +
+      '<div class="sub">«رد ورد»: الزبون يقول جملة، والمستشار يرد بالصوت. ما فيه مكالمة مفتوحة، فالسكوت ما يكلف شي، والردود المحفوظة مجانية.</div><div class="list2">' +
+      '<div><span>محادثات / ردود</span><b>' + fmt(tr.talks) + ' / ' + fmt(tr.turns) + '</b></div>' +
+      '<div><span>حروف قالها (ردود محفوظة ما تكلف)</span><b>' + fmt(tr.chars) + ' (' + fmt(tr.cached) + ')</b></div>' +
+      '<div><span>السماع / الصوت / العقل</span><b>' + m(tr.stt) + ' / ' + m(tr.tts) + ' / ' + m(tr.backend) + '</b></div>' +
+      '<div><span>تكلفة الفترة / اليوم</span><b>' + m(tr.cost) + ' / ' + m(v.today) + '</b></div>' +
+      '<div><span>الحد: للزبون / للمشتري / لليوم</span><b>' + m(v.caps.customer) + ' / ' + m(v.caps.buyer) + ' / ' + m(v.caps.day) + '</b></div>' +
+      (tr.errors ? '<div><span>أخطاء (آخرها)</span><b dir="ltr">' + fmt(tr.errors) + ' · ' + esc(tr.last_error || '') + '</b></div>' : '') + '</div></div>';
   }
   function requests(mp) {
     api('/api/admin/requests').then(function (rows) {
