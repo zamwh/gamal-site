@@ -22,7 +22,7 @@ try:
     visitor, owner = opener(), opener()
     call(owner, '/api/admin/login', {'username': 'owner', 'password': 'Test-12345'})
     st = call(visitor, '/api/voice/status?v=vx1')
-    check('1  on by default: a visitor sees the microphone, with the three voices', st.get('on') is True and len(st.get('voices', [])) == 3, st.get('why'))
+    check('1  on by default: a visitor sees the microphone, with the three voices (turn by turn and live)', st.get('on') is True and len(st.get('voices', [])) == 6, st.get('why'))
     rep = call(owner, '/api/admin/analytics?s=ai')
     check('2  the admin page shows the voice as on', (rep.get('voice') or {}).get('public') is True, (rep.get('voice') or {}).get('public'))
     r = call(owner, '/api/admin/settings', {'voice': {'public': False}})

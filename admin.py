@@ -183,9 +183,7 @@ def get(app, u, path, q):
                                  "status": getattr(getattr(app, "bot", None), "status", "stopped"),
                                  "username": getattr(getattr(app, "bot", None), "username", ""),
                                  "channel": __import__("tg_channel").status(s)})(__import__("telegram_bot").cfg(s)),
-                    "policy": dict(__import__("agent").DEFAULT_POLICY, **{k: v for k, v in (s.setting("policy", {}) or {}).items() if (v or "").strip()}),
-                    "eleven": (lambda e: {"has_key": bool(e.get("api_key")), "key": ("••••" + e["api_key"][-4:]) if e.get("api_key") else "",
-                                          "enabled": e.get("enabled", True) is not False})(s.setting("eleven", {}) or {})}
+                    "policy": dict(__import__("agent").DEFAULT_POLICY, **{k: v for k, v in (s.setting("policy", {}) or {}).items() if (v or "").strip()})}
     raise GoldError("غير موجود")
 
 
@@ -194,10 +192,6 @@ def post(app, u, path, d):
     if path == "/api/admin/ai_test":
         s.require(u["id"], "owner")
         return app.agent.test()
-    if path == "/api/admin/el_test":                   # the owner hears the «رد ورد» voice and sees the ElevenLabs credits left
-        s.require(u["id"], "owner")
-        v = getattr(app, "voice", None)
-        return v.el_test() if v else {"ok": False, "why": "الصوت غير متوفر"}
     if path == "/api/admin/photo":
         # one photo per request (phones on slow networks): saved, then put in its role
         s.require(u["id"], "owner", "manager")
@@ -254,16 +248,6 @@ def post(app, u, path, d):
                     ai["api_key"] = key.strip()
                     ai["enabled"] = True
                 s.set_setting("ai", ai)
-            if isinstance(d.get("eleven"), dict):          # ElevenLabs («رد ورد» voices): the key is kept on the server only
-                el = dict(s.setting("eleven", {}) or {})
-                key = str(d["eleven"].get("api_key") or "").strip()
-                if key and not key.startswith("••••"):
-                    el["api_key"] = key[:200]
-                if d["eleven"].get("remove_key"):
-                    el.pop("api_key", None)
-                if "enabled" in d["eleven"]:
-                    el["enabled"] = bool(d["eleven"]["enabled"])
-                s.set_setting("eleven", el)
             if isinstance(d.get("voice"), dict):           # the voice assistant: on/off for the site
                 vs = dict(s.setting("voice", {}) or {})
                 for k in ("public", "test_mode"):

@@ -1,4 +1,4 @@
-"""«جداوي» on the call screen (2026-11-27): the «رد ورد» voice in the browser. The status and /api/voice/turn are
+"""«رد ورد» on the call screen (2026-11-27, OpenAI voices): the «رد ورد» voice in the browser. The status and /api/voice/turn are
 faked inside the page; the phone's microphone is a file with silence, a short burst of "speech" (tones in the speech
 band), then silence again, looping. Checks: the greeting is asked for and played, a spoken sentence is recorded and
 sent (and only then), the answer, cards and cost line show, a tap on the orb cuts the answer short, nothing is sent
@@ -40,9 +40,9 @@ FAKE = r"""
   function J(o) { return Promise.resolve(new Response(JSON.stringify(o), { status: 200, headers: { 'Content-Type': 'application/json' } })) }
   window.fetch = function (u, o) {
     u = String(u);
-    if (u.indexOf('/api/voice/status') >= 0) return J({ on: true, lab: true, close_after_ms: 2500, budget_s: 300, voice: 'echo',
-      voices: [{ id: 'echo', name: 'سالم', g: 'm', sub: 'صوت عميق' }, { id: 'ballad', name: 'فارس', g: 'm', sub: 'صوت دافئ' },
-               { id: 'coral', name: 'ريم', g: 'f', sub: 'صوت نسائي' }, { id: 'jeddawi', name: 'جداوي', g: 'm', sub: 'صوت سعودي · رد ورد', turn: true }] });
+    if (u.indexOf('/api/voice/status') >= 0) return J({ on: true, lab: true, close_after_ms: 2500, budget_s: 300, voice: 't:echo',
+      voices: [{ id: 't:echo', name: 'سالم', g: 'm', sub: 'رد ورد · الأوفر', turn: true }, { id: 't:coral', name: 'ريم', g: 'f', sub: 'رد ورد · الأوفر', turn: true },
+               { id: 'echo', name: 'سالم', g: 'm', sub: 'صوت عميق' }, { id: 'coral', name: 'ريم', g: 'f', sub: 'صوت نسائي' }] });
     if (u.indexOf('/api/voice/open') >= 0) { T.opens++; return J({ ok: false, why: 'bad' }) }
     if (u.indexOf('/api/voice/turn') >= 0) {
       var b = JSON.parse(o.body); T.turns.push({ hello: !!b.hello, voice: b.voice, mime: b.mime || '', ms: b.ms || 0, alen: (b.audio || '').length, picks: b.picks });
@@ -74,17 +74,17 @@ async def m():
                 await pg.wait_for_timeout(80)
             return False
         await ev("document.querySelector('[data-open-chat]').click()"); await pg.wait_for_timeout(900)
-        check('1  the microphone shows; the voice list has «جداوي»', await ev("!document.querySelector('#micBtn').hidden"))
-        await ev("localStorage.setItem('gm_vv', 'jeddawi')"); await ev("window.GM_vCheck()"); await pg.wait_for_timeout(400)
+        check('1  the microphone shows', await ev("!document.querySelector('#micBtn').hidden"))
+        await ev("localStorage.setItem('gm_vv', 'jeddawi')"); await ev("window.GM_vCheck()"); await pg.wait_for_timeout(400)   # an old choice that is gone
         await ev("document.querySelector('#micBtn').click()")
         ok = await until("window.__vt.hello >= 1", 4000)
         t0 = await ev("window.__vt.turns[0] || {}")
-        check('2  «جداوي» chosen: the call starts with a greeting from the turn voice (no live call opened)',
-              ok and t0.get('voice') == 'jeddawi' and t0.get('hello') and await ev("window.__vt.opens") == 0, t0)
+        check('2  the default (and an old «جداوي» choice falls back to it): the call starts with a greeting from the turn voice (no live call opened)',
+              ok and t0.get('voice') == 't:echo' and t0.get('hello') and await ev("window.__vt.opens") == 0, t0)
         ok = await until("[...document.querySelectorAll('#msgs .mg.a')].some(x => x.textContent.indexOf('أنا مستشارك. تبغى الذهب') >= 0)", 3000)
         check('3  the greeting shows in the chat', ok)
-        ok = await until("/جداوي يرد عليك/.test(document.querySelector('#vTx').textContent)", 3000)
-        check('4  while the greeting plays: «جداوي يرد عليك…»', ok, await ev("document.querySelector('#vTx').textContent"))
+        ok = await until("/سالم يرد عليك/.test(document.querySelector('#vTx').textContent)", 3000)
+        check('4  while the greeting plays: «سالم يرد عليك…»', ok, await ev("document.querySelector('#vTx').textContent"))
         ok = await until("/أسمعك/.test(document.querySelector('#vTx').textContent)", 4000)
         check('5  then it listens', ok, await ev("document.querySelector('#vTx').textContent"))
         # the "speech" in the microphone file plays at 3.0-4.6 s of each 8 s loop
@@ -98,7 +98,7 @@ async def m():
         check('8  the answer (in short messages) and the piece card show', ok)
         ok = await until("/هذا الرد 0.2 سنت/.test(document.querySelector('#vCost').textContent) && !document.querySelector('#vCost').hidden", 2000)
         check('9  testing: this answer\'s, the talk\'s and today\'s cost under the orb', ok, await ev("document.querySelector('#vCost').textContent"))
-        ok = await until("/جداوي يرد عليك/.test(document.querySelector('#vTx').textContent)", 3000)
+        ok = await until("/سالم يرد عليك/.test(document.querySelector('#vTx').textContent)", 3000)
         await ev("window.__vt.playing = true")
         check('10 the answer plays, with the hint to tap the orb', ok and '/اضغط الكرة/' and await ev("/اضغط الكرة/.test(document.querySelector('#vTx').textContent)"),
               await ev("document.querySelector('#vTx').textContent"))

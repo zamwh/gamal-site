@@ -1035,7 +1035,7 @@
     micBtn.classList.remove('on'); micBtn.setAttribute('aria-pressed', 'false'); V.st = 'off'; vcHide();
   }
 
-  /* ---------- «رد ورد» voices (ElevenLabs, e.g. «جداوي») ----------
+  /* ---------- «رد ورد» voices (OpenAI's speech model, the cheaper way) ----------
      No call stays open: the phone records one sentence (the speech detector above decides when he stopped), sends it,
      and plays the answer. Nothing is recorded while the answer plays, so the assistant never hears itself; a tap on the
      orb cuts the answer short. Nothing is paid while he is quiet. */

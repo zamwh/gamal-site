@@ -13,11 +13,11 @@ How a call works
 - Caps: per customer per day (higher once a customer is buying), a daily cap for voice, and the shop's monthly AI cap
   that the text assistant shares. When one is reached the microphone disappears and the text chat carries on.
 
-«رد ورد» voices (ElevenLabs, e.g. «جداوي»)
+«رد ورد» voices (all OpenAI, the cheaper way)
 - No call stays open: the phone records one sentence (its own speech detector decides when he stopped), sends it here,
-  OpenAI turns it into text, the same shop assistant answers, ElevenLabs reads the answer in the chosen voice, and the
-  phone plays it. Nothing is paid while he is quiet. The ElevenLabs key is entered by the owner in the admin and
-  never leaves the server; the same sentence is made once and kept (a greeting costs nothing the second time).
+  OpenAI turns it into text, the same shop assistant answers, OpenAI's speech model reads the answer in the chosen
+  voice, and the phone plays it. Nothing is paid while he is quiet. The same sentence in the same voice is made once
+  and kept (a greeting costs nothing the second time).
 """
 import base64
 import datetime as dt
@@ -36,12 +36,12 @@ from speak_ar import speakable
 
 LIVE_URL = "https://api.openai.com/v1/live/sessions"
 STT_URL = "https://api.openai.com/v1/audio/transcriptions"
-EL_URL = "https://api.elevenlabs.io/v1"
+TTS_URL = "https://api.openai.com/v1/audio/speech"
 
 DEFAULT = {
     "public": True,               # the microphone for everyone; the owner switches it off/on from the admin («المساعد الصوتي»)
     "model": "gpt-live-1",
-    "voice": "echo",              # the default of the three voices below («سالم»)
+    "voice": "t:echo",            # the default voice: «سالم» answering turn by turn (the cheapest)
     "per_customer_usd": 0.10,     # the most one customer can cost in a day
     "buyer_usd": 0.25,            # ... once he is buying (asked to buy, opened the purchase step)
     "daily_usd": 1.5,             # all voice calls in a day
@@ -58,22 +58,28 @@ DEFAULT = {
     "standby_close_s": 20,        # in standby this long -> the call closes completely (free); the phone's detector reopens it
     "wake_threshold": 0.7,        # how sure OpenAI must be it is speech (not noise) to wake (0-1, its default 0.5)
     "test_mode": True,            # the owner's test: no per-person limit and no openings limit (only the day's cap), reasons shown
-    # «رد ورد» voices: his words -> text (OpenAI), the shop's assistant answers, ElevenLabs says it
+    # «رد ورد» voices: his words -> text, the shop's assistant answers, OpenAI's speech model says it
     "stt_model": "gpt-4o-mini-transcribe",
     "stt_per_min": 0.003,         # OpenAI's price for turning his words into text
-    "el_usd_per_credit": 0.0002,  # ElevenLabs Starter: about 6 $ for 30,000 credits; its fast model takes half a credit per letter
+    "tts_model": "gpt-4o-mini-tts",
+    "tts_per_min": 0.015,         # OpenAI's price for the spoken answer (about 1.5 cents a minute of speech)
+    "tts_in_per_m": 0.60,         # ... plus its text in, per million tokens
     "tts_max_chars": 320,         # a long written answer: the voice reads its first sentences, the rest stays on the screen
     "turn_max_s": 25,             # the longest the phone records one sentence
 }
 
-# ElevenLabs: the key comes from the admin (setting "eleven"), never from the code
-EL_DEFAULT = {"api_key": "", "enabled": True, "model": "eleven_flash_v2_5", "voice_id": "yXEnnEln9armDCyhkXcA",
-              "stability": 0.5, "similarity": 0.8, "speed": 1.0, "format": "mp3_44100_64"}
-TURN_VOICES = [{"id": "jeddawi", "name": "جداوي", "g": "m", "sub": "صوت سعودي · رد ورد", "turn": True}]
+# «رد ورد»: the same three voices, answering one sentence at a time through OpenAI's speech model
+TURN_VOICES = [{"id": "t:echo", "oai": "echo", "name": "سالم", "g": "m", "sub": "رد ورد · الأوفر", "turn": True},
+               {"id": "t:ballad", "oai": "ballad", "name": "فارس", "g": "m", "sub": "رد ورد · الأوفر", "turn": True},
+               {"id": "t:coral", "oai": "coral", "name": "ريم", "g": "f", "sub": "رد ورد · الأوفر", "turn": True}]
+TURN_BY_ID = {x["id"]: x for x in TURN_VOICES}
+TTS_STYLE = {"m": "تكلم بالعربي بلهجة خليجية قريبة من اليمنية، بصوت رجل هادي وواثق وودود، مثل بيّاع ذهب محترم. "
+                  "سرعة طبيعية، ونطق واضح للأرقام والأسعار، وبدون مبالغة.",
+             "f": "تكلمي بالعربي بلهجة خليجية قريبة من اليمنية، بصوت بنت هادية وواثقة وودودة، مثل مستشارة ذهب محترمة. "
+                  "سرعة طبيعية، ونطق واضح للأرقام والأسعار، وبدون مبالغة."}
 HELLO_T = "حياك الله في جمال المشرقي، أنا مستشارك. تبغى الذهب للبس ولا للادخار؟"
 HELLO_BACK = "هلا فيك، أنا معك بالصوت الحين. تفضل، كلمني."
 MISHEARD = "ما سمعتك زين، ممكن تعيدها؟"
-SAMPLE = "هلا والله، حياك الله في جمال المشرقي. عندنا ذهب عيار واحد وعشرين، وأختار لك على قد ميزانيتك."
 STT_PROMPT = ("زبون يكلم محل ذهب في إب باللهجة اليمنية أو الخليجية. كلمات تتكرر: ذهب، عيار 21، جنيه، سبيكة، خاتم، عقد، "
               "سلسلة، أسوارة، حلق، طقم، تعليقة، جرام، ريال، مليون، ألف، ميزانيتي، للبس، للادخار، يومي، مناسبة، اختياراتي، نكمل الشراء.")
 JUNK = re.compile(r"نانسي|قنقر|اشتركوا|اشترك في|لمشاهدتكم|للمشاهدة|ترجمة|subtitle|amara|\bmusic\b|موسيقى", re.I)
@@ -139,6 +145,12 @@ class Voice:
                 buyer INTEGER DEFAULT 0, ms INTEGER DEFAULT 0, err TEXT)""")
             self.store.db.commit()
         self._tts_n = 0
+        try:                                       # ElevenLabs («جداوي») was removed (27 Nov): its saved key goes too
+            if self.store.setting("eleven", None):
+                with app.lock:
+                    self.store.set_setting("eleven", {})
+        except Exception:
+            pass
         threading.Thread(target=self._sweeper, daemon=True).start()
 
     # ---- settings and money
@@ -229,10 +241,9 @@ class Voice:
             out["why"] = "customer"
             return out
         out.update({"on": True, "budget_s": int(left / self._per_s(c)), "buyer": buyer})
-        voices = [{k: x[k] for k in ("id", "name", "g", "sub")} for x in VOICES]
-        if self.el_ready():
-            voices += [dict(x) for x in TURN_VOICES]
-        out.update({"voices": voices, "voice": c.get("voice")})
+        voices = [{k: x[k] for k in ("id", "name", "g", "sub", "turn") if k in x} for x in TURN_VOICES + VOICES]
+        dv = c.get("voice") if (c.get("voice") in VOICE_BY_ID or c.get("voice") in TURN_BY_ID) else "t:echo"
+        out.update({"voices": voices, "voice": dv})
         return out
 
     # ---- open a call
@@ -302,7 +313,7 @@ class Voice:
             ack = 600
         sess = {"model": c["model"], "instructions": self._instructions(session, resume),
                 "delegation": {"type": "client", "acknowledgement_delay_ms": ack}}
-        vname = voice if voice in VOICE_BY_ID else c.get("voice")
+        vname = voice if voice in VOICE_BY_ID else (c.get("voice") if c.get("voice") in VOICE_BY_ID else "echo")
         sess["instructions"] = self._instructions(session, resume, vname)
         if vname:
             sess["audio"] = {"output": {"voice": vname}}
@@ -465,76 +476,26 @@ class Voice:
             except Exception as e:
                 print("voice sweeper:", e, flush=True)
 
-    # ---- «رد ورد» voices (ElevenLabs): one sentence at a time, nothing paid while he is quiet
-    def el_cfg(self):
-        e = dict(EL_DEFAULT)
-        try:
-            e.update({k: v for k, v in (self.store.setting("eleven", {}) or {}).items() if k in EL_DEFAULT})
-        except Exception:
-            pass
-        return e
-
-    def el_ready(self):
-        e = self.el_cfg()
-        return bool(e.get("enabled") and e.get("api_key"))
-
+    # ---- «رد ورد» voices (OpenAI): one sentence at a time, nothing paid while he is quiet
     def _tts_dir(self):
         d = os.path.join(self.store.base_dir, "tts", self.store.mode)
         os.makedirs(d, exist_ok=True)
         return d
 
-    def _el(self, method, path, key, body=None, timeout=25):
-        req = urllib.request.Request(EL_URL + path, json.dumps(body).encode() if body is not None else None,
-                                     {"xi-api-key": key, "Content-Type": "application/json", "Accept": "*/*"}, method=method)
-        try:
-            with urllib.request.urlopen(req, timeout=timeout) as r:
-                return r.status, r.read(), {k.lower(): v for k, v in r.headers.items()}
-        except urllib.error.HTTPError as e:
-            try:
-                raw = e.read()
-            except Exception:
-                raw = b""
-            return e.code, raw, {}
-        except Exception as e:
-            return 0, json.dumps({"detail": {"message": str(e)[:200]}}).encode(), {}
+    def _tts_cost(self, c, text, model):
+        """OpenAI does not report it per answer: about 14 letters a second of Arabic speech, the text in by tokens."""
+        if model == "tts-1":
+            return len(text) * 15.0 / 1e6
+        return (len(text) / 14.0 / 60.0) * float(c["tts_per_min"]) + (len(text) / 2.5) * float(c["tts_in_per_m"]) / 1e6
 
-    @staticmethod
-    def _el_why(code, raw):
-        """ElevenLabs refused: (the reason in plain words, its own short message)."""
-        try:
-            d = json.loads((raw or b"{}").decode("utf-8", "ignore") or "{}")
-        except Exception:
-            d = {}
-        det = d.get("detail") if isinstance(d, dict) else None
-        if isinstance(det, dict):
-            st, msg = str(det.get("status") or det.get("code") or det.get("type") or ""), str(det.get("message") or "")
-        else:
-            st, msg = "", str(det or (d.get("message") if isinstance(d, dict) else "") or "")
-        low = (st + " " + msg).lower()
-        if "permission" in low:
-            why = "المفتاح ما عنده صلاحية: فعّل له Text to Speech (وUser «قراءة» عشان الرصيد)"
-        elif code == 401:
-            why = "مفتاح ElevenLabs غلط أو موقّف"
-        elif "quota" in low or "credit" in low or "limit" in low and code in (401, 402, 403, 429) or code == 402:
-            why = "رصيد ElevenLabs خلص أو وصل حد المفتاح"
-        elif "free" in low or "subscription" in low or "upgrade" in low:
-            why = "الصوت يحتاج باقة مدفوعة في ElevenLabs (Starter)"
-        elif "voice" in low and ("not" in low or "found" in low):
-            why = "الصوت مو موجود في حساب ElevenLabs"
-        elif code == 429:
-            why = "ElevenLabs مشغول الحين، طلبات كثيرة في نفس اللحظة"
-        elif code == 0:
-            why = "ما قدرنا نوصل لـElevenLabs"
-        else:
-            why = "ElevenLabs رفض الطلب"
-        return why, (str(code) + " " + (st + ": " + msg).strip(": ")).strip()[:200]
-
-    def _tts(self, text, el):
-        """(mp3, credits it took, from the kept copy?, problem). The same words in the same voice are made only once."""
+    def _tts(self, text, tv, c):
+        """(mp3, cost, from the kept copy?, problem). The same words in the same voice are made only once."""
         text = (text or "").strip()[:900]
         if not text:
             return None, 0.0, False, None
-        sig = "|".join(str(el.get(k)) for k in ("voice_id", "model", "stability", "similarity", "speed", "format")) + "|" + text
+        style = TTS_STYLE.get(tv.get("g"), TTS_STYLE["m"])
+        first = c.get("tts_model") or "gpt-4o-mini-tts"
+        sig = "|".join([tv["oai"], first, style, text])
         fp = os.path.join(self._tts_dir(), hashlib.sha1(sig.encode()).hexdigest()[:28] + ".mp3")
         try:
             with open(fp, "rb") as f:
@@ -547,50 +508,52 @@ class Voice:
                 return data, 0.0, True, None
         except OSError:
             pass
-        body = {"text": text, "model_id": el["model"], "language_code": "ar",
-                "voice_settings": {"stability": float(el["stability"]), "similarity_boost": float(el["similarity"]),
-                                   "speed": float(el["speed"])}}
-        path = "/text-to-speech/%s?output_format=%s" % (urllib.parse.quote(str(el["voice_id"]), safe=""),
-                                                        urllib.parse.quote(str(el["format"]), safe=""))
-        code, raw, hdr = self._el("POST", path, el["api_key"], body)
-        for _ in range(2):                         # an optional setting it refuses: drop it, once each
-            if code not in (400, 422):
-                break
-            low = (raw or b"").decode("utf-8", "ignore").lower()
-            if "language" in low and "language_code" in body:
-                body.pop("language_code")
-            elif ("speed" in low or "voice_settings" in low or "stability" in low) and "voice_settings" in body:
-                body.pop("voice_settings")
-            else:
-                break
-            code, raw, hdr = self._el("POST", path, el["api_key"], body)
-        if code != 200 or not raw or raw[:1] in (b"{", b"<"):
-            return None, 0.0, False, self._el_why(code, raw)
-        credits = None
-        for k in ("character-cost", "x-character-count"):
+        key = self.agent.cfg().get("api_key")
+        last = ""
+        for m in [first] + [x for x in ("gpt-4o-mini-tts", "tts-1") if x != first]:
+            body = {"model": m, "voice": tv["oai"], "input": text, "response_format": "mp3"}
+            if m != "tts-1":
+                body["instructions"] = style
+            req = urllib.request.Request(TTS_URL, json.dumps(body).encode(), {"Authorization": "Bearer " + (key or ""),
+                                                                               "Content-Type": "application/json"})
             try:
-                credits = float(hdr[k])
+                with urllib.request.urlopen(req, timeout=30) as r:
+                    raw = r.read()
+                if not raw or raw[:1] in (b"{", b"<"):
+                    last = "empty"
+                    break
+                try:
+                    tmp = fp + ".part"
+                    with open(tmp, "wb") as f:
+                        f.write(raw)
+                    os.replace(tmp, fp)
+                    self._tts_n += 1
+                    if self._tts_n % 50 == 0:              # keep the newest 800 sentences
+                        d = self._tts_dir()
+                        files = sorted((os.path.getmtime(os.path.join(d, x)), x) for x in os.listdir(d) if x.endswith(".mp3"))
+                        for _, x in files[:-800]:
+                            try:
+                                os.remove(os.path.join(d, x))
+                            except OSError:
+                                pass
+                except OSError:
+                    pass
+                return raw, self._tts_cost(c, text, m), False, None
+            except urllib.error.HTTPError as e:
+                try:
+                    msg = str((json.loads(e.read().decode() or "{}").get("error") or {}).get("message") or "")[:200]
+                except Exception:
+                    msg = ""
+                last = ("%s %s" % (e.code, msg)).strip()
+                if e.code in (400, 403, 404) and "model" in msg.lower():
+                    continue                               # a speech model this account does not have: the next one
                 break
-            except (KeyError, TypeError, ValueError):
-                pass
-        if credits is None:
-            credits = len(text) * (0.5 if ("flash" in el["model"] or "turbo" in el["model"]) else 1.0)
-        try:
-            tmp = fp + ".part"
-            with open(tmp, "wb") as f:
-                f.write(raw)
-            os.replace(tmp, fp)
-            self._tts_n += 1
-            if self._tts_n % 50 == 0:                  # keep the newest 800 sentences
-                files = sorted((os.path.getmtime(os.path.join(self._tts_dir(), x)), x) for x in os.listdir(self._tts_dir()) if x.endswith(".mp3"))
-                for _, x in files[:-800]:
-                    try:
-                        os.remove(os.path.join(self._tts_dir(), x))
-                    except OSError:
-                        pass
-        except OSError:
-            pass
-        return raw, credits, False, None
+            except Exception as e:
+                last = str(e)[:200]
+                break
+        why = ("مفتاح OpenAI ما يسمح بنموذج الصوت أو رصيده خلص" if last[:3] in ("401", "402", "403", "429")
+               else "OpenAI ما قرأ الرد بصوت")
+        return None, 0.0, False, (why, last)
 
     def _multipart(self, url, key, fields, fname, data, ctype, timeout=30):
         b = "----gm" + secrets.token_hex(12)
@@ -642,14 +605,15 @@ class Voice:
                                    1 if buyer else 0, int(ms or 0), (err or None) and str(err)[:200]))
             self.store.db.commit()
 
-    def _say(self, c, el, who, session, ip, lab, t0, kind, say, out, stt_cost, stt_s, buyer, ms):
-        audio, credits, cached, err = self._tts(say, el)
-        tts_cost = round(credits * float(c["el_usd_per_credit"]), 6)
+    def _say(self, c, tv, who, session, ip, lab, t0, kind, say, out, stt_cost, stt_s, buyer, ms):
+        audio, cost, cached, err = self._tts(say, tv, c)
+        tts_cost = round(cost, 6)
+        credits = 0.0
         backend = self._backend_cost(session, t0, time.time()) if kind == "turn" else 0.0
         self._log_turn(who, session, ip, kind, stt_s, stt_cost, 0 if cached else len(say), credits, tts_cost, backend,
                        cached, lab, buyer, ms, err and err[1])
         if err:
-            self._warn(0, err[1], why="صوت جداوي: " + err[0])
+            self._warn(0, err[1], why="الصوت «رد ورد»: " + err[0])
         conv = self.store.one("SELECT COALESCE(SUM(stt_cost+tts_cost+backend),0) c FROM voice_turns WHERE day=? AND session=?",
                               (self._today(), session))["c"]
         res = dict(out, ok=True, say=say, turn_usd=round(stt_cost + tts_cost + backend, 5), conv_usd=round(float(conv or 0), 5),
@@ -657,20 +621,18 @@ class Voice:
         if audio:
             res["audio"], res["mime"] = base64.b64encode(audio).decode(), "audio/mpeg"
         elif err and (lab or c.get("test_mode")):
-            res["detail"] = "صوت جداوي ما اشتغل، " + err[0]
+            res["detail"] = "الصوت ما اشتغل، " + err[0]
         return res
 
     def turn(self, visitor, session, audio_b64, mime, ms, ip, lab, picks=None, hello=False, voice=None):
-        """One sentence from the phone -> the shop assistant's answer, said in the ElevenLabs voice."""
-        c, el = self.cfg(), self.el_cfg()
+        """One sentence from the phone -> the shop assistant's answer, said in OpenAI's voice."""
+        c = self.cfg()
+        tv = TURN_BY_ID.get(voice or "") or TURN_BY_ID.get(c.get("voice")) or TURN_VOICES[0]
         session = re.sub(r"[^A-Za-z0-9_-]", "", session or "")[:40]
         if not session:
             return {"ok": False, "why": "bad"}
         who = self._who(visitor, ip)
         show = bool(lab or c.get("test_mode"))
-        if not (el.get("enabled") and el.get("api_key")):
-            return {"ok": False, "why": "el_off", "say": BUSY,
-                    "detail": "صوت جداوي يحتاج مفتاح ElevenLabs في الإعدادات، أو هو موقّف من هناك" if show else ""}
         st = self.status(visitor, ip, lab)
         if not st["on"]:
             why = {"hidden": "الصوت موقّف من لوحة الإدارة", "off": "المساعد مطفي أو ما فيه مفتاح", "monthly": "الحد الشهري خلص",
@@ -679,7 +641,7 @@ class Voice:
         t0 = time.time()
         if hello:
             text = HELLO_BACK if self._history(session, 2) else HELLO_T
-            return self._say(c, el, who, session, ip, lab, t0, "hello", text, {"text": text}, 0.0, 0.0, False, 0)
+            return self._say(c, tv, who, session, ip, lab, t0, "hello", text, {"text": text}, 0.0, 0.0, False, 0)
         try:
             raw = base64.b64decode(audio_b64 or "", validate=False)
         except Exception:
@@ -691,7 +653,7 @@ class Voice:
         except (TypeError, ValueError):
             ms = 0
         if len(raw) < 600:                          # nothing real was recorded
-            return self._say(c, el, who, session, ip, lab, t0, "misheard", MISHEARD, {"text": MISHEARD, "misheard": True},
+            return self._say(c, tv, who, session, ip, lab, t0, "misheard", MISHEARD, {"text": MISHEARD, "misheard": True},
                              0.0, 0.0, False, ms)
         dur = max(0.5, min(float(c["turn_max_s"]) + 5, (ms / 1000.0) or len(raw) / 4000.0))
         heard, err, model = self._stt(raw, mime, c)
@@ -707,10 +669,10 @@ class Voice:
             out = {"text": "صار عندي خلل بسيط في السماع، ممكن تعيد كلامك؟", "misheard": True, "heard": ""}
             if show:
                 out["detail_stt"] = err
-            return self._say(c, el, who, session, ip, lab, t0, "stt_err", out["text"], out, stt_cost, dur, False, ms)
+            return self._say(c, tv, who, session, ip, lab, t0, "stt_err", out["text"], out, stt_cost, dur, False, ms)
         clean = re.sub(r"[\s.,،!?؟…\-]+", " ", heard).strip()
         if len(clean) < 2 or JUNK.search(heard) or not re.search(r"[؀-ۿ0-9]", heard):
-            return self._save_misheard(c, el, who, session, ip, lab, t0, stt_cost, dur, ms, heard)
+            return self._save_misheard(c, tv, who, session, ip, lab, t0, stt_cost, dur, ms, heard)
         vis = who if not who.startswith("ip:") else None
         res = (self.agent.chat(session, heard, vis, picks) if picks is not None else self.agent.chat(session, heard, vis)) or {}
         buyer = bool(res.get("offer")) or res.get("stage") in ("ready", "closing")
@@ -719,46 +681,13 @@ class Voice:
         for k in ("offer", "handoff", "add_picks"):
             if k in res:
                 out[k] = res[k]
-        return self._say(c, el, who, session, ip, lab, t0, "turn", say, out, stt_cost, dur, buyer, ms)
+        return self._say(c, tv, who, session, ip, lab, t0, "turn", say, out, stt_cost, dur, buyer, ms)
 
-    def _save_misheard(self, c, el, who, session, ip, lab, t0, stt_cost, dur, ms, heard):
+    def _save_misheard(self, c, tv, who, session, ip, lab, t0, stt_cost, dur, ms, heard):
         out = {"text": MISHEARD, "misheard": True, "heard": ""}
         if lab or c.get("test_mode"):
             out["junk"] = heard[:80]
-        return self._say(c, el, who, session, ip, lab, t0, "misheard", MISHEARD, out, stt_cost, dur, False, ms)
-
-    def el_balance(self, el=None):
-        el = el or self.el_cfg()
-        if not el.get("api_key"):
-            return None
-        code, raw, _ = self._el("GET", "/user/subscription", el["api_key"], timeout=12)
-        if code != 200:
-            return {"ok": False, "why": self._el_why(code, raw)[0]}
-        try:
-            d = json.loads(raw.decode() or "{}")
-        except Exception:
-            d = {}
-        used, lim = d.get("character_count"), d.get("character_limit")
-        left = (lim - used) if isinstance(used, (int, float)) and isinstance(lim, (int, float)) else None
-        return {"ok": True, "tier": d.get("tier"), "used": used, "limit": lim, "left": left,
-                "reset": d.get("next_character_count_reset_unix")}
-
-    def el_test(self):
-        """The owner's test from the admin: a short sentence in the voice, and the credits left."""
-        el = self.el_cfg()
-        if not el.get("api_key"):
-            return {"ok": False, "why": "ما فيه مفتاح ElevenLabs، حطه وبعدين جرب"}
-        audio, credits, cached, err = self._tts(SAMPLE, el)
-        out = {"ok": bool(audio), "balance": self.el_balance(el), "cached": cached, "credits": credits}
-        if audio:
-            out["audio"] = base64.b64encode(audio).decode()
-            if not cached:
-                c = self.cfg()
-                self._log_turn("owner", "admin-test", "", "test", 0, 0.0, len(SAMPLE), credits,
-                               round(credits * float(c["el_usd_per_credit"]), 6), 0.0, False, True, False, 0, None)
-        if err:
-            out["why"], out["detail"] = err
-        return out
+        return self._say(c, tv, who, session, ip, lab, t0, "misheard", MISHEARD, out, stt_cost, dur, False, ms)
 
     # ---- the owner's report
     def report(self, a, b):
@@ -780,4 +709,4 @@ class Voice:
         return {"totals": tot, "recent": recent, "today": round(self._spent_voice_today(), 4),
                 "caps": {"customer": c["per_customer_usd"], "buyer": c["buyer_usd"], "day": c["daily_usd"]},
                 "price_per_min": c["price_per_min"], "public": c["public"], "test_mode": bool(c.get("test_mode")),
-                "turns": turns, "el": {"ready": self.el_ready(), "has_key": bool(self.el_cfg().get("api_key"))}}
+                "turns": turns}

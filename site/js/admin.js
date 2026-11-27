@@ -245,9 +245,9 @@
       '<div><span>المكالمات / الزبائن / المشترين</span><b>' + fmt(t.calls) + ' / ' + fmt(t.customers) + ' / ' + fmt(t.buyers) + '</b></div>' +
       '<div><span>الثواني المحسوبة</span><b>' + fmt(t.seconds) + '</b></div><div><span>تكلفة الفترة / اليوم</span><b>' + m(t.cost) + ' / ' + m(v.today) + '</b></div>' +
       '<div><span>الحد: للزبون / للمشتري / لليوم</span><b>' + m(v.caps.customer) + ' / ' + m(v.caps.buyer) + ' / ' + m(v.caps.day) + '</b></div></div>' +
-      (v.turns ? '<div class="sub" style="margin-top:14px">صوت جداوي «رد ورد»: ' + (v.el && v.el.ready ? 'شغّال' : v.el && v.el.has_key ? 'موقّف من الإعدادات' : 'يحتاج مفتاح ElevenLabs من الإعدادات') + '. ما يندفع شيء وقت السكوت.</div><div class="list2">' +
+      (v.turns ? '<div class="sub" style="margin-top:14px">«رد ورد» (الأوفر): ما فيه مكالمة مفتوحة، وما يندفع شيء وقت السكوت.</div><div class="list2">' +
         '<div><span>محادثات / ردود</span><b>' + fmt(v.turns.talks) + ' / ' + fmt(v.turns.turns) + '</b></div>' +
-        '<div><span>حروف قالها / رصيد ElevenLabs المستخدم</span><b>' + fmt(v.turns.chars) + ' / ' + fmt(v.turns.credits) + '</b></div>' +
+        '<div><span>حروف قالها (ردود محفوظة ما تكلف)</span><b>' + fmt(v.turns.chars) + ' (' + fmt(v.turns.cached) + ')</b></div>' +
         '<div><span>السماع / الصوت / العقل</span><b>' + m(v.turns.stt) + ' / ' + m(v.turns.tts) + ' / ' + m(v.turns.backend) + '</b></div>' +
         '<div><span>تكلفة الفترة</span><b>' + m(v.turns.cost) + '</b></div>' +
         (v.turns.errors ? '<div><span>أخطاء (آخرها)</span><b dir="ltr">' + fmt(v.turns.errors) + ' · ' + esc(v.turns.last_error || '') + '</b></div>' : '') + '</div>' : '') +
@@ -302,10 +302,6 @@
         '<button class="btn g full" id="svP">حفظ الأسعار</button></div>' +
         '<div class="box"><h3>المساعد الذكي</h3><div class="sub">المفتاح يُحفظ في السيرفر فقط ولا يظهر في الموقع</div>' + f('api_key', 'مفتاح OpenAI', d.ai.api_key, 'text') + f('model', 'النموذج الأساسي', d.ai.model, 'text') + f('model_strong', 'نموذج اللحظات الحاسمة', d.ai.model_strong, 'text') + f('daily_cap_usd', 'السقف اليومي بالدولار', d.ai.daily_cap_usd) + f('monthly_cap_usd', 'السقف الشهري بالدولار', d.ai.monthly_cap_usd) +
         '<label class="chk"><input type="checkbox" id="aiOn"' + (d.ai.enabled ? ' checked' : '') + '><span>تشغيل المساعد في الموقع</span></label><button class="btn g full" id="svA">حفظ</button><button class="btn full" id="tsA" style="margin-top:10px">اختبار المساعد</button><div id="tsR" style="margin-top:12px;font-size:14px;line-height:1.9"></div></div></div>' +
-        '<div class="g2"><div class="box"><h3>صوت جداوي (ElevenLabs)</h3><div class="sub">صوت «رد ورد» في محادثة الموقع، يظهر في «تغيير الصوت». المفتاح يُحفظ في السيرفر فقط ولا يظهر في الموقع.</div>' +
-        f('el_key', 'مفتاح ElevenLabs', (d.eleven || {}).key, 'text') +
-        '<label class="chk"><input type="checkbox" id="elOn"' + ((d.eleven || {}).enabled !== false ? ' checked' : '') + '><span>تشغيل صوت جداوي في الموقع</span></label>' +
-        '<button class="btn g full" id="svEl">حفظ</button><button class="btn full" id="tsEl" style="margin-top:10px">اسمع الصوت واعرض الرصيد</button><div id="elR" style="margin-top:12px;font-size:14px;line-height:1.9"></div></div></div>' +
         '<div class="g2"><div class="box"><h3>روابط التواصل</h3>' + f('l_tiktok', 'تيك توك', L.tiktok, 'text') + f('l_instagram', 'إنستغرام', L.instagram, 'text') + f('l_facebook', 'فيسبوك', L.facebook, 'text') + f('l_whatsapp', 'رقم واتساب (مع رمز الدولة)', L.whatsapp, 'text') + '<button class="btn g full" id="svL">حفظ الروابط</button></div>' +
         '<div class="box"><h3>حسابات التحويل</h3><div class="sub">تظهر للعميل فقط بعد موافقته على الشروط</div><div id="accs">' + (d.payments || []).map(acc).join('') + '</div><button class="btn s" id="addAcc">+ حساب</button> <button class="btn g s" id="svPay">حفظ الحسابات</button></div></div>' +
         '<div class="g2"><div class="box"><h3>سياسات المحل للمستشار الذكي</h3><div class="sub">يقرأها المستشار ويجاوب منها الزبون. اتركها فاضية إذا ما عندكم سياسة، وسيقول للزبون إن فريق المبيعات يوضحها.</div>' +
@@ -338,21 +334,6 @@
         }).catch(function (e) { $('#tsR').textContent = e.error || 'تعذر الاختبار' }).then(function () { b.disabled = false; b.textContent = 'اختبار المساعد' });
       };
       $('#svA').onclick = function () { api('/api/admin/settings', { ai: { api_key: $('#f_api_key').value, model: $('#f_model').value, model_strong: $('#f_model_strong').value, daily_cap_usd: parseFloat($('#f_daily_cap_usd').value), monthly_cap_usd: parseFloat($('#f_monthly_cap_usd').value), enabled: $('#aiOn').checked } }).then(function () { toast('تم الحفظ'); load() }).catch(function (e) { toast(e.error || 'خطأ') }) };
-      $('#svEl').onclick = function () { api('/api/admin/settings', { eleven: { api_key: $('#f_el_key').value.trim(), enabled: $('#elOn').checked } }).then(function () { toast('تم الحفظ'); settings(mp) }).catch(function (e) { toast(e.error || 'خطأ') }) };
-      $('#tsEl').onclick = function () {
-        var b = this, AC = window.AudioContext || window.webkitAudioContext, ac = null; b.disabled = true; b.textContent = 'جاري التجربة...';
-        try { ac = AC ? new AC() : null; if (ac && ac.resume) ac.resume() } catch (e) { ac = null }      // made in the tap: allowed to play
-        api('/api/admin/el_test', {}).then(function (r) {
-          var bal = r.balance, h = '<b style="color:' + (r.ok ? '#6fcf97' : '#eb5757') + '">' + (r.ok ? 'الصوت شغّال' + (r.cached ? '' : ' (أخذ ' + fmt(r.credits) + ' من الرصيد)') : esc(r.why || 'ما اشتغل')) + '</b>';
-          if (r.detail) h += '<div class="sub" style="margin:0" dir="ltr">' + esc(r.detail) + '</div>';
-          if (bal) h += bal.ok ? '<div>الرصيد الباقي: <b>' + fmt(bal.left) + '</b> من ' + fmt(bal.limit) + (bal.tier ? ' · الباقة: ' + esc(bal.tier) : '') + '</div>' : '<div class="sub" style="margin:0">الرصيد: ' + esc(bal.why) + '</div>';
-          $('#elR').innerHTML = h;
-          if (r.audio && ac) {
-            var bin = atob(r.audio), buf = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-            ac.decodeAudioData(buf.buffer, function (ab) { var sn = ac.createBufferSource(); sn.buffer = ab; sn.connect(ac.destination); sn.onended = function () { try { ac.close() } catch (e) { } }; sn.start(0) }, function () { });
-          }
-        }).catch(function (e) { $('#elR').textContent = e.error || 'تعذرت التجربة' }).then(function () { b.disabled = false; b.textContent = 'اسمع الصوت واعرض الرصيد' });
-      };
       $('#svL').onclick = function () { api('/api/admin/settings', { links: { tiktok: $('#f_l_tiktok').value, instagram: $('#f_l_instagram').value, facebook: $('#f_l_facebook').value, whatsapp: $('#f_l_whatsapp').value } }).then(function () { toast('تم الحفظ') }) };
       $('#addAcc').onclick = function () { $('#accs').insertAdjacentHTML('beforeend', acc({})) };
       $('#svTg').onclick = function () { var t = { token: $('#f_tg_token').value, enabled: $('#tgOn').checked }; if ($('#chAuto')) t.channel_auto = $('#chAuto').checked; api('/api/admin/settings', { telegram: t }).then(function () { toast('تم الحفظ، البوت يشتغل خلال ثواني'); setTimeout(function () { settings(mp) }, 4000) }) };

@@ -156,3 +156,12 @@ OpenAI refused the first real call: `acknowledgement_delay_ms` was 900, OpenAI a
   the assistant's own cost) and count in the same daily voice cap; listening also counts in the monthly AI cap.
   Nothing is paid while the customer is quiet. The admin's AI tab shows talks, answers, letters, credits and costs.
 - The owner's test button plays a sample and shows the ElevenLabs credits left (needs the key's User «read» permission).
+
+
+## 27 Nov 2026 (afternoon) — «جداوي» removed; «رد ورد» is all OpenAI and the default
+- Nashwan's decision: everything on OpenAI. ElevenLabs code, the admin box and any saved ElevenLabs key are gone.
+- «رد ورد» now speaks with OpenAI's speech model (`gpt-4o-mini-tts`, falls back to `tts-1`), the same three names:
+  «سالم» (echo), «فارس» (ballad), «ريم» (coral), each told to speak calm Gulf/Yemeni Arabic. They are listed first in
+  «تغيير الصوت» and «سالم · رد ورد» is the default; the three live voices stay below for comparison.
+- Cost: about 1.5 cents per minute of the assistant's speech + listening 0.3 cents a minute + the assistant, about
+  6-8 cents for a 5-minute conversation, nothing while quiet. Note: OpenAI retires `gpt-4o-mini-tts` on 6 Jan 2027.

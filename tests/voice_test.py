@@ -132,8 +132,8 @@ try:
     o7 = v.open("vis11", "chat11", "v=0 offer", "1.1.1.6", False, False, "nova-hack")
     check('17f a voice outside the three is ignored (the default «سالم»)', SEEN[-1]["body"]["session"]["audio"]["output"]["voice"] == "echo")
     st9 = v.status("vis12", "1.1.1.7", False)
-    check('17h every customer gets the three named voices', [x["name"] for x in st9.get("voices", [])] == ["سالم", "فارس", "ريم"]
-          and [x["g"] for x in st9["voices"]] == ["m", "m", "f"], st9.get("voices"))
+    check('17h every customer gets the three named voices, turn by turn (first, the default) and live', [x["name"] for x in st9.get("voices", [])] == ["سالم", "فارس", "ريم"] * 2
+          and [x["g"] for x in st9["voices"]] == ["m", "m", "f"] * 2 and st9["voice"] == "t:echo" and all(x.get("turn") for x in st9["voices"][:3]), st9.get("voices"))
     app.store.set_setting("voice", {})
     # standby time costs the lower rate: 100 s with 60 s in standby = 40 s x 5c/min + 60 s x 2c/min
     app.store.db.execute("UPDATE voice_calls SET started=?, last_beat=? WHERE id=?", (time.time() - 100, time.time(), o6["call"])); app.store.db.commit()
