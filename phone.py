@@ -52,7 +52,7 @@ DEFAULT = {
     "wh_secret": "",              # OpenAI's webhook secret (whsec_...), to trust only OpenAI's notices
     "proj_id": "",                # the OpenAI project id (proj_...), shown to build the SIP address
     "zd_sip": "",                 # the Zadarma line the customer's leg goes out from (empty: the SIP login above)
-    "predicted": True,            # Zadarma rings the customer first and joins the advisor only when he answers
+    "predicted": False,           # True: Zadarma rings the customer first (did not run on a trial account, 27 Nov)
     "cb_wrap_s": 105,             # callback: from OpenAI's pickup (customer still ringing) to the wrap-up
     "cb_max_s": 135,              # ... to the hang-up
 }

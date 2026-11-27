@@ -166,7 +166,7 @@ try:
     r = ph.call("خالد", "777123456", "normal")
     z = SEEN["zd"][-1] if SEEN["zd"] else {}
     check('18 Zadarma is asked to ring: from the PBX extension to the customer, signed with the key (OpenAI not dialing)',
-          r.get("ok") and "from=100" in z.get("path", "") and "to=967777123456" in z.get("path", "") and z.get("auth", "").startswith("zdkey123:") and "sip=101" in z.get("path", "") and "predicted=1" in z.get("path", "")
+          r.get("ok") and "from=100" in z.get("path", "") and "to=967777123456" in z.get("path", "") and z.get("auth", "").startswith("zdkey123:") and "sip=101" in z.get("path", "")
           and len(SEEN["create"]) == nc, (r, z))
     def hook(body, good=True):
         raw = json.dumps(body).encode(); wid, ts = "msg_1", str(int(time.time()))
@@ -179,7 +179,7 @@ try:
     acc = SEEN["accept"][-1] if SEEN["accept"] else {}
     check('20 OpenAI\'s notice: the advisor takes the call with the customer\'s script and greets at once (he already answered)',
           code == 200 and acc.get("session", {}).get("type") == "live" and "أستاذ خالد" in acc.get("session", {}).get("instructions", "")
-          and "ابدأ بالسلام مباشرة" in acc["session"]["instructions"], acc)
+          and "اسكت تماماً وانتظر" in acc["session"]["instructions"], acc)
     ok = wait(lambda: app.store.one("SELECT status FROM phone_calls WHERE id=?", (r["id"],))["status"] == "done", 8)
     check('21 the call is followed and closed on time like the first way', ok and len(SEEN["hangup"]) >= 2)
     code, _ = hook({"type": "live.transport.incoming", "data": {"type": "sip", "session_id": "live_stranger"}})
