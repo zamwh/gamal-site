@@ -299,10 +299,13 @@ Keyboard under the chat (sections):
                       own photos (featured pieces first). Empty slots are
                       filled from piece photos.
    ⭐ العملاء المميزين the premium list as buttons (no commands needed):
-                      «➕ إضافة عميل» -> type the name -> type the Yemeni
-                      number in any form (771234567, 0771234567, Arabic
-                      digits, spaces); +967 is added by itself; non-Yemeni
-                      numbers are refused. Tap a customer -> «📞 اتصل (نزول
+                      «➕ إضافة عميل» -> type the Yemeni number in any form
+                      (771234567, 0771234567, Arabic digits, spaces); +967
+                      is added by itself; non-Yemeni numbers are refused.
+                      The name is looked up in the shop's own records
+                      (customers, invoices, reservations; last 9 digits):
+                      found -> «✅ أضفه بهذا الاسم» or «✏️ اكتب اسم ثاني»;
+                      not found -> it asks for the name. Tap a customer -> «📞 اتصل (نزول
                       عادي)» / «📞 اتصل (نزول قوي)» / «❌ احذفه».
    📣 اتصل بالمميزين  "normal drop" = first 10, "strong drop" = first 20;
                       asks to confirm; calls ONE AT A TIME (required: the

@@ -222,6 +222,23 @@ def vip_one(app, i):
                    [{"text": "❌ احذفه", "callback_data": f"c:vd{i}"}, {"text": "⭐ القائمة", "callback_data": "c:vip"}]]))
 
 
+def known_name(app, phone):
+    """The customer's name from the shop's own records (customers, invoices, reservations), matched by the last 9 digits."""
+    tail = re.sub(r"\D", "", phone or "")[-9:]
+    if len(tail) < 9:
+        return None
+    s = app.store
+    for sql in ("SELECT name n, phone p FROM customers", "SELECT customer_name n, customer_phone p FROM invoices ORDER BY created_at DESC",
+                "SELECT customer_name n, customer_phone p FROM reservations ORDER BY created_at DESC"):
+        try:
+            for r in s.q(sql + (" LIMIT 5000" if "ORDER" in sql else "")):
+                if r["n"] and r["p"] and re.sub(r"\D", "", r["p"])[-9:] == tail:
+                    return str(r["n"]).strip()[:40]
+        except Exception:
+            continue
+    return None
+
+
 def vip_add(app, name, phone):
     with app.lock:
         v = [r for r in vip_list(app) if r["phone"] != phone] + [{"name": name.strip()[:40], "phone": phone}]
