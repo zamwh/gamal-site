@@ -1,3 +1,7 @@
+## 2026-11-27 (afternoon) — «جداوي» removed; «رد ورد» on OpenAI is the default voice
+- Turn-by-turn answers now use OpenAI's speech model with «سالم» / «فارس» / «ريم»; ElevenLabs removed entirely
+  (code, admin box, saved key). About 6-8 cents per 5-minute conversation; the live call stays as an option.
+
 ## 2026-11-27 — «جداوي»: a turn-by-turn ElevenLabs voice beside the live call
 - New voice in «تغيير الصوت»: «جداوي» (Saudi, ElevenLabs). One sentence at a time: recorded on the phone, turned into
   text by OpenAI, answered by the same shop assistant, read by ElevenLabs. No open call, nothing paid while quiet.
