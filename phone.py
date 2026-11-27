@@ -312,7 +312,7 @@ class Phone:
                                   "VALUES (?,?,?,?,?,?,?,?,?,?)", (cid, None, name, dest, kind, by_user, today, time.time(), "dialing",
                                                                    json.dumps({"instructions": instr}, ensure_ascii=False)))
             self.store.db.commit()
-        params = {"from": str(c["pbx_ext"]), "to": dest.lstrip("+")}
+        params = {"from": str(c["pbx_ext"]), "to": dest}          # Zadarma support: international format with "+"
         # Zadarma: with a PBX extension in "from", the line in "sip" must be a PBX extension too. Extension 100
         # forwards to OpenAI (it cannot dial out itself), so the customer's leg goes out from extension 101.
         ext = str(c["pbx_ext"])
