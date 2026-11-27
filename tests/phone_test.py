@@ -115,8 +115,9 @@ try:
           and tr.get("trunk", {}).get("auth") == {"type": "digest", "username": "454051", "password": "SecretPass9"}
           and tr.get("trunk", {}).get("caller_number") == "+966567843426" and SEEN["create"][-1]["auth"] == "Bearer sk-test", (r, tr))
     ins = b.get("session", {}).get("instructions", "")
-    check('6  the script: Gulf Arabic, greets him by name and asks how he is, the strong drop, WhatsApp offer, one shop',
-          "أستاذ محمد" in ins and "كيف الحال" in ins and "نزول واضح" in ins and "الواتساب" in ins and "خليجية" in ins
+    check('6  the script: salam first, then «how are you, أستاذ محمد», permission, the strong drop, WhatsApp offer, thanks with يعطيك العافية, one shop',
+          "«السلام عليكم ورحمة الله.» بس" in ins and "كيف حالك أستاذ محمد" in ins and "إن كان وقتك يسمح" in ins
+          and "أشكرك على وقتك أستاذ محمد، ويعطيك العافية" in ins and "نزول واضح" in ins and "الواتساب" in ins and "خليجية" in ins
           and "بجوار البوابة الرئيسية لمركز جرعان" in ins and "لا تقول «فرع»" in ins and b["session"]["audio"]["output"]["voice"] == "coral" and "المستشارة الآلية" in ins and "بصوت عالي" in ins)
     ok = wait(lambda: any(x.get("type") == "session.instructions.append" for x in SEEN["client"]), 6)
     check('7  at the wrap-up time the advisor is told to close', ok, SEEN["client"])
