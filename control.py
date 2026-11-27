@@ -18,7 +18,7 @@ OPTIONS = [("🩺 حالة النظام", "c:st"), ("🤖 وكيل الزبائ�
            ("📣 اتصل بالمميزين", "c:call"), ("💾 نسخة احتياطية", "c:bk"), ("🔄 إعادة تشغيل", "c:rs"),
            ("📘 الأوامر", "c:help")]
 INTRO = "⚙️ التحكم: كل شي في النظام من هنا. اختر من تحت."
-HELP = ("📘 أوامر التحكم (تكتبها في المحادثة):\n"
+HELP = ("كل شي بالأزرار. وللي يحب الكتابة، هذي أوامر اختيارية:\n"
         "/price 52000 51000  تحديث سعر جرام 21 (البيع ثم الشراء)\n"
         "/vip add الاسم 77xxxxxxx  إضافة عميل مميز\n"
         "/vip del 77xxxxxxx  حذف عميل مميز\n"
@@ -191,19 +191,61 @@ def vip_list(app):
     return list(app.store.setting("vip", []) or [])
 
 
+def yemen_phone(text):
+    """771234567 / 0771234567 / 967771234567 / +967 77 123 4567 / Arabic digits -> +967771234567 (None if not Yemeni)."""
+    from phone import norm_phone
+    t = (text or "").translate(str.maketrans("٠١٢٣٤٥٦٧٨٩", "0123456789"))
+    d = re.sub(r"[^\d+]", "", t)
+    if re.fullmatch(r"07\d{8}", d):
+        d = d[1:]
+    p = norm_phone(d)
+    return p if p and re.fullmatch(r"\+9677\d{8}", p) else None
+
+
 def vip_view(app):
+    """The premium list as buttons: tap a customer to call or remove him, «➕ إضافة عميل» to add."""
     v = vip_list(app)
-    if not v:
-        return "⭐ العملاء المميزين: القائمة فاضية.\nأضف بالأمر: /vip add الاسم 77xxxxxxx"
-    return "\n".join([f"⭐ العملاء المميزين ({len(v)}):"] + [f"{i + 1}. {r['name']} · {r['phone']}" for i, r in enumerate(v)]
-                     + ["", "إضافة: /vip add الاسم 77xxxxxxx", "حذف: /vip del 77xxxxxxx"])
+    rows = [[{"text": f"👤 {r['name']}", "callback_data": f"c:v{i}"}] for i, r in enumerate(v[:40])]
+    rows.append([{"text": "➕ إضافة عميل", "callback_data": "c:va"}])
+    text = (f"⭐ العملاء المميزين ({len(v)}). اضغط على أي عميل تتصل عليه أو تحذفه." if v
+            else "⭐ العملاء المميزين: القائمة فاضية. اضغط «➕ إضافة عميل».")
+    return text, _back(rows)
+
+
+def vip_one(app, i):
+    v = vip_list(app)
+    if i >= len(v):
+        return vip_view(app)
+    r = v[i]
+    return (f"👤 {r['name']}\n📱 {r['phone']}",
+            _back([[{"text": "📞 اتصل (نزول عادي)", "callback_data": f"c:vn{i}"}, {"text": "📞 اتصل (نزول قوي)", "callback_data": f"c:vs{i}"}],
+                   [{"text": "❌ احذفه", "callback_data": f"c:vd{i}"}, {"text": "⭐ القائمة", "callback_data": "c:vip"}]]))
+
+
+def vip_add(app, name, phone):
+    with app.lock:
+        v = [r for r in vip_list(app) if r["phone"] != phone] + [{"name": name.strip()[:40], "phone": phone}]
+        app.store.set_setting("vip", v)
+        app.store.db.commit()
+    return len(v)
+
+
+def vip_remove(app, i):
+    with app.lock:
+        v = vip_list(app)
+        if i < len(v):
+            r = v.pop(i)
+            app.store.set_setting("vip", v)
+            app.store.db.commit()
+            return r["name"]
+    return None
 
 
 def vip_cmd(app, text):
     from phone import norm_phone
     parts = (text or "").split()
     if len(parts) < 2:
-        return vip_view(app)
+        return vip_view(app)[0]
     op = parts[1].lower()
     with app.lock:
         v = vip_list(app)
@@ -223,7 +265,7 @@ def vip_cmd(app, text):
             app.store.set_setting("vip", v)
             app.store.db.commit()
             return "✅ انحذف." if len(v) < n else "ما لقيت هذا الرقم في القائمة."
-    return vip_view(app)
+    return vip_view(app)[0]
 
 
 def one_call(app, text):

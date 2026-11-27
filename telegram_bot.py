@@ -27,6 +27,7 @@ class Bot(threading.Thread):
         self.username = ""
         self.waiting = {}       # staff chat id -> (piece code, photo role) after pressing a photo button
         self.price_wait = {}    # staff chat id -> {"step": "buy"|"sell", "buy": n} while the gold price is typed in two messages
+        self.vip_wait = {}      # staff chat id -> {"step": "name"|"phone", "name": ...} while a premium customer is added
         self.hero_wait = {}     # staff chat id -> {"slot": 0..2} after pressing «الصورة N» in «صور الواجهة»
         self._ch_last = 0       # last channel check
         self._pub = {}          # chat -> last time the "staff only" note went out
@@ -291,9 +292,31 @@ class Bot(threading.Thread):
                 t, k = control.hero_view(app)
                 return self._edit(token, chat, mid, "✅ رجعت صور الواجهة تلقائي من صور القطع.\n\n" + t, k)
             if text == "c:vip":
+                self.vip_wait.pop(chat, None)
                 with app.lock:
-                    t = control.vip_view(app)
-                return self._edit(token, chat, mid, t, control._back())
+                    t, k = control.vip_view(app)
+                return self._edit(token, chat, mid, t, k)
+            if text == "c:va":
+                self.vip_wait[chat] = {"step": "name", "ts": time.time()}
+                return self._edit(token, chat, mid, "➕ عميل جديد\n1️⃣ اكتب اسم العميل:",
+                                  control._back([[{"text": "إلغاء", "callback_data": "c:vip"}]]))
+            m_ = re.fullmatch(r"c:v([nsd]?)(\d+)", text)
+            if m_:
+                op, i = m_.group(1), int(m_.group(2))
+                if op == "":
+                    with app.lock:
+                        t, k = control.vip_one(app, i)
+                    return self._edit(token, chat, mid, t, k)
+                if op == "d":
+                    name = control.vip_remove(app, i)
+                    with app.lock:
+                        t, k = control.vip_view(app)
+                    return self._edit(token, chat, mid, (f"✅ انحذف {name}.\n\n" if name else "") + t, k)
+                v = control.vip_list(app)
+                if i < len(v):
+                    r = app.phone.call(v[i]["name"], v[i]["phone"], "strong" if op == "s" else "normal", by_user="telegram")
+                    t = "📞 بدأ الاتصال على %s. يوصلك ملخص المكالمة هنا لما تخلص." % v[i]["name"] if r.get("ok") else "ما بدأ الاتصال: " + str(r.get("why"))
+                    return self._edit(token, chat, mid, t, control._back([[{"text": "⭐ القائمة", "callback_data": "c:vip"}]]))
             if text == "c:call":
                 t, k = control.bulk_view(app)
                 return self._edit(token, chat, mid, t, k)
@@ -350,6 +373,29 @@ class Bot(threading.Thread):
             return self.send(token, chat, control.save_price(self.app, buy, v))
         except Exception as e:
             return self.send(token, chat, f"ما انحفظ السعر: {e}")
+
+    def _vip_step(self, token, chat, text):
+        """Adding a premium customer in two messages: the name, then the number (Yemeni; +967 is added by itself)."""
+        import control
+        w = self.vip_wait.get(chat) or {}
+        if time.time() - w.get("ts", 0) > 900:
+            self.vip_wait.pop(chat, None)
+            return self.send(token, chat, "انتهى الوقت. اضغط «➕ إضافة عميل» من جديد.")
+        cancel = {"inline_keyboard": [[{"text": "إلغاء", "callback_data": "c:vip"}]]}
+        if w.get("step") == "name":
+            name = re.sub(r"[^\w\s؀-ۿ.-]", "", text).strip()[:40]
+            if not name:
+                return self.send(token, chat, "اكتب اسم العميل.", markup=cancel)
+            self.vip_wait[chat] = {"step": "phone", "name": name, "ts": time.time()}
+            return self.send(token, chat, f"الاسم: {name}\n2️⃣ اكتب رقم جواله اليمني (مثل 771234567):", markup=cancel)
+        ph = control.yemen_phone(text)
+        if not ph:
+            return self.send(token, chat, "الرقم مو يمني صحيح. اكتبه مثل 771234567:", markup=cancel)
+        self.vip_wait.pop(chat, None)
+        n = control.vip_add(self.app, w["name"], ph)
+        with self.app.lock:
+            t, k = control.vip_view(self.app)
+        return self.send(token, chat, f"✅ انضاف {w['name']} ({ph}). العدد الحين {n}.\n\n" + t, markup=k)
 
     def _save_hero(self, token, chat, msg):
         import control, media
@@ -848,6 +894,12 @@ class Bot(threading.Thread):
             return self._save_photo(token, chat, msg, target[0], target[1])
         if not chat or not text:
             return
+        if staff and chat in self.vip_wait:
+            import staff_menu
+            if text.startswith("/") or re.match(r"^[a-z]{1,3}:", text) or staff_menu.section_name(text):
+                self.vip_wait.pop(chat, None) if text != "c:va" else None
+            else:
+                return self._vip_step(token, chat, text)
         if staff and chat in self.price_wait:
             import staff_menu
             if text.startswith("/") or re.match(r"^[a-z]{1,3}:", text) or staff_menu.section_name(text):

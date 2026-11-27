@@ -298,7 +298,12 @@ Keyboard under the chat (sections):
                       watermark). «رجّعها كلها تلقائي» = back to the pieces'
                       own photos (featured pieces first). Empty slots are
                       filled from piece photos.
-   ⭐ العملاء المميزين the premium list
+   ⭐ العملاء المميزين the premium list as buttons (no commands needed):
+                      «➕ إضافة عميل» -> type the name -> type the Yemeni
+                      number in any form (771234567, 0771234567, Arabic
+                      digits, spaces); +967 is added by itself; non-Yemeni
+                      numbers are refused. Tap a customer -> «📞 اتصل (نزول
+                      عادي)» / «📞 اتصل (نزول قوي)» / «❌ احذفه».
    📣 اتصل بالمميزين  "normal drop" = first 10, "strong drop" = first 20;
                       asks to confirm; calls ONE AT A TIME (required: the
                       webhook matches the latest dialing call); a card
@@ -307,7 +312,7 @@ Keyboard under the chat (sections):
    🔄 إعادة تشغيل     asks to confirm, then the server re-executes itself
                       in place (comes back in seconds; data untouched)
    📘 الأوامر         the command list below
-Commands (type in the chat):
+Optional typed commands (everything above also works by buttons):
    /price 52000 51000         quick way: 21K SELL then BUY in one line
                               (other karats and the pound are derived)
    /vip                       list premium customers
