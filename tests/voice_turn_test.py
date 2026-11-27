@@ -86,11 +86,14 @@ try:
     check('9  greeting: OpenAI speech, voice «سالم» (echo), the dialect and manner, the shop key',
           h["ok"] and h.get("audio") and base64.b64decode(h["audio"]) == MP3 and t0.get("body", {}).get("voice") == "echo"
           and t0.get("body", {}).get("model") == "gpt-4o-mini-tts" and "خليجية" in t0.get("body", {}).get("instructions", "")
-          and t0.get("key") == "Bearer sk-test" and "للبس ولا للادخار" in h["say"], (h.get("say"), t0))
+          and t0.get("key") == "Bearer sk-test" and h["say"] in voice.HELLO_T, (h.get("say"), t0))
+    seen = set()
+    for k in range(40):
+        seen.add(v.turn("visg%d" % k, "chatg%d" % k, "", "", 0, "1.2.3.5", True, hello=True)["say"])
     n = len(SEEN["tts"])
-    h2 = v.turn("vis2", "chat2", "", "", 0, "1.2.3.5", True, hello=True)
-    check('10 the same greeting again: from the kept copy, nothing spent', h2["ok"] and h2.get("audio") and len(SEEN["tts"]) == n
-          and h2["turn_usd"] == 0, (len(SEEN["tts"]), n, h2.get("turn_usd")))
+    again = [v.turn("visx%d" % k, "chatx%d" % k, "", "", 0, "1.2.3.5", True, hello=True) for k in range(10)]
+    check('10 several greetings, each made once and kept: after that they cost nothing', len(seen) == len(voice.HELLO_T)
+          and len(SEEN["tts"]) == n and all(x["turn_usd"] == 0 and x.get("audio") for x in again), (len(seen), len(SEEN["tts"]) - n))
     h3 = v.turn("vis3", "chat3", "", "", 0, "1.2.3.6", True, hello=True, voice="t:coral")
     check('10b «ريم»: her voice and the feminine manner', SEEN["tts"][-1]["body"]["voice"] == "coral" and "تكلمي" in SEEN["tts"][-1]["body"]["instructions"])
 
