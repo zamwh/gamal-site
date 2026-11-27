@@ -165,3 +165,18 @@ OpenAI refused the first real call: `acknowledgement_delay_ms` was 900, OpenAI a
   «تغيير الصوت» and «سالم · رد ورد» is the default; the three live voices stay below for comparison.
 - Cost: about 1.5 cents per minute of the assistant's speech + listening 0.3 cents a minute + the assistant, about
   6-8 cents for a 5-minute conversation, nothing while quiet. Note: OpenAI retires `gpt-4o-mini-tts` on 6 Jan 2027.
+
+## Phone calls to premium customers (27 Nov 2026, prototype)
+- Admin → Settings: «مكالمات العملاء المميزين» (Zadarma SIP login, password, caller number; kept on the server only)
+  and «اتصال تجريبي» (customer name, mobile, normal/strong drop → «اتصل الحين»), with the recent calls, status,
+  talk time, cost and both sides' words.
+- `phone.py`: OpenAI places the call itself (POST /v1/live/sessions, transport `sip`, trunk
+  `sips:sip.zadarma.com:5061`, digest auth, caller number). A small built-in websocket client follows the sideband
+  (`transport.ringing/answered/failed`, transcripts, `session.closed`): at 90 s the advisor is told to close, at 118 s
+  the server hangs up (Zadarma Economy bills whole minutes), 45 s without an answer → hang up. Daily cap 25 calls.
+- Script: Gulf Arabic; greets the customer by name and asks how he is, introduces itself as «المستشار الآلي لمجوهرات
+  جمال المشرقي», gold went down (normal/strong), offers the newest collections on WhatsApp; today's gram price only
+  if asked, from the shop's price. After the call the owner gets a Telegram note with the words (the team sends WhatsApp).
+- Cost: line $0.144 per started minute (Yemen mobile, Economy) + OpenAI $0.05/min → about 40 cents for 2 minutes.
+- Risks to check on the first real call: OpenAI may need outbound SIP switched on for the account
+  (`outbound_sip_not_enabled`), and Zadarma must accept TLS/SRTP on 5061.

@@ -27,6 +27,8 @@ class App:
         self.staff = StaffAgent(self.store, self.lock, self.analytics, self.agent)
         from voice import Voice
         self.voice = Voice(self)        # the voice salesman: staff-only until the owner approves it for customers
+        from phone import Phone
+        self.phone = Phone(self)        # phone calls to premium customers (Zadarma line, GPT-Live over SIP)
         self.public_url = self.store.setting("public_url", "") or ""     # last real address, until the site is opened again
         try:
             n = core.refresh_demo_photos(self.store)

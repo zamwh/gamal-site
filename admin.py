@@ -170,6 +170,11 @@ def get(app, u, path, q):
             agg = s.q("""SELECT category, COUNT(*) n, ROUND(AVG(NULLIF(budget,0))) avg_budget FROM demand_requests
                          WHERE status='open' GROUP BY category ORDER BY n DESC""")
             return {"rows": rows, "by_category": agg}
+    if path == "/api/admin/phone_calls":
+        if u["role"] != "owner":
+            raise GoldError("للمالك فقط")
+        ph = getattr(app, "phone", None)
+        return ph.recent() if ph else {"calls": [], "ready": False}
     if path == "/api/admin/settings":
         if u["role"] != "owner":
             raise GoldError("للمالك فقط")
@@ -183,7 +188,8 @@ def get(app, u, path, q):
                                  "status": getattr(getattr(app, "bot", None), "status", "stopped"),
                                  "username": getattr(getattr(app, "bot", None), "username", ""),
                                  "channel": __import__("tg_channel").status(s)})(__import__("telegram_bot").cfg(s)),
-                    "policy": dict(__import__("agent").DEFAULT_POLICY, **{k: v for k, v in (s.setting("policy", {}) or {}).items() if (v or "").strip()})}
+                    "policy": dict(__import__("agent").DEFAULT_POLICY, **{k: v for k, v in (s.setting("policy", {}) or {}).items() if (v or "").strip()}),
+                    "phone": app.phone.settings_view() if getattr(app, "phone", None) else None}
     raise GoldError("غير موجود")
 
 
@@ -192,6 +198,12 @@ def post(app, u, path, d):
     if path == "/api/admin/ai_test":
         s.require(u["id"], "owner")
         return app.agent.test()
+    if path == "/api/admin/phone_call":                # the owner calls a premium customer (the advisor speaks)
+        s.require(u["id"], "owner")
+        ph = getattr(app, "phone", None)
+        if not ph:
+            return {"ok": False, "why": "المكالمات غير متوفرة"}
+        return ph.call(str(d.get("name", "")), str(d.get("phone", "")), str(d.get("kind", "normal")), str(u["name"] or "owner"))
     if path == "/api/admin/photo":
         # one photo per request (phones on slow networks): saved, then put in its role
         s.require(u["id"], "owner", "manager")
@@ -248,6 +260,8 @@ def post(app, u, path, d):
                     ai["api_key"] = key.strip()
                     ai["enabled"] = True
                 s.set_setting("ai", ai)
+            if isinstance(d.get("phone"), dict) and getattr(app, "phone", None):   # the Zadarma line: kept on the server only
+                app.phone.save(d["phone"])
             if isinstance(d.get("voice"), dict):           # the voice assistant: on/off for the site
                 vs = dict(s.setting("voice", {}) or {})
                 for k in ("public", "test_mode"):

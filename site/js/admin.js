@@ -302,6 +302,13 @@
         '<button class="btn g full" id="svP">حفظ الأسعار</button></div>' +
         '<div class="box"><h3>المساعد الذكي</h3><div class="sub">المفتاح يُحفظ في السيرفر فقط ولا يظهر في الموقع</div>' + f('api_key', 'مفتاح OpenAI', d.ai.api_key, 'text') + f('model', 'النموذج الأساسي', d.ai.model, 'text') + f('model_strong', 'نموذج اللحظات الحاسمة', d.ai.model_strong, 'text') + f('daily_cap_usd', 'السقف اليومي بالدولار', d.ai.daily_cap_usd) + f('monthly_cap_usd', 'السقف الشهري بالدولار', d.ai.monthly_cap_usd) +
         '<label class="chk"><input type="checkbox" id="aiOn"' + (d.ai.enabled ? ' checked' : '') + '><span>تشغيل المساعد في الموقع</span></label><button class="btn g full" id="svA">حفظ</button><button class="btn full" id="tsA" style="margin-top:10px">اختبار المساعد</button><div id="tsR" style="margin-top:12px;font-size:14px;line-height:1.9"></div></div></div>' +
+        '<div class="g2"><div class="box"><h3>مكالمات العملاء المميزين</h3><div class="sub">المستشار الآلي يتصل على العميل من خط Zadarma ويقفل المكالمة قبل الدقيقتين. البيانات تُحفظ في السيرفر فقط.</div>' +
+        f('ph_user', 'رقم الدخول في Zadarma (Login)', (d.phone || {}).sip_user, 'text') + f('ph_pass', 'كلمة السر (Password)', (d.phone || {}).sip_pass, 'text') + f('ph_caller', 'الرقم اللي يظهر للعميل', (d.phone || {}).caller, 'text') +
+        '<label class="chk"><input type="checkbox" id="phOn"' + ((d.phone || {}).enabled !== false ? ' checked' : '') + '><span>تشغيل المكالمات</span></label><button class="btn g full" id="svPh">حفظ</button></div>' +
+        '<div class="box"><h3>اتصال تجريبي</h3><div class="sub">اكتب اسم العميل ورقمه، والمستشار يتصل عليه الحين.</div>' +
+        f('pc_name', 'اسم العميل (يقول له: أستاذ ...)', '', 'text') + f('pc_phone', 'رقم الجوال (يمني أو سعودي)', '', 'text') +
+        '<label class="fld"><span>الخبر</span><select class="inp" id="pc_kind"><option value="normal">نزول عادي</option><option value="strong">نزول قوي</option></select></label>' +
+        '<button class="btn g full" id="pcGo">اتصل الحين</button><div id="pcR" style="margin-top:12px;font-size:14px;line-height:1.9"></div></div></div>' +
         '<div class="g2"><div class="box"><h3>روابط التواصل</h3>' + f('l_tiktok', 'تيك توك', L.tiktok, 'text') + f('l_instagram', 'إنستغرام', L.instagram, 'text') + f('l_facebook', 'فيسبوك', L.facebook, 'text') + f('l_whatsapp', 'رقم واتساب (مع رمز الدولة)', L.whatsapp, 'text') + '<button class="btn g full" id="svL">حفظ الروابط</button></div>' +
         '<div class="box"><h3>حسابات التحويل</h3><div class="sub">تظهر للعميل فقط بعد موافقته على الشروط</div><div id="accs">' + (d.payments || []).map(acc).join('') + '</div><button class="btn s" id="addAcc">+ حساب</button> <button class="btn g s" id="svPay">حفظ الحسابات</button></div></div>' +
         '<div class="g2"><div class="box"><h3>سياسات المحل للمستشار الذكي</h3><div class="sub">يقرأها المستشار ويجاوب منها الزبون. اتركها فاضية إذا ما عندكم سياسة، وسيقول للزبون إن فريق المبيعات يوضحها.</div>' +
@@ -334,6 +341,24 @@
         }).catch(function (e) { $('#tsR').textContent = e.error || 'تعذر الاختبار' }).then(function () { b.disabled = false; b.textContent = 'اختبار المساعد' });
       };
       $('#svA').onclick = function () { api('/api/admin/settings', { ai: { api_key: $('#f_api_key').value, model: $('#f_model').value, model_strong: $('#f_model_strong').value, daily_cap_usd: parseFloat($('#f_daily_cap_usd').value), monthly_cap_usd: parseFloat($('#f_monthly_cap_usd').value), enabled: $('#aiOn').checked } }).then(function () { toast('تم الحفظ'); load() }).catch(function (e) { toast(e.error || 'خطأ') }) };
+      $('#svPh').onclick = function () { api('/api/admin/settings', { phone: { sip_user: $('#f_ph_user').value.trim(), sip_pass: $('#f_ph_pass').value.trim(), caller: $('#f_ph_caller').value.trim(), enabled: $('#phOn').checked } }).then(function () { toast('تم الحفظ'); settings(mp) }).catch(function (e) { toast(e.error || 'خطأ') }) };
+      var ST = { dialing: 'يتصل…', ringing: 'يرن…', answered: 'رد، المكالمة شغالة', done: 'انتهت', no_answer: 'ما رد', failed: 'ما اتصلت' };
+      function phList() {
+        api('/api/admin/phone_calls').then(function (r) {
+          var h = '<div class="sub" style="margin:0">مكالمات اليوم: ' + r.today + ' من ' + r.per_day + ' · تكلفة الشهر: $' + Number(r.month_cost || 0).toFixed(2) + '</div>';
+          h += (r.calls || []).slice(0, 6).map(function (c) { return '<div style="border-top:1px solid var(--line);padding:8px 0"><b>' + esc(c.name) + '</b> <span class="sub" dir="ltr">' + esc(c.phone) + '</span><br>' + esc(c.when) + ' · ' + esc(ST[c.status] || c.status) + (c.talk_s ? ' · ' + Math.round(c.talk_s) + ' ثانية' : '') + (c.cost ? ' · ' + (c.cost * 100).toFixed(0) + ' سنت' : '') + (c.reason ? '<div class="sub" style="margin:0" dir="ltr">' + esc(c.reason) + '</div>' : '') + (c.transcript ? '<div class="sub" style="margin:0;white-space:pre-wrap">' + esc(c.transcript) + '</div>' : '') + '</div>' }).join('');
+          $('#pcR').innerHTML = h;
+          if ((r.calls || []).some(function (c) { return c.status === 'dialing' || c.status === 'ringing' || c.status === 'answered' })) setTimeout(function () { if ($('#pcR')) phList() }, 2500);
+        }).catch(function () { });
+      }
+      phList();
+      $('#pcGo').onclick = function () {
+        var b = this; if (!confirm('يتصل المستشار الحين على ' + $('#f_pc_name').value + '؟')) return; b.disabled = true;
+        api('/api/admin/phone_call', { name: $('#f_pc_name').value, phone: $('#f_pc_phone').value, kind: $('#pc_kind').value }).then(function (r) {
+          b.disabled = false; if (!r.ok) { $('#pcR').innerHTML = '<b style="color:#eb5757">' + esc(r.why || 'ما اتصلت') + '</b>' + (r.detail ? '<div class="sub" dir="ltr">' + esc(r.detail) + '</div>' : ''); return }
+          toast('بدأ الاتصال'); phList();
+        }).catch(function (e) { b.disabled = false; toast(e.error || 'خطأ') });
+      };
       $('#svL').onclick = function () { api('/api/admin/settings', { links: { tiktok: $('#f_l_tiktok').value, instagram: $('#f_l_instagram').value, facebook: $('#f_l_facebook').value, whatsapp: $('#f_l_whatsapp').value } }).then(function () { toast('تم الحفظ') }) };
       $('#addAcc').onclick = function () { $('#accs').insertAdjacentHTML('beforeend', acc({})) };
       $('#svTg').onclick = function () { var t = { token: $('#f_tg_token').value, enabled: $('#tgOn').checked }; if ($('#chAuto')) t.channel_auto = $('#chAuto').checked; api('/api/admin/settings', { telegram: t }).then(function () { toast('تم الحفظ، البوت يشتغل خلال ثواني'); setTimeout(function () { settings(mp) }, 4000) }) };
