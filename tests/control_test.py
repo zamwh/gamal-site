@@ -165,4 +165,16 @@ bot.handle("T", cbq(111, "c:vd1"))
 check("38 delete button removes him", [r["name"] for r in s.setting("vip")] == ["عبدالله الحميري"])
 bot.handle("T", cbq(111, "c:va")); bot.handle("T", cbq(111, "r:today"))
 check("39 another button cancels adding", 111 not in bot.vip_wait)
+
+# the site's domain by buttons
+bot.handle("T", cbq(111, "c:dm"))
+check("40 domain page shows the address and the edit button", "c:dme" in cbs(last()))
+bot.handle("T", cbq(111, "c:dme"))
+bot.handle("T", msg(111, "not a domain"))
+check("41 a wrong domain is refused", "مثل" in last()["text"] and not s.setting("site_domains"))
+bot.handle("T", msg(111, "https://Almshrqi.com/"))
+import tg_channel
+check("42 saved: https address, approved for the channel, webhook addresses shown",
+      s.setting("public_url") == "https://almshrqi.com" and tg_channel.site_host_ok(s, "almshrqi.com")
+      and "https://almshrqi.com/api/wa/webhook" in last()["text"] and "https://almshrqi.com/api/phone/webhook" in last()["text"], last())
 print(f"{sum(res)}/{len(res)} passed")

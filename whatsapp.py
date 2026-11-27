@@ -110,7 +110,7 @@ class WhatsApp:
     def settings_view(self):
         c = self.cfg()
         mask = lambda s: ("•" * 8 + s[-4:]) if s else ""
-        base = (getattr(self.app, "public_url", "") or "").rstrip("/")
+        base = self._base()
         return {"enabled": c["enabled"], "phone_number_id": c["phone_number_id"], "waba_id": c["waba_id"],
                 "token": mask(c["token"]), "app_secret": mask(c["app_secret"]), "verify_token": c["verify_token"],
                 "graph_version": c["graph_version"], "per_customer_day": c["per_customer_day"],
@@ -220,8 +220,12 @@ class WhatsApp:
             with self.lock:
                 self.busy.discard(wa)
 
+    def _base(self):
+        """The site's real address: the saved one (checked against the shop's domains), never one a request made up."""
+        return (self.store.setting("public_url", "") or "").rstrip("/")
+
     def _send_piece(self, wa, p):
-        base = (getattr(self.app, "public_url", "") or "").rstrip("/")
+        base = self._base()
         link = f"{base}/p/{p['code']}" if base else ""
         price = p.get("price")
         cap = (f"{p.get('title') or p.get('kind')}\nالوزن {p.get('weight')} جم · عيار {p.get('karat')}"

@@ -11,7 +11,8 @@ def check(name, ok, info=""):
 d = tempfile.mkdtemp()
 s = core.Store("demo", d)
 class App: pass
-app = App(); app.lock = threading.RLock(); app.store = s; app.public_url = "https://shop.example"
+app = App(); app.lock = threading.RLock(); app.store = s; app.public_url = "https://evil.example"
+s.set_setting("public_url", "https://shop.example")
 notes = []
 class Bot:
     def notify(self, t): notes.append(t)

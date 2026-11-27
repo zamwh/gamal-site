@@ -15,7 +15,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 OPTIONS = [("🩺 حالة النظام", "c:st"), ("🤖 وكيل الزبائن", "c:ai"), ("🎙️ الصوت للزبائن", "c:vo"),
            ("📞 المكالمات", "c:ph"), ("💬 الواتساب", "c:wa"), ("💰 تحديث سعر الذهب", "c:pr"), ("🖼️ صور الواجهة", "c:hero"), ("⭐ العملاء المميزين", "c:vip"),
-           ("📣 اتصل بالمميزين", "c:call"), ("💾 نسخة احتياطية", "c:bk"), ("🔄 إعادة تشغيل", "c:rs"),
+           ("📣 اتصل بالمميزين", "c:call"), ("🌐 الدومين", "c:dm"), ("💾 نسخة احتياطية", "c:bk"), ("🔄 إعادة تشغيل", "c:rs"),
            ("📘 الأوامر", "c:help")]
 INTRO = "⚙️ التحكم: كل شي في النظام من هنا. اختر من تحت."
 HELP = ("كل شي بالأزرار. وللي يحب الكتابة، هذي أوامر اختيارية:\n"
@@ -201,6 +201,35 @@ def set_hero(app, slot, name):
         h[slot] = name
         app.store.set_setting("hero", h[:3])
         app.store.db.commit()
+
+
+def clean_domain(text):
+    t = (text or "").strip().lower()
+    t = re.sub(r"^https?://", "", t).split("/")[0].split(":")[0]
+    return t if re.fullmatch(r"([a-z0-9-]+\.)+[a-z]{2,}", t) else None
+
+
+def domain_view(app):
+    s = app.store
+    cur = s.setting("public_url", "") or "غير معروف"
+    doms = s.setting("site_domains", []) or []
+    base = (s.setting("public_url", "") or "").rstrip("/")
+    lines = ["🌐 عنوان الموقع", f"الحالي: {cur}", f"الدومينات المعتمدة: {'، '.join(doms) if doms else 'ما فيه (للحين الرابط المؤقت)'}"]
+    if base:
+        lines += ["", "لو تغيّر العنوان، حدّث هذي في:",
+                  f"• OpenAI (Webhooks): {base}/api/phone/webhook",
+                  f"• ميتا (WhatsApp Webhook): {base}/api/wa/webhook"]
+    return "\n".join(lines), _back([[{"text": "✏️ اكتب الدومين الجديد", "callback_data": "c:dme"}]])
+
+
+def set_domain(app, dom):
+    s = app.store
+    with app.lock:
+        doms = [d for d in (s.setting("site_domains", []) or []) if d != dom] + [dom]
+        s.set_setting("site_domains", doms[-5:])
+        s.set_setting("public_url", "https://" + dom)
+        s.db.commit()
+    app.public_url = "https://" + dom
 
 
 def vip_list(app):

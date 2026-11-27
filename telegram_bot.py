@@ -28,6 +28,7 @@ class Bot(threading.Thread):
         self.waiting = {}       # staff chat id -> (piece code, photo role) after pressing a photo button
         self.price_wait = {}    # staff chat id -> {"step": "buy"|"sell", "buy": n} while the gold price is typed in two messages
         self.vip_wait = {}      # staff chat id -> {"step": "name"|"phone", "name": ...} while a premium customer is added
+        self.dom_wait = {}      # staff chat id -> time, after pressing «✏️ اكتب الدومين الجديد»
         self.hero_wait = {}     # staff chat id -> {"slot": 0..2} after pressing «الصورة N» in «صور الواجهة»
         self._ch_last = 0       # last channel check
         self._pub = {}          # chat -> last time the "staff only" note went out
@@ -278,6 +279,15 @@ class Bot(threading.Thread):
             if text == "c:prx":
                 self.price_wait.pop(chat, None)
                 return self._edit(token, chat, mid, "انلغى تحديث السعر.", control._back())
+            if text == "c:dm":
+                self.dom_wait.pop(chat, None)
+                with app.lock:
+                    t, k = control.domain_view(app)
+                return self._edit(token, chat, mid, t, k)
+            if text == "c:dme":
+                self.dom_wait[chat] = time.time()
+                return self._edit(token, chat, mid, "🌐 اكتب الدومين الجديد، مثل almshrqi.com",
+                                  control._back([[{"text": "إلغاء", "callback_data": "c:dm"}]]))
             if text == "c:hero":
                 t, k = control.hero_view(app)
                 return self._edit(token, chat, mid, t, k)
@@ -917,6 +927,20 @@ class Bot(threading.Thread):
             return self._save_photo(token, chat, msg, target[0], target[1])
         if not chat or not text:
             return
+        if staff and chat in self.dom_wait:
+            import staff_menu
+            if text.startswith("/") or re.match(r"^[a-z]{1,3}:", text) or staff_menu.section_name(text):
+                self.dom_wait.pop(chat, None) if text != "c:dme" else None
+            else:
+                import control
+                dom = control.clean_domain(text)
+                if not dom:
+                    return self.send(token, chat, "اكتب الدومين بس، مثل almshrqi.com")
+                self.dom_wait.pop(chat, None)
+                control.set_domain(app, dom)
+                with app.lock:
+                    t, k = control.domain_view(app)
+                return self.send(token, chat, "✅ صار عنوان الموقع https://" + dom + "\n\n" + t, markup=k)
         if staff and chat in self.vip_wait:
             import staff_menu
             if text.startswith("/") or re.match(r"^[a-z]{1,3}:", text) or staff_menu.section_name(text):

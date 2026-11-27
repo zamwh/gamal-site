@@ -321,6 +321,11 @@ Keyboard under the chat (sections):
                       asks to confirm; calls ONE AT A TIME (required: the
                       webhook matches the latest dialing call); a card
                       after each call; a summary at the end; stop button
+   🌐 الدومين         shows the site address and the approved domains;
+                      «✏️ اكتب الدومين الجديد» -> type e.g. almshrqi.com ->
+                      saved in setting site_domains + public_url (https).
+                      It then shows the two webhook addresses to update
+                      (OpenAI phone webhook, Meta WhatsApp webhook).
    💾 نسخة احتياطية   makes a full DB backup and SENDS the file to the chat
    🔄 إعادة تشغيل     asks to confirm, then the server re-executes itself
                       in place (comes back in seconds; data untouched)
@@ -612,8 +617,30 @@ All fast tests passed on 2026-11-28.
    WhatsApp, convert to WhatsApp Business first, or use a new Yemeni SIM.
    Waiting for the owner's answer: regular or Business WhatsApp?
    The post-call offers message is built (button on the call card).
-2. Stable domain (replace trycloudflare) — needed for the webhook,
-   links and the channel.
+2. Stable domain (replace trycloudflare) — needed for the webhooks,
+   links and the channel. The CODE side is ready (Telegram 🌐 الدومين).
+   Steps (server side, about 20 minutes):
+    a) Buy a domain (any registrar, ~$10/year) and add it to a free
+       Cloudflare account (change the domain's nameservers to
+       Cloudflare's).
+    b) On the server, replace the quick tunnel with a named tunnel:
+         cloudflared tunnel login
+         cloudflared tunnel create gamal
+         cloudflared tunnel route dns gamal almshrqi.com
+       config ~/.cloudflared/config.yml:
+         tunnel: gamal
+         credentials-file: /home/ubuntu/.cloudflared/<id>.json
+         ingress:
+           - hostname: almshrqi.com
+             service: http://127.0.0.1:<site port, e.g. 8095>
+           - service: http_status:404
+         sudo cloudflared service install   (runs on boot)
+       Do NOT touch the other services' ports/tunnels.
+    c) Telegram ⚙️ التحكم > 🌐 الدومين > type the domain.
+    d) Update the OpenAI webhook URL and (later) Meta's webhook URL to the
+       addresses shown there.
+   Security note: links sent by WhatsApp/the channel use only the SAVED
+   address (checked against site_domains), never a request's Host.
 3. Admin "control center" page (editable texts, premium list in the web
    admin, status page) — Telegram control already covers the essentials.
 4. Automatic rollback after a failed update (now: manual git revert).

@@ -216,7 +216,8 @@ class Server:
                 app = server.app
                 h = self.headers.get("Host", "")
                 if h and not h.startswith(("127.", "localhost", "0.0.0.0")) and "." in h:
-                    app.public_url = ("https://" if self.headers.get("X-Forwarded-Proto") == "https" or "trycloudflare" in h else "http://") + h
+                    app.public_url = ("https://" if self.headers.get("X-Forwarded-Proto") == "https" or "trycloudflare" in h
+                                      or h.split(":")[0].lower() in (app.store.setting("site_domains", []) or []) else "http://") + h
                     if app.public_url != getattr(app, "_pu_saved", None):     # the channel's buttons use the last real address
                         app._pu_saved = app.public_url
                         try:
