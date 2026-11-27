@@ -107,7 +107,7 @@ try:
     s0 = SEEN["stt"][-1] if SEEN["stt"] else {}
     check('11 his sentence -> text: OpenAI with the shop key, Arabic, the gold words as a hint, the recording as webm',
           s0.get("auth") == "Bearer sk-test" and s0.get("model") == "gpt-4o-mini-transcribe" and 'name="language"\r\n\r\nar' in s0.get("body", "")
-          and "عيار 21" in s0.get("body", "").encode("latin-1").decode("utf-8", "ignore") and 'filename="speech.webm"' in s0.get("body", ""), s0.get("model"))
+          and "عيار واحد وعشرين" in s0.get("body", "").encode("latin-1").decode("utf-8", "ignore") and 'filename="speech.webm"' in s0.get("body", ""), s0.get("model"))
     check('12 the same assistant answers, same session, same customer, his picks', calls and calls[-1][:3] == ("chat1", MODE["stt_text"], "vis1")
           and calls[-1][3] == ["D000001"], calls[-1:])
     said = SEEN["tts"][-1]["body"]["input"]
@@ -192,5 +192,12 @@ finally:
     shutil.rmtree(tmp, ignore_errors=True)
     fake.shutdown()
 
+
+# 28 Nov: the speech-to-text once wrote a whole made-up dialogue; only the customer's words count
+check('29 a made-up dialogue keeps only the customer\'s words', voice.clean_heard("زبون: السلام عليكم، كيف حالك؟\nمحل الذهب: وعليكم السلام، كيف يمكنني مساعدتك اليوم؟") == "السلام عليكم، كيف حالك؟")
+check('30 a line of the shop only is dropped', voice.clean_heard("محل الذهب: وعليكم السلام") == "")
+check('31 the speech-to-text hint is a word list, not a scene', "زبون" not in voice.STT_PROMPT and "محل" not in voice.STT_PROMPT)
+from speak_ar import speakable as _sp
+check('32 the price record date and time stay on the screen', "نوفمبر" not in _sp("سعره ٤,٠٧٠,٠٠٠ ريال، حسب آخر سعر مسجّل بتاريخ ٢٣ نوفمبر الساعة ٧:١١ مساءً، والسعر ممكن يتغير."))
 print(f"\n{sum(res)}/{len(res)} passed")
 sys.exit(0 if all(res) else 1)

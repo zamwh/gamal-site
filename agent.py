@@ -37,7 +37,7 @@ DEFAULT_AI = {"enabled": False, "api_key": "", "model": "gpt-6-luna", "price_in"
               "model_strong": "gpt-6.1-terra", "strong_price_in": 1.0, "strong_price_cached": 0.10,
               "strong_price_out": 5.0, "strong_stages": [],
               "daily_cap_usd": 4.5, "monthly_cap_usd": 133.0, "max_out_tokens": 1200,
-              "history_msgs": 14, "session_msg_limit": 40, "extra": {},
+              "history_msgs": 20, "session_msg_limit": 40, "extra": {},
               # used automatically if the configured model is rejected by the API (renamed/retired)
               "fallback_model": "gpt-5.4-mini", "fallback_price_in": 0.75, "fallback_price_cached": 0.075,
               "fallback_price_out": 4.5}

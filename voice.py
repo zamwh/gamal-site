@@ -64,7 +64,7 @@ DEFAULT = {
     "tts_model": "gpt-4o-mini-tts",
     "tts_per_min": 0.015,         # OpenAI's price for the spoken answer (about 1.5 cents a minute of speech)
     "tts_in_per_m": 0.60,         # ... plus its text in, per million tokens
-    "tts_max_chars": 320,         # a long written answer: the voice reads its first sentences, the rest stays on the screen
+    "tts_max_chars": 240,         # a long written answer: the voice reads its first sentences, the rest stays on the screen
     "turn_max_s": 25,             # the longest the phone records one sentence
 }
 
@@ -74,10 +74,10 @@ TURN_VOICES = [{"id": "t:echo", "oai": "echo", "name": "سالم", "g": "m", "su
                {"id": "t:coral", "oai": "coral", "name": "ريم", "g": "f", "sub": "صوت نسائي", "turn": True}]
 TURN_BY_ID = {x["id"]: x for x in TURN_VOICES}
 TTS_STYLE = {"m": "تكلم بالعربي بلهجة خليجية بيضاء، بصوت رجل واثق ومبتسم وودود، مثل بيّاع ذهب يسولف مع زبونه، مو مثل واحد يقرأ. "
-                  "سرعة طبيعية مثل الكلام اليومي، نبرة حية متنوعة، ونطق واضح لكل حرف وللأرقام والأسعار. "
+                  "سرعة الكلام الطبيعي في الجوال، بدون بطء ولا مد للكلمات ولا وقفات طويلة، نبرة حية متنوعة، ونطق واضح لكل حرف وللأرقام والأسعار. "
                   "انطق: المَشْرِقي، جَرْعان، إِبّ، مُجَوْهَرات، عِيار واحِد وعِشْرين.",
              "f": "تكلمي بالعربي بلهجة خليجية بيضاء، بصوت بنت واثقة ومبتسمة وودودة، مثل مستشارة ذهب تسولف مع زبونها، مو مثل وحدة تقرأ. "
-                  "سرعة طبيعية مثل الكلام اليومي، نبرة حية متنوعة، ونطق واضح لكل حرف وللأرقام والأسعار. "
+                  "سرعة الكلام الطبيعي في الجوال، بدون بطء ولا مد للكلمات ولا وقفات طويلة، نبرة حية متنوعة، ونطق واضح لكل حرف وللأرقام والأسعار. "
                   "انطقي: المَشْرِقي، جَرْعان، إِبّ، مُجَوْهَرات، عِيار واحِد وعِشْرين."}
 # the opening is light: a welcome with the shop's full name and «how can I help», no sales question yet
 HELLO_T = ["حياك الله في جمال المشرقي للذهب والمجوهرات. كيف أقدر أخدمك اليوم؟",
@@ -89,8 +89,21 @@ HELLO_BACK = ["هلا فيك، أنا معك بالصوت الحين. تفضل،
               "حياك الله، صرت أسمعك. تفضل قل لي وش تبغى.",
               "أهلاً، أنا معك. تكلم براحتك."]
 MISHEARD = "ما سمعتك زين، ممكن تعيدها؟"
-STT_PROMPT = ("زبون يكلم محل ذهب في إب باللهجة اليمنية أو الخليجية. كلمات تتكرر: ذهب، عيار 21، جنيه، سبيكة، خاتم، عقد، "
-              "سلسلة، أسوارة، حلق، طقم، تعليقة، جرام، ريال، مليون، ألف، ميزانيتي، للبس، للادخار، يومي، مناسبة، اختياراتي، نكمل الشراء.")
+STT_PROMPT = ("ذهب، عيار واحد وعشرين، جنيه، سبيكة، خاتم، عقد، سلسلة، أسوارة، حلق، طقم، كردان، تعليقة، جرام، ريال، "
+              "مليون، ألف، ميزانيتي، للزينة، للادخار، مناسبة، عرس، اختياراتي، نكمل الشراء، جمال المشرقي.")
+# a transcript that came back as a made-up dialogue («زبون: ... محل الذهب: ...»): only the customer's own words count
+LABELS = re.compile(r"(?:^|\n|\s)(زبون|الزبون|عميل|العميل|محل الذهب|المحل|البائع|المستشار|المساعد)\s*:\s*")
+
+
+def clean_heard(text):
+    t = (text or "").strip()
+    parts = LABELS.split(t)
+    if len(parts) < 3:
+        return t
+    said = [parts[i + 1].strip() for i in range(1, len(parts) - 1, 2) if parts[i] in ("زبون", "الزبون", "عميل", "العميل")]
+    return said[0] if said else ""
+
+
 JUNK = re.compile(r"نانسي|قنقر|اشتركوا|اشترك في|لمشاهدتكم|للمشاهدة|ترجمة|subtitle|amara|\bmusic\b|موسيقى", re.I)
 
 LIVE_ON = False      # the live voice on the site: removed by the owner (28 Nov 2026); «رد ورد» only
@@ -699,6 +712,7 @@ class Voice:
                              0.0, 0.0, False, ms)
         dur = max(0.5, min(float(c["turn_max_s"]) + 5, (ms / 1000.0) or len(raw) / 4000.0))
         heard, err, model = self._stt(raw, mime, c)
+        heard = clean_heard(heard)
         stt_cost = round(dur / 60.0 * float(c["stt_per_min"]), 6)
         an = getattr(self.agent, "analytics", None)
         if an:   # turning his words into text is paid to OpenAI: it counts in the same monthly cap
