@@ -51,6 +51,8 @@ DEFAULT = {
     "pbx_ext": "100",             # the Zadarma PBX extension that forwards to OpenAI's SIP address
     "wh_secret": "",              # OpenAI's webhook secret (whsec_...), to trust only OpenAI's notices
     "proj_id": "",                # the OpenAI project id (proj_...), shown to build the SIP address
+    "zd_sip": "",                 # the Zadarma line the customer's leg goes out from (empty: the SIP login above)
+    "predicted": True,            # Zadarma rings the customer first and joins the advisor only when he answers
     "cb_wrap_s": 105,             # callback: from OpenAI's pickup (customer still ringing) to the wrap-up
     "cb_max_s": 135,              # ... to the hang-up
 }
@@ -310,7 +312,13 @@ class Phone:
                                   "VALUES (?,?,?,?,?,?,?,?,?,?)", (cid, None, name, dest, kind, by_user, today, time.time(), "dialing",
                                                                    json.dumps({"instructions": instr}, ensure_ascii=False)))
             self.store.db.commit()
-        d = self._zd("/v1/request/callback/", {"from": str(c["pbx_ext"]), "to": dest.lstrip("+")}, c)
+        params = {"from": str(c["pbx_ext"]), "to": dest.lstrip("+")}
+        line = str(c.get("zd_sip") or c.get("sip_user") or "").strip()
+        if line:
+            params["sip"] = line                   # the customer's leg goes out from the line that can call Yemen
+        if c.get("predicted"):
+            params["predicted"] = "1"              # ring the customer first; the advisor joins when he answers
+        d = self._zd("/v1/request/callback/", params, c)
         if d.get("status") != "success":
             msg = str(d.get("message") or d)[:200]
             self._update(cid, status="failed", reason="Zadarma: " + msg, ended=time.time())
@@ -358,14 +366,17 @@ class Phone:
             instr = json.loads(row["usage"] or "{}").get("instructions") or ""
         except ValueError:
             instr = ""
-        instr += ("\n\nمهم: أنت تدخل المكالمة قبل ما العميل يرد. اسكت تماماً وانتظر لين تسمع صوت العميل (مثل «ألو» أو «نعم»)، "
-                  "وبعدها ابدأ بالسلام.")
+        if c.get("predicted"):
+            instr += "\n\nمهم: العميل رد على جواله الحين. ابدأ بالسلام مباشرة."
+        else:
+            instr += ("\n\nمهم: أنت تدخل المكالمة قبل ما العميل يرد. اسكت تماماً وانتظر لين تسمع صوت العميل (مثل «ألو» أو «نعم»)، "
+                      "وبعدها ابدأ بالسلام.")
         code = self._post(LIVE_URL + "/%s/accept" % sid, {"session": {"type": "live", "model": c["model"], "instructions": instr,
                                                                        "audio": {"output": {"voice": c["voice"]}}}}, key)
         if code != 200:
             self._update(row["id"], status="failed", reason="OpenAI accept: %s" % code, ended=time.time())
             return 200, {"ok": True}
-        cc = dict(c, wrap_s=c["cb_wrap_s"], max_s=c["cb_max_s"])
+        cc = c if c.get("predicted") else dict(c, wrap_s=c["cb_wrap_s"], max_s=c["cb_max_s"])
         self._update(row["id"], usage=None)
         threading.Thread(target=self._watch, args=(row["id"], sid, key, cc, True), daemon=True).start()
         return 200, {"ok": True}

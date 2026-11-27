@@ -156,7 +156,7 @@ try:
     # ---- the second way: Zadarma rings the customer, OpenAI's webhook hands the call to the advisor
     import hmac as _h, hashlib as _hl
     sec = "whsec_" + base64.b64encode(b"0123456789abcdef0123456789abcdef").decode()
-    app.store.set_setting("phone", dict(app.store.setting("phone"), per_day=50, cb_wrap_s=1.2, cb_max_s=2.5))
+    app.store.set_setting("phone", dict(app.store.setting("phone"), per_day=50, cb_wrap_s=1.2, cb_max_s=2.5, wrap_s=1.2, max_s=2.5))
     admin.post(app, owner, "/api/admin/settings", {"phone": {"zd_key": "zdkey123", "zd_secret": "zdsecret456", "pbx_ext": "100",
                                                              "proj_id": "proj_abc", "wh_secret": sec}})
     sv = admin.get(app, owner, "/api/admin/settings", {})["phone"]
@@ -166,7 +166,7 @@ try:
     r = ph.call("خالد", "777123456", "normal")
     z = SEEN["zd"][-1] if SEEN["zd"] else {}
     check('18 Zadarma is asked to ring: from the PBX extension to the customer, signed with the key (OpenAI not dialing)',
-          r.get("ok") and "from=100" in z.get("path", "") and "to=967777123456" in z.get("path", "") and z.get("auth", "").startswith("zdkey123:")
+          r.get("ok") and "from=100" in z.get("path", "") and "to=967777123456" in z.get("path", "") and z.get("auth", "").startswith("zdkey123:") and "sip=454051" in z.get("path", "") and "predicted=1" in z.get("path", "")
           and len(SEEN["create"]) == nc, (r, z))
     def hook(body, good=True):
         raw = json.dumps(body).encode(); wid, ts = "msg_1", str(int(time.time()))
@@ -177,9 +177,9 @@ try:
     check('19 a notice without OpenAI\'s signature is refused', code == 401 and not SEEN["accept"])
     code, _ = hook({"type": "live.transport.incoming", "data": {"type": "sip", "session_id": "live_cb1"}})
     acc = SEEN["accept"][-1] if SEEN["accept"] else {}
-    check('20 OpenAI\'s notice: the advisor takes the call with the customer\'s script and waits for his voice first',
+    check('20 OpenAI\'s notice: the advisor takes the call with the customer\'s script and greets at once (he already answered)',
           code == 200 and acc.get("session", {}).get("type") == "live" and "أستاذ خالد" in acc.get("session", {}).get("instructions", "")
-          and "اسكت تماماً وانتظر" in acc["session"]["instructions"], acc)
+          and "ابدأ بالسلام مباشرة" in acc["session"]["instructions"], acc)
     ok = wait(lambda: app.store.one("SELECT status FROM phone_calls WHERE id=?", (r["id"],))["status"] == "done", 8)
     check('21 the call is followed and closed on time like the first way', ok and len(SEEN["hangup"]) >= 2)
     code, _ = hook({"type": "live.transport.incoming", "data": {"type": "sip", "session_id": "live_stranger"}})
