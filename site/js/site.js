@@ -736,8 +736,7 @@
   function offerCard(o) {
     var p = BY[o.code] || o, pct = SITE.deposit_pct || 10, el = document.createElement('div'); el.className = 'offer';
     el.innerHTML = '<div class="oh">' + (p.photo ? '<img src="' + esc(p.photo) + '" alt="">' : '') + '<div><b>' + esc(p.title) + '</b><span>' + moneyH(p.price) + '</span></div></div>' +
-      '<button class="btn g full" data-k="deposit">احجزها بعربون ' + pct + '%</button><button class="btn full" data-k="full">اشترها بتحويل كامل · يثبت سعرها اليوم</button>' +
-      '<a class="btn full wa2" target="_blank" rel="noopener"><svg class="b"><use href="#s-wa"/></svg>كلّم المبيعات على واتساب</a>';
+      '<div class="offer-actions"><button class="btn g" data-k="deposit">حجز</button><button class="btn" data-k="full">شراء</button><a class="btn wa2" target="_blank" rel="noopener"><svg class="b"><use href="#s-wa"/></svg>تواصل</a></div>';
     var a = el.querySelector('.wa2'); a.href = o.wa || wa('السلام عليكم، شدّتني القطعة «' + p.title + '» (رقم ' + o.code + ') في موقعكم، وأبغى مساعدة في شرائها.\n' + location.origin + '/p/' + o.code) || '#';
     a.onclick = function (e) { T('ai_handoff_click', o.code, 'offer', 1); if (a.getAttribute('href') === '#') { e.preventDefault(); toast('رقم الواتساب يُضاف قريباً') } };
     $$('[data-k]', el).forEach(function (b) { b.onclick = function () {
