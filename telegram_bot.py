@@ -92,6 +92,32 @@ class Bot(threading.Thread):
                 print("telegram notify:", e, flush=True)
         threading.Thread(target=go, daemon=True).start()
 
+    def notify_update(self, text):
+        """Send a confirmed GitHub pull report; return True if Telegram accepts it."""
+        try:
+            with self.app.lock:
+                c = cfg(self.app.store)
+            token = (c.get("token") or "").strip()
+            if not token or not c.get("enabled", True):
+                return False
+            muted = {str(x) for x in (c.get("muted") or [])}
+            chats = [str(chat) for chat in (c.get("staff") or {}) if str(chat) not in muted]
+            if not chats:
+                return False
+            delivered = False
+            for chat in chats:
+                try:
+                    result = self.call(token, "sendMessage", {
+                        "chat_id": chat, "text": text[:3900], "disable_web_page_preview": True
+                    }, timeout=20)
+                    delivered = bool(result.get("ok")) or delivered
+                except Exception:
+                    print("telegram update report failed", flush=True)
+            return delivered
+        except Exception:
+            print("telegram update report failed", flush=True)
+            return False
+
     def notify_card(self, text, buttons):
         """A short notice with buttons (e.g. a phone call's card: the details only when the owner taps)."""
         def go():
