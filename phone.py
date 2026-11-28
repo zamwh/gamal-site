@@ -5,7 +5,7 @@ How a call works
   goes out through the shop's Zadarma line (its SIP login and password, entered by the owner in the admin, never in
   the code). OpenAI rings the customer; the call shows the shop's caller number.
 - A small listener on the server attaches to the call («sideband») to follow it: ringing, answered, the words both
-  ways, the end. It keeps the call short: at 1:30 it tells the advisor to close politely, and at 1:58 it hangs up
+  ways, the end. It keeps the call short: at 1:33 it tells the advisor to close politely, and at 1:55 it hangs up
   itself (the line bills by the minute, so a third minute is never started). No answer within 45 s: it hangs up.
 - The advisor speaks Gulf Arabic, greets the customer by name, tells him gold went down, and offers to send the newest
   collections on WhatsApp. Today's gram price is written into its instructions from the shop's own price, never guessed.
@@ -31,6 +31,8 @@ import urllib.request
 LIVE_URL = "https://api.openai.com/v1/live/sessions"
 ZD_API = "https://api.zadarma.com"
 WS_BASE = "wss://api.openai.com/v1/live/sessions"
+MAX_CALL_SECONDS = 115
+HANGUP_GRACE_SECONDS = 22
 
 DEFAULT = {
     "enabled": True,
@@ -40,8 +42,8 @@ DEFAULT = {
     "provider_url": "sips:sip.zadarma.com:5061",
     "voice": "coral",             # the owner picks it in the admin; female voices: coral, marin, shimmer
     "model": "gpt-live-1",
-    "wrap_s": 90,                 # answered this long -> the advisor is told to close
-    "max_s": 118,                 # answered this long -> the server hangs up (the line bills whole minutes)
+    "wrap_s": 93,                 # close 22 seconds before the hard cap
+    "max_s": MAX_CALL_SECONDS,    # hard limit from the answer
     "ring_s": 45,                 # no answer in this long -> hang up
     "per_day": 25,                # calls the server will place in a day
     "oai_per_min": 0.05,          # OpenAI's voice price
@@ -53,8 +55,8 @@ DEFAULT = {
     "proj_id": "",                # the OpenAI project id (proj_...), shown to build the SIP address
     "zd_sip": "",                 # the Zadarma line the customer's leg goes out from (empty: the SIP login above)
     "predicted": False,           # True: Zadarma rings the customer first (did not run on a trial account, 27 Nov)
-    "cb_wrap_s": 105,             # callback: from OpenAI's pickup (customer still ringing) to the wrap-up
-    "cb_max_s": 135,              # ... to the hang-up
+    "cb_wrap_s": 93,              # same 22-second grace for callback calls
+    "cb_max_s": MAX_CALL_SECONDS, # hard cap also applies to callback calls
 }
 
 SCRIPT = """أنت «المستشار الآلي لمجوهرات جمال المشرقي»، تتصل بالهاتف على عميل مميز من عملاء المحل.
@@ -82,9 +84,11 @@ SCRIPT = """أنت «المستشار الآلي لمجوهرات جمال ال�
 اسم العميل: {name}
 الخبر: {news}
 سعر بيع جرام الذهب عيار 21 اليوم عند المحل: {gram}. قله بس لو سأل عن السعر، وبالرقم هذا بالضبط.
+حالة إرسال واتساب الآن: {whatsapp_status}
+السبائك والجنيهات المتاحة فعلياً من المخزون الآن (الأوزان والأسعار الدقيقة): {investment_options}
 المحل يفتح يومياً من 9 الصبح إلى 10 بالليل.
 
-ترتيب المكالمة (المكالمة كلها أقل من دقيقتين). الجمل بين «» قلها مثل ما هي بالضبط، وبدون أي كلام زايد بينها:
+ترتيب المكالمة (حد المكالمة 115 ثانية). الجمل بين «» قلها مثل ما هي بالضبط، وبدون أي كلام زايد بينها:
 1. أول ما يرد: «السلام عليكم ورحمة الله.» بس، واسكت وانتظر يرد السلام.
 2. لما يرد السلام: لا ترجع ترد السلام عليه. قل على طول: «كيف حالك أستاذ {name}؟ إن شاء الله تكون بخير وعافية.» واسكت واسمع رده.
 3. بعد ما يرد على سؤالك: عرّف بنفسك على طول: «معك المستشار الآلي من جمال المشرقي للذهب والمجوهرات.» بدون أي كلام قبلها.
@@ -93,9 +97,13 @@ SCRIPT = """أنت «المستشار الآلي لمجوهرات جمال ال�
 4. استأذن: «إن كان وقتك يسمح، عندي لك خبر حلو ما ياخذ دقيقة.»
    لو قال مشغول أو مو وقته: «ولا يهمك، يعطيك العافية.» ثم الختام.
 5. الخبر بهدوء ورقي، كأنك تبشره: «{news_line}»
-6. العرض: «ونزّلنا تشكيلات جديدة حصرية، تحب أرسلها لك على الواتساب وتطّلع عليها على راحتك؟»
-7. لو وافق: قل هذي الجملة بالضبط: «أبشر، أرسلها لك على طول بعد المكالمة.» ثم الختام.
-   لو اعتذر: «ولا يهمك، الله يسعدك.» ثم الختام.
+6. خلّ العرض مناسباً لما قاله العميل، ولا تذكر التشكيلات الجديدة تلقائياً:
+   - اذكر التشكيلات الجديدة فقط إذا أبدى اهتماماً بالمشغولات أو سأل عن الجديد. إذا لم يظهر اهتماماً، تجاوز العرض واختتم.
+   - إذا ذكر الادخار أو الاستثمار، لا تحوّل الحديث إلى مجوهرات للزينة. اعرض السبائك والجنيهات الذهبية المتاحة فقط من القائمة أعلاه، مع أوزانها الدقيقة. لا تخترع نوعاً أو وزناً أو سعراً، ولا تعرض سعراً إلا كما ورد في القائمة.
+   - بعد أن تعرض القائمة المناسبة، اسأل مرة واحدة إن كان يريد استلامها على الواتساب. لا ترسل ولا تسجل موافقة من عندك؛ الموافقة يجب أن تأتي صراحة من العميل.
+   - استخدم حالة واتساب أعلاه: إن كان غير مربوط أو قالب الإرسال غير جاهز، قل ذلك بوضوح ولا تعد بإرسال القائمة عبره. إذا كان جاهزاً ووافق العميل صراحة، قل: «أبشر، أسجّل موافقتك للفريق لإرسال القائمة.» ثم الختام. لا تقل إنها أُرسلت.
+   - لو لم يوافق أو لم يبد رأياً واضحاً، لا ترسل شيئاً ولا تعتبره موافقة؛ قل: «ولا يهمك، على راحتك.» ثم الختام.
+7. لو اعتذر: «ولا يهمك، الله يسعدك.» ثم الختام.
    لو طلب خصم أو حجز أو تفاصيل كثيرة: «فريق المبيعات يكمل معك على الواتساب بالتفصيل.» ثم الختام.
 8. الختام: «أشكرك على وقتك أستاذ {name}، ويعطيك العافية. نتشرف فيك في أي وقت في جمال المشرقي للذهب والمجوهرات. في أمان الله.»
 
@@ -107,13 +115,52 @@ SCRIPT = """أنت «المستشار الآلي لمجوهرات جمال ال�
 - لا تعطي وعد بخصم، ولا تذكر المصنعية، ولا تسأل عن أحد من أهل العميل.
 - لو العميل تكلم وأنت تتكلم، اسكت واسمعه.
 - لو قال إنه ما يبغى اتصالات: اعتذر بلطف وقل إنك بتبلغ الفريق، ثم الختام.
-- لا تطول: لو قربت الدقيقة ونص، روح للختام مباشرة."""
+- لا تطول: إذا كان العميل مختصراً أو مستعجلاً، اختصر أنت أيضاً وانتقل للختام.
+- كن دقيقاً في كل رقم ووزن وسعر: لا تغيّر الأرقام المقدمة ولا تحسب سعراً بنفسك، وإذا لم تتوفر معلومة مؤكدة فقل ذلك باختصار."""
 
 NEWS = {"normal": ("الذهب صار فيه نزول اليوم",
                    "لأنك من عملائنا المميزين، حبينا نبلغك قبل الكل إن الذهب نزل اليوم."),
         "strong": ("الذهب نزل نزول قوي اليوم",
                    "لأنك من عملائنا المميزين، حبينا نبلغك قبل الكل إن الذهب نزل اليوم نزول واضح، وهذي فرصة حلوة.")}
 WRAP = "الوقت قرب يخلص: روح للختام الحين بجملة وحدة مهذبة، وقل مع السلامة."
+
+def call_limits(config):
+    """Return (wrap, hard timeout), capped at 115s with a 22s closing window."""
+    try:
+        max_s = max(0.0, min(float(config.get("max_s", MAX_CALL_SECONDS)), MAX_CALL_SECONDS))
+    except (TypeError, ValueError):
+        max_s = float(MAX_CALL_SECONDS)
+    if max_s > HANGUP_GRACE_SECONDS:
+        wrap_s = max_s - HANGUP_GRACE_SECONDS
+    else:
+        try:
+            wrap_s = max(0.0, min(float(config.get("wrap_s", 0)), max_s))
+        except (TypeError, ValueError):
+            wrap_s = 0.0
+    return wrap_s, max_s
+
+
+def has_whatsapp_consent(lines):
+    """True only for an explicit yes after the advisor asks about sending by WhatsApp."""
+    if isinstance(lines, str):
+        lines = lines.splitlines()
+    asked = False
+    for line in lines or []:
+        if line.startswith("المستشار") and "واتساب" in line and re.search(r"ارسل|ارسلي|ارسله|القائمة|العروض", line):
+            asked = True
+            continue
+        if not line.startswith("العميل") or not asked:
+            continue
+        t = re.sub(r"[\u064b-\u065f\u0670]", "", line.split(":", 1)[-1]).lower()
+        t = t.translate(str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ى": "ي"}))
+        t = re.sub(r"[^\w\s]", " ", t)
+        if re.search(r"(?:^|\s)(?:لا|ابدا|ما ابغى|ما ابغي|ما ابغا|ما ابي|مو الحين|مشغول|لا شكرا)(?:$|\s)", t):
+            asked = False
+            continue
+        if re.search(r"(?:^|\s)(?:نعم|ايه|ايوه|اكيد|ابشر|تمام|موافق|موافقه|ارسلها|ارسل لي|ارسل القائمة|ارسلها لي|اوكي|اوكيه)(?:$|\s)", t):
+            return True
+        asked = False
+    return False
 
 
 def norm_phone(p):
@@ -263,9 +310,56 @@ class Phone:
     def _gram(self):
         try:
             p = self.store.current_prices()
-            return "{:,.0f} ريال".format(float(p["k21_sell"])) if p and p["k21_sell"] else "غير مسجل، قل له إن الفريق يرسله على الواتساب"
+            return "{:,.0f} ريال".format(float(p["k21_sell"])) if p and p["k21_sell"] else "غير مسجل، لا تذكر سعراً ولا تعد بإرساله عبر واتساب؛ قل إن السعر يحتاج تحققاً من الفريق"
         except Exception:
-            return "غير مسجل، قل له إن الفريق يرسله على الواتساب"
+            return "غير مسجل، لا تذكر سعراً ولا تعد بإرساله عبر واتساب؛ قل إن السعر يحتاج تحققاً من الفريق"
+
+    def _whatsapp_status(self):
+        wa = getattr(self.app, "wa", None)
+        if not wa or not wa.ready():
+            return "غير مربوط أو غير جاهز للإرسال. لا تعد بإرسال شيء عبر واتساب."
+        try:
+            if not wa.cfg().get("template_offer"):
+                return "الحساب مربوط، لكن قالب الإرسال غير مضبوط. لا تعد بالإرسال."
+        except Exception:
+            return "تعذر التحقق من جاهزية الإرسال. لا تعد بالإرسال."
+        return "الحساب والقالب جاهزان. اطلب موافقة العميل أولاً، ولا تقل إن شيئاً أُرسل قبل تأكيد النظام."
+
+    def _investment_options(self):
+        """Read only currently available online gold bars and pounds, with exact stored prices."""
+        try:
+            products = self.agent._available()
+        except Exception:
+            return "تعذر التحقق من المخزون الآن؛ لا تذكر أوزاناً أو توفرّاً من الذاكرة."
+        rows = {}
+        for p in products:
+            kind = str(p["type"] or "")
+            title = str((p["title"] if "title" in p.keys() else "") or "")
+            text = kind + " " + title
+            if "سبيك" in text:
+                label = "سبيكة"
+            elif "جنيه" in text:
+                label = "جنيه ذهب"
+            else:
+                continue
+            try:
+                weight = float(p["weight"])
+                price = float(self.store.piece_price(p)["total"])
+            except Exception:
+                continue
+            key = (label, weight, price)
+            rows[key] = rows.get(key, 0) + 1
+        if not rows:
+            return "لا توجد سبائك أو جنيهات ظاهرة كمخزون متاح الآن؛ لا تقل إنها متوفرة."
+        out = []
+        for (label, weight, price), count in sorted(rows.items(), key=lambda x: (x[0][0], x[0][1], x[0][2])):
+            suffix = f" ({count} قطع)" if count > 1 else ""
+            out.append(f"{label} وزن {weight:g} جم، السعر النهائي {price:,.0f} ريال يمني{suffix}")
+        return "؛ ".join(out)
+
+    @staticmethod
+    def has_whatsapp_consent(lines):
+        return has_whatsapp_consent(lines)
 
     def _update(self, cid, **kw):
         with self.app.lock:
@@ -292,7 +386,9 @@ class Phone:
         if n >= int(c["per_day"]):
             return {"ok": False, "why": "وصلت حد المكالمات اليومي (%d)" % int(c["per_day"])}
         news, line = NEWS[kind]
-        instr = self._gendered(SCRIPT.format(name=name, news=news, news_line=line, gram=self._gram()), c["voice"])
+        instr = self._gendered(SCRIPT.format(name=name, news=news, news_line=line, gram=self._gram(),
+                                             investment_options=self._investment_options(),
+                                             whatsapp_status=self._whatsapp_status()), c["voice"])
         if self.mode(c) == "callback":
             return self._callback(c, name, dest, kind, by_user, today, instr)
         body = {"session": {"model": c["model"], "instructions": instr, "audio": {"output": {"voice": c["voice"]}}},
@@ -448,6 +544,7 @@ class Phone:
     def _watch(self, cid, sid, key, c, inbound=False):
         """Follow the call on the sideband: ringing, answered, words, the end; close it on time."""
         t0, answered, wrapped, hung, lines, usage, status, reason = time.time(), None, False, False, [], None, "dialing", ""
+        wrap_s, max_s = call_limits(c)
         if inbound:                                # the advisor picked up (the customer's phone rings from now)
             answered, status = t0, "answered"
             self._update(cid, status=status, answered=answered)
@@ -459,20 +556,24 @@ class Phone:
                 now = time.time()
                 if not hung and answered is None and now - t0 > float(c["ring_s"]):
                     hung = self._hangup(sid, key) or True; reason = reason or "no_answer"
-                if answered and not wrapped and now - answered >= float(c["wrap_s"]):
+                if answered and not wrapped and now - answered >= wrap_s:
                     wrapped = True
                     try:
                         ws.send({"type": "session.instructions.append", "event_id": "wrap" + secrets.token_hex(3), "content": WRAP})
                     except Exception:
                         pass
-                if answered and not hung and now - answered >= float(c["max_s"]):
-                    hung = self._hangup(sid, key) or True; reason = reason or "time"
-                if now - t0 > float(c["ring_s"]) + float(c["max_s"]) + 60:
+                if answered and not hung and now - answered >= max_s:
+                    self._hangup(sid, key)
+                    hung = True
+                    reason = reason or "time"
+                    break
+                if now - t0 > float(c["ring_s"]) + max_s + 60:
                     if not hung:
                         self._hangup(sid, key)
                     reason = reason or "stuck"
                     break
-                raw = ws.recv(0.5)
+                remaining = max_s - (now - answered) if answered and not hung else 0.5
+                raw = ws.recv(min(0.5, max(0.01, remaining)))
                 if raw is None:
                     continue
                 try:
@@ -529,11 +630,11 @@ class Phone:
 
     def _card(self, row, final, talk, cost, reason, lines):
         """The owner's Telegram card: who, how it went, whether he agreed; the words behind a button."""
-        said = " ".join(x for x in lines if x.startswith("المستشار"))
         heard = " ".join(x for x in lines if x.startswith("العميل"))
+        consented = self.has_whatsapp_consent(lines)
         if final != "done":
             res = {"no_answer": "ما رد", "failed": "ما اتصلت"}.get(final, final)
-        elif "أبشر" in said or "أرسلها لك على طول" in said:
+        elif consented:
             res = "وافق يستقبل التشكيلات على الواتساب ✅"
         elif any(w in heard for w in ("لا شكرا", "لا شكراً", "مشغول", "ما ابغى", "ما أبغى", "مو الحين")):
             res = "اعتذر"
@@ -543,15 +644,23 @@ class Phone:
         if reason and final != "done":
             card += "\nالسبب: " + reason[:120]
         bot = getattr(self.app, "bot", None)
-        agreed = res.startswith("وافق")
+        agreed = consented
         wa = getattr(self.app, "wa", None)
         buttons = [{"text": "تفاصيل المكالمة", "callback_data": "pc:" + row["id"]}]
-        if agreed and wa and wa.ready():
+        wa_send_ready = False
+        try:
+            wa_send_ready = bool(wa and wa.ready() and wa.cfg().get("template_offer"))
+        except Exception:
+            wa_send_ready = False
+        if agreed and wa_send_ready:
             if wa.cfg().get("auto_after_call") and wa.cfg().get("template_offer"):
                 r = wa.offer_after_call(row["name"], row["phone"], by="auto-call")
-                card += "\n📲 " + ("انرسلت له العروض على الواتساب" if r.get("ok") else "ما انرسلت العروض: " + str(r.get("why"))[:80])
+                card += "\n📲 " + ("انرسلت له العروض على الواتساب بعد موافقته" if r.get("ok") else "ما انرسلت العروض: " + str(r.get("why"))[:80])
             else:
                 buttons.append({"text": "📲 أرسل له العروض على الواتساب", "callback_data": "wo:" + row["id"]})
+        elif agreed:
+            card += "\nلم يتم الإرسال: " + ("الواتساب غير مربوط أو غير جاهز." if not wa or not wa.ready()
+                                            else "قالب الإرسال غير مضبوط.")
         try:
             if bot and hasattr(bot, "notify_card") and lines:
                 bot.notify_card(card, buttons)

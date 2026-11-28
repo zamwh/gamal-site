@@ -71,7 +71,7 @@ CORE_PROMPT = """أنت "مستشار جمال المشرقي" في موقع م�
 - رد بلغة الزبون: عربي بلهجة يمنية/خليجية بيضاء ودودة (بصيغة المذكر العامة)، أو إنجليزي راقٍ وبسيط إذا كتب بالإنجليزي.
 - ممنوع الشامي والمصري: لا «شو، هلق، هيك، كتير، منيح، بدك» ولا «إيه، إزيك، عايز، دلوقتي، كده، أوي، بتاع». قل «ايش/وش، ايوه، الحين، كذا، كثير، زين، تبغى».
 - افهم الزبون قبل العرض، سؤال واحد في كل رد وما تعيد سؤال جاوبه: للبس ولا للادخار؟ للبس: لبس يومي ولا لمناسبة ويبغاه لافت؟ ثم النوع، ثم الميزانية أو الوزن. لما تعرف النوع والميزانية (أو الوزن) اعرض على طول.
-- التزم بالميزانية والوزن بالضبط: لا تعرض قطعة فوق ميزانيته، ولا بعيدة عن الوزن اللي قاله.
+- قدّم القطع المتاحة ضمن الميزانية أولاً. لا تعرض بديلاً فوقها إلا إذا لم يوجد أي منتج ضمن الميزانية؛ عندها استخدم فقط بدائل البحث حتى 500,000 ريال زيادة، ووسّع إلى 1,000,000 ريال عند الضرورة فقط. سمِّ كل واحدة «بديل فوق الميزانية»، واذكر مقدار الزيادة بدقة، ولا تصفها بأنها ضمن الميزانية. التزم بشرط الوزن.
 - اختياراته: لما يقول ضيفها لاختياراتي النظام يضيفها، وبعدها اقترح يكمّل ميزانيته بقطعة تكمّل اللي اختاره (نوع ثاني) ضمن الباقي. ولما يقول نكمل الشراء النظام يعرض اختياراته وخطوات الشراء والاستلام.
 - الزبون قال ميزانية: اعرض الأقرب لها (search_products يرتبها كذا)، مو الأرخص.
 - ردود قصيرة: سطر إلى ثلاثة. سؤال واحد بالكثير، ومو كل رد لازم ينتهي بسؤال.
@@ -594,8 +594,18 @@ class SalesAgent:
             else:
                 eligible.append(p)
         within = [p for p in eligible if not budget or p["price"] <= float(budget)]
-        over = sorted([p for p in eligible if budget and p["price"] > float(budget) and p["code"] not in shown],
-                      key=lambda p: p["price"])[:max(2, min(5, int(args.get("count") or 2)))]
+        over = []
+        if budget and not within:
+            # Show a small over-budget alternative only when nothing matches the
+            # budget. Widen from 500,000 to 1,000,000 YER only if the first band
+            # has no available products.
+            over_all = sorted(
+                [p for p in eligible if p["price"] > float(budget) and p["code"] not in shown],
+                key=lambda p: p["price"])
+            over = [p for p in over_all if p["price"] <= float(budget) + 500_000]
+            if not over:
+                over = [p for p in over_all if p["price"] <= float(budget) + 1_000_000]
+            over = over[:max(2, min(5, int(args.get("count") or 2)))]
         wover = sorted([p for p in avail if wmax and ok(p) == "weight" and p["code"] not in shown
                         and (not budget or p["price"] <= float(budget))], key=lambda p: p["weight"])[:2]
         sort = args.get("sort") or "taste"
@@ -670,12 +680,18 @@ class SalesAgent:
             out["note_budget"] = (f"أغلى المتاح من هذا النوع ضمن ميزانيته {max(it['price'] for it in items):,.0f}، وهي أقل بكثير من ميزانيته "
                                   f"{float(budget):,.0f}. قلها بصراحة، واقترح يكمّلها بقطعة ثانية توصله لميزانيته، أو نوع أقرب لها "
                                   "(مثل طقم كامل)، وإذا يبغى ابحث له.")
-        if not items and over:
+        if not items and not within and over:
             out["outside_budget"] = [dict(self._brief(p), over_by=round(p["price"] - float(budget))) for p in over]
             out["items"] = items = [dict(self._brief(p), **describe(p), over_by=round(p["price"] - float(budget))) for p in over[:n]]
             out["over_budget"] = True
-            out["note"] = ("ما فيه قطعة ضمن ميزانيته بالضبط بهذه الشروط، وهذي أقرب القطع لها (over_by = كم تزيد). اعرضها، وقل الفرق "
-                           "بصراحة بجملة وحدة، واسأله لو يقدر يزيد شوي، ولا يبغى نوع أخف ضمن ميزانيته.")
+            out["over_budget_band"] = 500_000 if over[0]["price"] <= float(budget) + 500_000 else 1_000_000
+            out["note"] = ("ما فيه قطعة ضمن ميزانيته بهذه الشروط. هذي أقرب بدائل فوق الميزانية وليست ضمنها "
+                           "(over_by = مقدار الزيادة بالريال). سمّها بوضوح «بديل فوق الميزانية»، واذكر مقدار الزيادة "
+                           "بدقة. لا تصفها أبداً بأنها ضمن ميزانيته. عُرضت ضمن هامش 500,000 ريال، أو توسع الهامش "
+                           "إلى 1,000,000 ريال فقط لعدم وجود بديل أقرب.")
+        elif not items and budget and not within and not over:
+            out["note"] = ("ما فيه قطعة ضمن الميزانية أو ضمن مليون ريال فوقها بهذه الشروط. لا تعرض قطعة أبعد من ذلك "
+                           "كبديل قريب؛ اسأله إن كان يريد توسيع الميزانية أو تغيير النوع.")
         elif not items and wover:
             out["items"] = items = [dict(self._brief(p), **describe(p), over_weight_g=round(p["weight"] - float(wmax), 1)) for p in wover]
             out["over_weight"] = True
@@ -943,8 +959,11 @@ class SalesAgent:
                 except Exception:
                     pass
             if pieces and found.get("over_budget"):
-                return ("ما لقيت شي ضمن ميزانيتك بالضبط، وهذي أقرب القطع لها، تزيد عنها شوي. والسعر في البطاقة نهائي على سعر اليوم. "
-                        "تقدر تزيد ميزانيتك شوي، ولا تبغى نوع أخف؟"), pieces
+                pieces = pieces[:1]
+                over_by = found["items"][0].get("over_by")
+                over_text = f"{over_by:,.0f} ريال" if isinstance(over_by, (int, float)) else "المبلغ الموضح في البطاقة"
+                return (f"ما فيه قطعة ضمن ميزانيتك؛ أقرب خيار هو «بديل فوق الميزانية»، يزيد عنها {over_text} وليست ضمنها. "
+                        "السعر في البطاقة نهائي على سعر اليوم. تقدر تزيد ميزانيتك شوي، ولا تبغى نوع أخف؟"), pieces
         if pieces:
             return ("هذي أقرب القطع لطلبك، والسعر في البطاقة نهائي على سعر اليوم. "
                     "وإذا تحب يكمل معك فريق المبيعات، الزر تحت."), pieces

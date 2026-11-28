@@ -1,5 +1,4 @@
-"""Owner, 2026-11-26: "the customer's budget is 10 million and it suggests 2 million" -> with a stated budget the
-search shows the pieces closest to it first (never above it), not the cheapest. Also: dialect rules in both prompts."""
+"""Budgeted searches prefer in-budget stock; over-budget alternatives are tightly capped and clearly labelled."""
 import sys, tempfile, json
 sys.path.insert(0, '/home/claude/gamal_pos')
 import core, shopstate, threading
@@ -42,14 +41,34 @@ cheapest_set = min(p["price"] for p in ag._available() if p["type"] == "طقم")
 r5 = ag.search_products({"kind": "طقم", "max_price": cheapest_set - 300_000, "count": 2}, shopstate.new_state())
 check('9  budget under every set: the closest sets anyway, with how much over', r5["items"] and r5.get("over_budget")
       and r5["items"][0]["price"] == cheapest_set and r5["items"][0]["over_by"] == 300_000, [(i["price"], i.get("over_by")) for i in r5["items"]])
+r5wide = ag.search_products({"kind": "طقم", "max_price": cheapest_set - 600_000, "count": 2}, shopstate.new_state())
+check('9a widen to one million only when no set is within five hundred thousand',
+      r5wide["items"] and r5wide.get("over_budget") and r5wide.get("over_budget_band") == 1_000_000
+      and r5wide["items"][0]["over_by"] == 600_000, [(i["price"], i.get("over_by")) for i in r5wide["items"]])
+check('9b every over-budget result is explicitly labelled as outside the budget',
+      "فوق الميزانية" in r5wide.get("note", "") and "ليست ضمنها" in r5wide.get("note", ""), r5wide.get("note"))
+r5within = ag.search_products({"kind": "طقم", "max_price": cheapest_set + 100_000, "count": 3}, shopstate.new_state())
+check('9c when an in-budget product exists, no over-budget product is mixed in',
+      r5within["items"] and all(i["price"] <= cheapest_set + 100_000 for i in r5within["items"])
+      and not r5within.get("over_budget"), [(i["price"], i.get("over_by")) for i in r5within["items"]])
+r5far = ag.search_products({"kind": "طقم", "max_price": cheapest_set - 1_000_001, "count": 2}, shopstate.new_state())
+check('9d do not widen beyond one million over budget',
+      not r5far["items"] and not r5far.get("over_budget"), r5far)
 lightest = min(p["weight"] for p in ag._available() if ag._match_kind(p, "عقد"))
 r6 = ag.search_products({"kind": "عقد", "max_weight": lightest - 5, "count": 2}, shopstate.new_state())
 check('10 weight under every necklace: the closest heavier anyway, with how much over', r6["items"] and r6.get("over_weight")
       and r6["items"][0]["w"] == lightest and r6["items"][0]["over_weight_g"] == 5, [(i.get("w"), i.get("over_weight_g")) for i in r6["items"]])
 st7 = shopstate.new_state()
 out7 = ag.chat("bud7", f"ابغى طقم لعرس ميزانيتي {int((cheapest_set - 300_000) / 1_000_000 * 10) / 10} مليون")
-check('11 in the chat (no model): the closest pieces are shown and the reply says they are a little over', out7["pieces"]
-      and "تزيد عنها" in out7["text"], (out7["text"], len(out7["pieces"])))
+check('11 in the chat (no model): the nearest alternative is labelled above budget and not misrepresented', out7["pieces"]
+      and "بديل فوق الميزانية" in out7["text"] and "ليست ضمنها" in out7["text"], (out7["text"], len(out7["pieces"])))
+fallback_text, fallback_pieces = ag._plain_reply(
+    {"facts": {"kind": "\u0637\u0642\u0645", "budget": cheapest_set - 300_000}}, shopstate.new_state(), {},
+    {"selling": ["budget"]}, "off")
+expected_over = r5["items"][0]["over_by"]
+check('12 fallback names the exact over-budget difference in rial', fallback_pieces
+      and f"{expected_over:,.0f} ريال" in fallback_text and "ليست ضمنها" in fallback_text,
+      (fallback_text, expected_over))
 import voice, agent
 ins = voice.PERSONA
 check('4  voice: Yemeni or Gulf only, Levantine and Egyptian words banned', "ممنوع الشامي والمصري" in ins and "دلوقتي" in ins and "هلق" in ins)

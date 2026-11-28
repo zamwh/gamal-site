@@ -887,10 +887,13 @@ class Bot(threading.Thread):
         staff = uid in c["staff"]
         if staff and text.startswith("wo:"):           # the call's customer agreed: the offers on WhatsApp
             with app.lock:
-                r = app.store.one("SELECT name, phone FROM phone_calls WHERE id=?", (text[3:20],))
+                r = app.store.one("SELECT name, phone, transcript FROM phone_calls WHERE id=?", (text[3:20],))
             wa = getattr(app, "wa", None)
             if not r or not wa:
                 return self.send(token, chat, "ما لقيت المكالمة، أو الواتساب ما انربط.")
+            ph = getattr(app, "phone", None)
+            if not ph or not ph.has_whatsapp_consent(r["transcript"] or ""):
+                return self.send(token, chat, "ما ظهرت موافقة صريحة في المكالمة؛ ما أرسلت أي شيء.")
             res = wa.offer_after_call(r["name"], r["phone"], by="telegram")
             return self.send(token, chat, ("📲 انرسلت العروض لـ%s على الواتساب." % r["name"]) if res.get("ok") else "ما انرسلت: " + str(res.get("why")))
         if staff and text.startswith("pc:"):           # a phone call's card: its details on request
